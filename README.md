@@ -55,9 +55,10 @@ Offene Punkte stehen im [ADR-Index](docs/adr/README.md).
 ## Struktur
 
 ```text
-app/                         FastAPI-Skelett, kein Domänenmodell
+app/                         FastAPI-Skelett und Lebenszyklus-Vertrag, keine Endpunkte der V1
+api/openapi.yaml             OpenAPI 3.1, nicht implementiert
 migrations/                  Migrationen, erste Tabelle schema_meta
-tests/                       health, ready, Migration, Log-Schwärzung
+tests/                       health, ready, Migration, Vertrag gegen den Lebenszyklus
 scripts/validate_structure.py
 docs/ARCHITECTURE.md
 docs/GOVERNANCE.md

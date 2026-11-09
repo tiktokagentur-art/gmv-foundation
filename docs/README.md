@@ -6,6 +6,10 @@ Sie legen keine Infrastruktur an und enthalten keinen Anwendungscode.
 | Dokument | Inhalt |
 | --- | --- |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Schichten, Zustandsregel, Begriffe |
+| [DATA_MODEL.md](DATA_MODEL.md) | Kernentitäten der V1 |
+| [WORKITEM_LIFECYCLE.md](WORKITEM_LIFECYCLE.md) | Zustände, Übergänge, Lease, Fencing |
+| [IDENTITY_MODEL.md](IDENTITY_MODEL.md) | Identitäten, Rollen, Autorisierung |
+| [API_SPECIFICATION.md](API_SPECIFICATION.md) | HTTP-Vertrag, Verweis auf OpenAPI |
 | [GOVERNANCE.md](GOVERNANCE.md) | Entscheidungen, Review, Änderung |
 | [adr/README.md](adr/README.md) | Index der ADRs, einschließlich offener Punkte |
 | [../SECURITY.md](../SECURITY.md) | Secrets, Rechte, Identität, Autorisierung, Audit |

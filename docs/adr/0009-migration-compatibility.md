@@ -6,9 +6,9 @@
 
 ## Kontext
 
-Daten- und API-Verträge gibt es noch nicht. [../ARCHITECTURE.md](../ARCHITECTURE.md)
-reserviert sie für die Foundation: erst der Vertrag, dann die Umsetzung durch
-die Infrastructure.
+Die V1-Verträge stehen in [../DATA_MODEL.md](../DATA_MODEL.md) und
+[../API_SPECIFICATION.md](../API_SPECIFICATION.md). Die Foundation definiert sie,
+bevor die Infrastructure sie umsetzt.
 
 [ADR-0001](0001-postgresql-on-railway.md) legt eine PostgreSQL-Datenbank fest.
 [ADR-0003](0003-single-assignment-authority.md) verbietet einen zweiten Eigentümer.
@@ -30,8 +30,7 @@ unzulässig, bis dieses ADR entschieden ist.
 
 Zu klären ist mindestens:
 
-- wo ein Vertrag im Repository liegt und wann er `Accepted` ist
-- ob eine API-Fassung kompatibel erweitert oder explizit abgelöst wird, und wie lange die alte Fassung gilt
+- wie lange eine abgelöste API-Fassung gilt, über die V1-Regel hinaus
 - in welcher Reihenfolge Schema und Anwendung wechseln, ohne zwei Schreiber zu erzeugen
 - wie eine gescheiterte Migration zurückgenommen wird
 - ob Alembic das Werkzeug bleibt. Der Stack ist in [ADR-0002](0002-python-fastapi.md) entschieden

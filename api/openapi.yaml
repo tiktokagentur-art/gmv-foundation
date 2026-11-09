@@ -1,0 +1,787 @@
+openapi: 3.1.0
+info:
+  title: GMV Foundation API
+  version: 1.0.0
+  description: |
+    V1-Vertrag der Control Plane. Die Endpunkte sind spezifiziert und noch
+    nicht implementiert. Der Identitätsnachweis ist ADR-0008 und hier nur
+    als Pflicht markiert, nicht als gewähltes Protokoll.
+servers:
+  - url: /
+tags:
+  - name: WorkItems
+  - name: Workers
+  - name: Assignments
+  - name: Audit
+security:
+  - callerCredential: []
+paths:
+  /v1/work-items:
+    post:
+      tags: [WorkItems]
+      operationId: createWorkItem
+      summary: WorkItem anlegen
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkItemCreate"
+      responses:
+        "201":
+          description: Angelegt, Status created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkItem"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+    get:
+      tags: [WorkItems]
+      operationId: listWorkItems
+      summary: WorkItems lesen
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/WorkItemStatus"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Eine Seite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkItemPage"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+  /v1/work-items/{work_item_id}:
+    parameters:
+      - $ref: "#/components/parameters/WorkItemId"
+    get:
+      tags: [WorkItems]
+      operationId: getWorkItem
+      summary: Ein WorkItem lesen
+      responses:
+        "200":
+          description: Das WorkItem
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkItem"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      tags: [WorkItems]
+      operationId: updateWorkItemPayload
+      summary: Payload ändern, nur im Status created
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkItemPayloadUpdate"
+      responses:
+        "200":
+          description: Aktualisiert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkItem"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/work-items/{work_item_id}/transitions:
+    parameters:
+      - $ref: "#/components/parameters/WorkItemId"
+    post:
+      tags: [WorkItems]
+      operationId: transitionWorkItem
+      summary: Zustandsübergang außer Claim, Renew, Release und Ergebnis
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkItemTransition"
+      responses:
+        "200":
+          description: Übergang angenommen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkItem"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/work-items/{work_item_id}/claims:
+    parameters:
+      - $ref: "#/components/parameters/WorkItemId"
+    post:
+      tags: [Assignments]
+      operationId: claimWorkItem
+      summary: Claim stellen
+      description: |
+        Der Körper enthält keinen Fencing-Token. Bei Annahme vergibt die
+        Assignment Authority expires_at und einen neuen fencing_token.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Angenommen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/workers:
+    post:
+      tags: [Workers]
+      operationId: registerWorker
+      summary: Den aufrufenden Worker registrieren
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Registriert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Worker"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/workers/{worker_id}:
+    parameters:
+      - $ref: "#/components/parameters/WorkerId"
+    get:
+      tags: [Workers]
+      operationId: getWorker
+      summary: Einen Worker lesen
+      responses:
+        "200":
+          description: Der Worker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Worker"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/workers/{worker_id}/heartbeat:
+    parameters:
+      - $ref: "#/components/parameters/WorkerId"
+    post:
+      tags: [Workers]
+      operationId: heartbeatWorker
+      summary: Heartbeat
+      description: Setzt last_heartbeat_at. Verlängert keinen Lease und verlangt keinen Fencing-Token.
+      responses:
+        "200":
+          description: Heartbeat angenommen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Worker"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/workers/{worker_id}/disable:
+    parameters:
+      - $ref: "#/components/parameters/WorkerId"
+    post:
+      tags: [Workers]
+      operationId: disableWorker
+      summary: Worker deaktivieren
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "200":
+          description: Deaktiviert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Worker"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/assignments/{assignment_id}:
+    parameters:
+      - $ref: "#/components/parameters/AssignmentId"
+    get:
+      tags: [Assignments]
+      operationId: getAssignment
+      summary: Eine Zuweisung lesen
+      responses:
+        "200":
+          description: Die Zuweisung
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /v1/assignments/{assignment_id}/renew:
+    parameters:
+      - $ref: "#/components/parameters/AssignmentId"
+    post:
+      tags: [Assignments]
+      operationId: renewAssignment
+      summary: Lease verlängern
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FencingRequest"
+      responses:
+        "200":
+          description: expires_at verschoben, fencing_token unverändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/assignments/{assignment_id}/release:
+    parameters:
+      - $ref: "#/components/parameters/AssignmentId"
+    post:
+      tags: [Assignments]
+      operationId: releaseAssignment
+      summary: Zuweisung freigeben
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FencingRequest"
+      responses:
+        "200":
+          description: WorkItem ist ready, Zuweisung released
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/assignments/{assignment_id}/result:
+    parameters:
+      - $ref: "#/components/parameters/AssignmentId"
+    post:
+      tags: [Assignments]
+      operationId: submitAssignmentResult
+      summary: Ergebnis abgeben
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResultSubmit"
+      responses:
+        "200":
+          description: WorkItem ist submitted oder failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkItem"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/audit-events:
+    get:
+      tags: [Audit]
+      operationId: listAuditEvents
+      summary: Audit-Trail lesen
+      parameters:
+        - name: entity_type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/EntityType"
+        - name: entity_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Eine Seite, ältestes Ereignis zuerst
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventPage"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+components:
+  securitySchemes:
+    callerCredential:
+      type: http
+      scheme: bearer
+      description: |
+        Platzhalter, kein gewählter Standard. ADR-0008 ist offen.
+        Ohne von der Control Plane anerkannte Identity antwortet /v1 mit 401.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Aktuelle resource_version in Anführungszeichen.
+      schema:
+        type: string
+        pattern: '^"[0-9]+"$'
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    WorkItemId:
+      name: work_item_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WorkerId:
+      name: worker_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AssignmentId:
+      name: assignment_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Error:
+      description: Fehler
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+  schemas:
+    WorkItemStatus:
+      type: string
+      enum:
+        - created
+        - ready
+        - claimed
+        - in_progress
+        - submitted
+        - done
+        - failed
+        - cancelled
+    EntityType:
+      type: string
+      enum: [work_item, worker, claim, assignment]
+    ErrorCode:
+      type: string
+      enum:
+        - validation_error
+        - unauthorized
+        - forbidden
+        - not_found
+        - version_conflict
+        - idempotency_conflict
+        - fencing_rejected
+        - lease_expired
+        - invalid_state
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              $ref: "#/components/schemas/ErrorCode"
+            message:
+              type: string
+            request_id:
+              type: string
+              format: uuid
+    WorkItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - status
+        - work_type
+        - payload
+        - payload_schema_version
+        - resource_version
+        - created_by
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/WorkItemStatus"
+        work_type:
+          type: string
+          minLength: 1
+          maxLength: 128
+        payload:
+          type: object
+        payload_schema_version:
+          type: integer
+          minimum: 1
+        resource_version:
+          type: integer
+          minimum: 1
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    WorkItemCreate:
+      type: object
+      additionalProperties: false
+      required: [work_type, payload_schema_version]
+      properties:
+        work_type:
+          type: string
+          minLength: 1
+          maxLength: 128
+        payload:
+          type: object
+        payload_schema_version:
+          type: integer
+          minimum: 1
+    WorkItemPayloadUpdate:
+      type: object
+      additionalProperties: false
+      required: [payload, payload_schema_version]
+      properties:
+        payload:
+          type: object
+        payload_schema_version:
+          type: integer
+          minimum: 1
+    WorkItemTransition:
+      type: object
+      additionalProperties: false
+      required: [to_status]
+      properties:
+        to_status:
+          type: string
+          enum: [ready, in_progress, done, failed, cancelled]
+        fencing_token:
+          type: integer
+          minimum: 1
+          description: Pflicht für start (to_status in_progress).
+    WorkItemPage:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkItem"
+        next_cursor:
+          anyOf:
+            - type: string
+              minLength: 1
+            - type: "null"
+    Worker:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - identity_id
+        - status
+        - registered_at
+        - last_heartbeat_at
+        - resource_version
+      properties:
+        id:
+          type: string
+          format: uuid
+        identity_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [registered, disabled]
+        registered_at:
+          type: string
+          format: date-time
+        last_heartbeat_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: "null"
+        resource_version:
+          type: integer
+          minimum: 1
+    Assignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - claim_id
+        - work_item_id
+        - worker_id
+        - status
+        - expires_at
+        - fencing_token
+        - granted_at
+        - ended_at
+        - resource_version
+      properties:
+        id:
+          type: string
+          format: uuid
+        claim_id:
+          type: string
+          format: uuid
+        work_item_id:
+          type: string
+          format: uuid
+        worker_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [active, expired, released, superseded]
+        expires_at:
+          type: string
+          format: date-time
+        fencing_token:
+          type: integer
+          minimum: 1
+        granted_at:
+          type: string
+          format: date-time
+        ended_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: "null"
+        resource_version:
+          type: integer
+          minimum: 1
+    FencingRequest:
+      type: object
+      additionalProperties: false
+      required: [fencing_token]
+      properties:
+        fencing_token:
+          type: integer
+          minimum: 1
+    ResultSubmit:
+      type: object
+      additionalProperties: false
+      required: [fencing_token, outcome, result_schema_version]
+      properties:
+        fencing_token:
+          type: integer
+          minimum: 1
+        outcome:
+          type: string
+          enum: [submitted, failed]
+        result:
+          type: object
+        result_schema_version:
+          type: integer
+          minimum: 1
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - schema_version
+        - occurred_at
+        - actor_id
+        - action
+        - entity_type
+        - entity_id
+        - resource_version
+      properties:
+        id:
+          type: string
+          format: uuid
+        schema_version:
+          type: integer
+          minimum: 1
+        occurred_at:
+          type: string
+          format: date-time
+        actor_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum:
+            - work_item.created
+            - work_item.transitioned
+            - work_item.lease_expired
+            - worker.registered
+            - worker.heartbeat
+            - worker.disabled
+            - assignment.granted
+            - assignment.renewed
+            - assignment.released
+            - assignment.expired
+        entity_type:
+          $ref: "#/components/schemas/EntityType"
+        entity_id:
+          type: string
+          format: uuid
+        resource_version:
+          type: integer
+          minimum: 1
+        from_status:
+          anyOf:
+            - type: string
+            - type: "null"
+        to_status:
+          anyOf:
+            - type: string
+            - type: "null"
+        fencing_token:
+          anyOf:
+            - type: integer
+              minimum: 1
+            - type: "null"
+        details:
+          type: object
+    AuditEventPage:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+        next_cursor:
+          anyOf:
+            - type: string
+              minLength: 1
+            - type: "null"

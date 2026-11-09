@@ -71,6 +71,9 @@ jobs:
       - name: Ruff
         run: ruff check app tests migrations scripts
 
+      - name: Validate OpenAPI
+        run: openapi-spec-validator api/openapi.yaml
+
       - name: Pytest
         run: pytest
 

@@ -21,6 +21,10 @@ REQUIRED_FILES = (
     ".github/workflows/ci.yml",
     "docs/README.md",
     "docs/ARCHITECTURE.md",
+    "docs/DATA_MODEL.md",
+    "docs/WORKITEM_LIFECYCLE.md",
+    "docs/IDENTITY_MODEL.md",
+    "docs/API_SPECIFICATION.md",
     "docs/GOVERNANCE.md",
     "docs/adr/README.md",
     "docs/adr/template.md",
@@ -30,10 +34,13 @@ REQUIRED_FILES = (
     "app/config.py",
     "app/db.py",
     "app/logging_config.py",
+    "app/lifecycle.py",
     "tests/README.md",
     "tests/test_health.py",
     "tests/test_ready.py",
     "tests/test_migration.py",
+    "tests/test_lifecycle_contract.py",
+    "api/openapi.yaml",
     "scripts/validate_structure.py",
     "pyproject.toml",
     "Dockerfile",
@@ -47,6 +54,7 @@ REQUIRED_FILES = (
 REQUIRED_DIRS = (
     "docs",
     "docs/adr",
+    "api",
     "app",
     "tests",
     "scripts",
@@ -273,6 +281,7 @@ def check_workflow(errors: list[str]) -> None:
         "ruff check",
         "pytest",
         "docker build",
+        "openapi-spec-validator api/openapi.yaml",
     )
     for snippet in required_snippets:
         if snippet not in text:

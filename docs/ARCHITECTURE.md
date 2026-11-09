@@ -92,7 +92,9 @@ Es heißt nicht: zwei Schreiber für dieselbe Domäne.
 ## Zustandsdomänen
 
 Die Domänen sind benannt, damit später niemand eine zweite Quelle anlegt.
-Felder, Tabellen und Endpunkte gibt es hier noch nicht.
+Felder und Endpunkte der V1 stehen in [DATA_MODEL.md](DATA_MODEL.md) und
+[API_SPECIFICATION.md](API_SPECIFICATION.md). Eine Datenbanktabelle dafür gibt
+es nicht.
 
 | Domäne | Eigentümer | Nicht Eigentümer |
 | --- | --- | --- |
@@ -121,24 +123,25 @@ Dafür wird kein Platzhalter im Code erfunden.
 
 ## Verträge
 
-Daten- und API-Verträge werden in diesem Repository versioniert, bevor die
-Infrastructure sie implementiert. Es gibt sie in dieser Baseline noch nicht.
-Kompatibilität und Migration sind offen
+Die V1-Verträge stehen in [DATA_MODEL.md](DATA_MODEL.md),
+[WORKITEM_LIFECYCLE.md](WORKITEM_LIFECYCLE.md),
+[IDENTITY_MODEL.md](IDENTITY_MODEL.md) und
+[API_SPECIFICATION.md](API_SPECIFICATION.md). Die Endpunkte sind nicht
+implementiert. Kompatibilität der Datenbankmigration bleibt offen
 ([ADR-0009](adr/0009-migration-compatibility.md)).
-
-Bis ein Vertrag `Accepted` ist, ist eine Implementierung eine Vermutung und
-gehört nicht ins Repository.
 
 ## Ablauf einer Arbeit
 
-Der Ablauf ist eine Regel, kein Protokoll. Es gibt keine URL, kein Token-Format
-und kein Tabellenschema.
+Der Ablauf bleibt die Regel. Pfade, Felder und der Fencing-Token als Zahl stehen
+im V1-Vertrag. Eine Datenbanktabelle dafür gibt es nicht.
 
 1. Ein WorkItem entsteht nur bei der Instanz, die diese Domäne besitzt.
 2. Die Assignment Authority vergibt höchstens eine aktive Zuweisung.
 3. Der Worker weist seine Identität nach. Die Authority legt einen Lease an und
    versieht ihn mit einem Fencing-Merkmal.
-4. Ein Heartbeat ist ein Antrag auf Verlängerung. Die Authority entscheidet.
+4. Ein Heartbeat meldet, dass der Worker lebt. Die Verlängerung des Lease ist
+   ein eigener Antrag. Die Authority entscheidet und ändert dabei den
+   Fencing-Token nicht.
 5. Ergebnis oder Fehler wird nur angenommen, wenn Identität, Lease und Fencing
    noch zur selben Zuweisung gehören.
 6. Jede Annahme schreibt einen Audit-Eintrag. Eine Ablehnung ändert den
