@@ -7,25 +7,27 @@
 ## Kontext
 
 [ADR-0001](0001-postgresql-on-railway.md) legt PostgreSQL direkt auf Railway fest
-und erzeugt keine Ressource. Ungeklärt sind die Umgebungen, die Region und die
-Limits der Dienste.
+und erzeugt keine Ressource. Ungeklärt sind die Umgebungen und die Limits der
+Dienste. Die Region ist entschieden
+([ADR-0012](0012-hosting-region-usa.md)): Railway `sfo` in den USA.
 
 [ADR-0003](0003-single-assignment-authority.md) verbietet einen zweiten Schreiber
-für dieselbe Domäne. Eine zusätzliche Region ist damit nicht automatisch ein
-zweiter Primary. Skalierung folgt erst nach Nachweis der einen Instanz.
+für dieselbe Domäne. [ADR-0012](0012-hosting-region-usa.md) legt zusätzlich fest,
+dass alle Dienste in `sfo` laufen. Eine weitere Region ist nicht mehr offen.
 
 Es gibt in diesem Repository kein Railway-Projekt, keine Umgebung und keine
 Kontonummer. Solche Angaben gehören nicht in ein öffentliches ADR.
 
 ## Entscheidung
 
-Nicht entschieden. Namen und Anzahl der Railway-Umgebungen, die Region und die Dienstlimits sind offen.
+Nicht entschieden. Namen und Anzahl der Railway-Umgebungen und die Dienstlimits sind offen.
+
+Die Region ist nicht mehr Teil dieser offenen Frage. Sie steht in
+[ADR-0012](0012-hosting-region-usa.md).
 
 Zu klären ist mindestens:
 
 - welche Umgebungen es gibt und welche davon autoritativen Zustand halten dürfen
-- in welcher Region PostgreSQL und die Control Plane laufen
-- ob eine weitere Region nur Wiederherstellung ist oder eigenen Zustand hätte
 - welche Limits für Verbindungen, Speicher, Rechner und Kosten gelten
 - welche Identität je Umgebung eigene Rechte hat
 
@@ -37,11 +39,11 @@ Zu klären ist mindestens:
 
 ## Alternativen
 
-Nicht bewertet. Konkrete Regionsnamen wären hier bereits eine Auswahl und
-stehen deshalb nicht als Vorschlagsliste.
+Nicht bewertet. Die Region wird hier nicht erneut gewählt.
 
 ## Bezug
 
 - [ADR-0001](0001-postgresql-on-railway.md)
 - [ADR-0003](0003-single-assignment-authority.md)
 - [ADR-0006](0006-backup-retention-rpo-rto.md)
+- [ADR-0012](0012-hosting-region-usa.md)

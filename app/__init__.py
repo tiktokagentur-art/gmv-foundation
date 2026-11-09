@@ -1,0 +1,1 @@
+"""GMV Foundation service skeleton."""

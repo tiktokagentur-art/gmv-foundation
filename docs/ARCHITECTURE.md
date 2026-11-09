@@ -154,8 +154,8 @@ des Lease nicht mehr schreiben kann.
 
 Nicht enthalten und nicht nebenbei angelegt:
 
-- Anwendungscode, Abhängigkeiten, API, Schema
-- Datenbank, Railway-Projekt, Umgebung, Region, Limits
+- Domänenmodell, fachliche API, produktives Schema über `schema_meta` hinaus
+- angelegte Datenbank, Railway-Projekt, Umgebung, Limits (die Region ist entschieden, siehe [adr/0012-hosting-region-usa.md](adr/0012-hosting-region-usa.md), aber nicht provisioniert)
 - Backup-Lauf, konkrete RPO- oder RTO-Zahlen
 - Secrets, Secret-Store, Rotation, Break-glass-Verfahren
 - Deployment, Release, Rollback

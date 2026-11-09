@@ -60,8 +60,10 @@ und den ersten Satz der Entscheidung. Die Prüfung ist ein Geländer gegen still
 Umschreiben. Sie ersetzt die Review nicht.
 
 Die CEO-Entscheidung vom 09.11.2026 ist in [ADR-0001](adr/0001-postgresql-on-railway.md)
-festgehalten. Sie wird hier nicht neu verhandelt. Python / FastAPI ist ausdrücklich
-nicht entschieden ([ADR-0002](adr/0002-python-fastapi.md)).
+und für die Region in [ADR-0012](adr/0012-hosting-region-usa.md) festgehalten.
+Python / FastAPI ist ausdrücklich nicht entschieden
+([ADR-0002](adr/0002-python-fastapi.md)). Das Skelett GF-006 steht auf diesem
+Vorschlag, ohne den Status zu ändern.
 
 ## Eine Instanz je Domäne
 

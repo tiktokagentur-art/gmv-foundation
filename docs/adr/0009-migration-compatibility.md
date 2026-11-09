@@ -16,12 +16,17 @@ Eine Migration ist eine Änderung dieser einen Datenbank, kein paralleles Schema
 mit eigener Wahrheit.
 
 Offen ist, wie Verträge versioniert werden, wie lange eine alte Fassung gilt und
-welches Verfahren eine Datenbankänderung ausrollt. Ein Werkzeug wird nicht
-gewählt, solange auch [ADR-0002](0002-python-fastapi.md) nur ein Vorschlag ist.
+welches Verfahren eine Datenbankänderung ausrollt. Alembic im Skelett hängt am
+Vorschlag [ADR-0002](0002-python-fastapi.md) und ist nicht diese Strategie.
 
 ## Entscheidung
 
 Nicht entschieden. Die Strategie für API-Versionierung, Datenbankmigration und Kompatibilität ist offen.
+
+Das Skelett (GF-006) nutzt Alembic, um die Infrastrukturtabelle `schema_meta`
+anzulegen. Das wählt keine Kompatibilitätsstrategie und nimmt
+[ADR-0002](0002-python-fastapi.md) nicht an. Ein Domänenschema bleibt
+unzulässig, bis dieses ADR entschieden ist.
 
 Zu klären ist mindestens:
 
@@ -29,12 +34,12 @@ Zu klären ist mindestens:
 - ob eine API-Fassung kompatibel erweitert oder explizit abgelöst wird, und wie lange die alte Fassung gilt
 - in welcher Reihenfolge Schema und Anwendung wechseln, ohne zwei Schreiber zu erzeugen
 - wie eine gescheiterte Migration zurückgenommen wird
-- welches Werkzeug die eine Datenbank migriert, erst nach dem Backend-Entscheid
+- ob Alembic das Werkzeug bleibt, wenn der Backend-Vorschlag entschieden wird
 
 ## Konsequenzen
 
-- Es gibt in dieser Baseline kein Migrationsverzeichnis und kein API-Schema.
-- Ein Pull Request, der ein Schema anlegt, bevor dieses ADR angenommen ist, legt eine Strategie ohne Entscheid fest und ist nicht zulässig.
+- `schema_meta` ist ein Infrastrukturmarker der einen Datenbank, kein fachlicher Vertrag.
+- Ein Domänenschema oder ein zweites Migrationswerkzeug neben dem Skelett ist ohne dieses ADR nicht zulässig.
 - Kompatibilität ist eine Eigenschaft des Vertrags, nicht ein Verhalten, das jeder Client für sich definiert.
 
 ## Alternativen

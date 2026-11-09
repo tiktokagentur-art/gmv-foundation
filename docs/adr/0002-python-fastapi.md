@@ -14,20 +14,23 @@ Programm und PostgreSQL auf Railway fest, nicht den Anwendungstack.
 [ADR-0001](0001-postgresql-on-railway.md) ist davon unabhängig: die Datenbank
 gilt auch, wenn dieser Vorschlag abgelehnt wird.
 
-In `app/` liegt bewusst kein Code. Ein Framework im Repository wäre ein
-vorweggenommener Beschluss.
+GF-006 baut auf diesem Vorschlag ein Skelett: FastAPI, Konfiguration nur aus
+Umgebungsvariablen, SQLAlchemy 2 und Alembic. Das Skelett macht den Vorschlag
+prüfbar. Es nimmt ihn nicht an.
 
 ## Entscheidung
 
 Nicht entschieden. Python und FastAPI sind der Vorschlag für den Control-Plane-Dienst, nicht der Beschluss.
 
+Das Skelett aus GF-006 läuft auf diesem Vorschlag. Der Status bleibt `Proposed`,
+bis die CEO entscheidet. Ein laufendes Skelett ist kein stiller Beschluss.
+
 Der Vorschlag umfasst die Sprache Python und FastAPI als HTTP-Schicht der
-Control Plane, einschließlich der Grenze zu den Workern. Er wählt keine
-Bibliothek für Migrationen, keine Authentisierung und keinen Betrieb.
+Control Plane. Authentisierung und Betrieb sind davon nicht gewählt.
 
 ## Konsequenzen
 
-- Solange der Status `Proposed` ist, wird kein Anwendungscode und keine Laufzeitabhängigkeit hinzugefügt.
+- Das Skelett (GF-006) darf existieren, solange der Status `Proposed` ist. Domänenmodelle, Authentisierung und ein Deployment folgen daraus nicht.
 - Ein annehmender Pull Request setzt den Status auf `Accepted`, nennt die entscheidende Rolle und hält fest, welche Alternativen verglichen wurden.
 - Eine Ablehnung setzt den Status auf `Rejected` oder ersetzt dieses ADR. Beides ist ein eigener Pull Request.
 - [ADR-0003](0003-single-assignment-authority.md) und [../../SECURITY.md](../../SECURITY.md) gelten unabhängig von der Sprache.

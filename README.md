@@ -12,14 +12,15 @@ Betriebsdetails. Regeln: [SECURITY.md](SECURITY.md).
 
 ## Stand
 
-Diese Baseline enthält Architektur, Governance, Sicherheitsregeln und versionierte
-Entscheidungen. Sie enthält keine Anwendung, legt keine Datenbank an, deployt nicht
-und ändert Railway nicht.
+Diese Baseline enthält Architektur, Governance, Sicherheitsregeln, versionierte
+Entscheidungen und ein Anwendungsskelett. Sie legt keine Datenbank an, deployt
+nicht und ändert Railway nicht. Python / FastAPI bleibt ein Vorschlag.
 
 | Work Package | Inhalt |
 | --- | --- |
 | GF-001 | Repository-Struktur, Beitragsregeln, CI |
 | GF-003 | Architektur, Governance, Sicherheit, ADRs |
+| GF-006 | Skelett: FastAPI, Health, Readiness, Alembic, Image |
 
 ## Schichten
 
@@ -46,32 +47,57 @@ Gültig:
 
 - [ADR-0001](docs/adr/0001-postgresql-on-railway.md) PostgreSQL auf Railway, entschieden am 09.11.2026
 - [ADR-0003](docs/adr/0003-single-assignment-authority.md) eine Assignment Authority, ein Zustandseigentümer je Domäne
+- [ADR-0012](docs/adr/0012-hosting-region-usa.md) Hosting-Region USA, Railway `sfo`, entschieden am 09.11.2026
 
 Vorschlag, nicht beschlossen:
 
-- [ADR-0002](docs/adr/0002-python-fastapi.md) Python / FastAPI
+- [ADR-0002](docs/adr/0002-python-fastapi.md) Python / FastAPI. Das Skelett läuft darauf, der Status bleibt `Proposed`
 
-Weitere offene Punkte sind ADR-0004 bis ADR-0011. Sie sind Vorschläge ohne Beschluss.
+Offene Punkte stehen im [ADR-Index](docs/adr/README.md).
 
 ## Struktur
 
 ```text
-app/                         Platzhalter, kein Anwendungscode
-tests/                       Platzhalter, noch keine Vertragstests
+app/                         FastAPI-Skelett, kein Domänenmodell
+migrations/                  Migrationen, erste Tabelle schema_meta
+tests/                       health, ready, Migration, Log-Schwärzung
 scripts/validate_structure.py
 docs/ARCHITECTURE.md
 docs/GOVERNANCE.md
 docs/adr/                    ADR-Vorlage, Index, Entscheidungen
-.github/workflows/ci.yml     Markdown-Lint und Strukturprüfung
-.github/CODEOWNERS           Entwurf, keine aktiven Owner
-SECURITY.md
-CONTRIBUTING.md
+.github/workflows/ci.yml     Markdown, Struktur, Ruff, Pytest, Image
+Dockerfile                   non-root, Healthcheck auf /health
+.env.example                 Platzhalter, wird nicht gelesen
 ```
+
+## Skelett
+
+Konfiguration kommt nur aus der Prozessumgebung. `.env.example` enthält
+Platzhalter und wird von der Anwendung nicht gelesen.
+
+```bash
+python -m pip install -e ".[dev]"
+alembic upgrade head
+uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+```
+
+`GET /health` prüft den Prozess und öffnet keine Datenbank.
+`GET /ready` prüft die Verbindung und antwortet bei Fehler mit 503.
+
+Startbefehl für Railway, Port aus der Umgebung, identisch zum `CMD` im Image:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+```
+
+Das Image läuft als Benutzer `app` (uid 10001). Ein Deploy findet in diesem
+Stand nicht statt. `DATABASE_URL` wird nicht ins Repository geschrieben.
 
 ## CI
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) lintet Markdown und prüft die
-Struktur. Der Job heißt `lint-and-structure`.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) lintet Markdown, prüft die
+Struktur, führt Ruff und Pytest gegen PostgreSQL 18 aus und baut das Image.
+Die Jobs heißen `lint-and-structure`, `backend` und `image`.
 
 Die Prüfung ist vorhanden. Diese Baseline macht sie nicht zu einem erzwungenen
 Merge-Schutz und ändert keine Repository-Einstellung
