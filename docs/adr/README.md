@@ -12,7 +12,7 @@ Prüfung des Vorschlags erlaubt, nimmt den Vorschlag nicht an.
 | ADR | Titel | Status |
 | --- | --- | --- |
 | [0001](0001-postgresql-on-railway.md) | PostgreSQL auf Railway | Accepted |
-| [0002](0002-python-fastapi.md) | Python / FastAPI | Proposed |
+| [0002](0002-python-fastapi.md) | Python / FastAPI | Accepted |
 | [0003](0003-single-assignment-authority.md) | Eine Assignment Authority, ein Eigentümer je Domäne | Accepted |
 | [0004](0004-branch-protection-codeowners.md) | Branch Protection und CODEOWNERS | Proposed |
 | [0005](0005-railway-environments.md) | Railway-Umgebungen, Regionen, Limits | Proposed |
@@ -40,8 +40,8 @@ Default. Jede Zeile verweist auf das ADR, das die Frage festhält.
 | SLOs, Alarmierung, Incident-Prozess | [0010](0010-slo-alerting-incident.md) |
 | Autorität für Produktionsrelease und Rollback | [0011](0011-release-rollback-authority.md) |
 
-Python / FastAPI ([0002](0002-python-fastapi.md)) ist ebenfalls `Proposed`.
-GF-006 baut das Skelett darauf, ohne den Status zu ändern.
+Python / FastAPI ([0002](0002-python-fastapi.md)) ist Accepted
+(CEO-Entscheidung vom 09.11.2026).
 
 Die Hosting-Region USA, Railway `sfo`, ist [0012](0012-hosting-region-usa.md)
 (Accepted, CEO 09.11.2026). Im Arbeitsauftrag heißt sie ADR-0004. Diese Nummer

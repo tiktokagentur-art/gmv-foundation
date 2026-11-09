@@ -16,7 +16,7 @@ legen fest, was von einem Standard unabhängig schon gilt:
 
 Offen ist der Standard, mit dem eine Identität nachgewiesen wird. Ein Standard
 wird nicht gewählt, indem ein Protokoll im ersten Dienst hart codiert wird.
-[ADR-0002](0002-python-fastapi.md) ist ein Vorschlag und liefert keine
+[ADR-0002](0002-python-fastapi.md) ist der beschlossene Stack und liefert keine
 Authentisierung mit.
 
 ## Entscheidung

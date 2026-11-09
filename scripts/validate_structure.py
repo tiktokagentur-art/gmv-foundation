@@ -60,7 +60,7 @@ REQUIRED_DIRS = (
 # this map in the same pull request as the ADR.
 ADR_STATUS = {
     "docs/adr/0001-postgresql-on-railway.md": "Accepted",
-    "docs/adr/0002-python-fastapi.md": "Proposed",
+    "docs/adr/0002-python-fastapi.md": "Accepted",
     "docs/adr/0003-single-assignment-authority.md": "Accepted",
     "docs/adr/0004-branch-protection-codeowners.md": "Proposed",
     "docs/adr/0005-railway-environments.md": "Proposed",

@@ -2,9 +2,8 @@
 
 Skelett des Control-Plane-Dienstes. Kein Domänenmodell.
 
-Python / FastAPI ist ein Vorschlag und nicht beschlossen
-([ADR-0002](../docs/adr/0002-python-fastapi.md)). GF-006 baut dieses Skelett auf
-dem Vorschlag. Der Status bleibt `Proposed`, bis die CEO entscheidet.
+Python / FastAPI ist beschlossen
+([ADR-0002](../docs/adr/0002-python-fastapi.md)), CEO-Entscheidung vom 09.11.2026.
 
 | Modul | Aufgabe |
 | --- | --- |

@@ -39,10 +39,9 @@ Eine Entscheidung, die Architektur, Sicherheit, Daten, Identität oder Betrieb
 festlegt, ist ein ADR unter `docs/adr/`. Vorlage: [docs/adr/template.md](docs/adr/template.md).
 Ablauf: [docs/GOVERNANCE.md](docs/GOVERNANCE.md).
 
-Python / FastAPI ist ein Vorschlag
-([ADR-0002](docs/adr/0002-python-fastapi.md)). Das Skelett in `app/` prüft ihn
-und nimmt ihn nicht an. Domänenmodelle bleiben draußen, solange der Status
-`Proposed` ist.
+Python / FastAPI ist entschieden
+([ADR-0002](docs/adr/0002-python-fastapi.md)), CEO-Entscheidung vom 09.11.2026.
+Domänenmodelle folgen aus diesem ADR nicht.
 
 ## Sicherheit im Diff
 

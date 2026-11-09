@@ -1,45 +1,38 @@
 # ADR-0002: Python / FastAPI
 
-- Status: Proposed
+- Status: Accepted
 - Datum: 2026-11-09
-- Entscheider: offen
+- Entscheider: CEO
 
 ## Kontext
 
-Der Control-Plane-Dienst braucht später eine Implementierungssprache und ein
-HTTP-Framework. Dafür liegt ein Vorschlag vor: Python und FastAPI.
+Der Control-Plane-Dienst braucht eine Implementierungssprache und ein
+HTTP-Framework. Dafür lag der Vorschlag Python und FastAPI vor.
 
-Der Vorschlag ist nicht final. Die CEO-Entscheidung vom 09.11.2026 legt das
-Programm und PostgreSQL auf Railway fest, nicht den Anwendungstack.
-[ADR-0001](0001-postgresql-on-railway.md) ist davon unabhängig: die Datenbank
-gilt auch, wenn dieser Vorschlag abgelehnt wird.
+GF-006 hat darauf ein Skelett gebaut: FastAPI, Konfiguration nur aus
+Umgebungsvariablen, SQLAlchemy 2 und Alembic. Das Skelett hat den Vorschlag
+prüfbar gemacht. Angenommen hat ihn die CEO-Entscheidung vom 09.11.2026.
 
-GF-006 baut auf diesem Vorschlag ein Skelett: FastAPI, Konfiguration nur aus
-Umgebungsvariablen, SQLAlchemy 2 und Alembic. Das Skelett macht den Vorschlag
-prüfbar. Es nimmt ihn nicht an.
+[ADR-0001](0001-postgresql-on-railway.md) bleibt unabhängig davon gültig.
 
 ## Entscheidung
 
-Nicht entschieden. Python und FastAPI sind der Vorschlag für den Control-Plane-Dienst, nicht der Beschluss.
+Entschieden. Python und FastAPI sind der Stack für den Control-Plane-Dienst.
 
-Das Skelett aus GF-006 läuft auf diesem Vorschlag. Der Status bleibt `Proposed`,
-bis die CEO entscheidet. Ein laufendes Skelett ist kein stiller Beschluss.
-
-Der Vorschlag umfasst die Sprache Python und FastAPI als HTTP-Schicht der
-Control Plane. Authentisierung und Betrieb sind davon nicht gewählt.
+Die CEO hat das am 09.11.2026 entschieden. Authentisierung und Betrieb sind
+damit nicht gewählt.
 
 ## Konsequenzen
 
-- Das Skelett (GF-006) darf existieren, solange der Status `Proposed` ist. Domänenmodelle, Authentisierung und ein Deployment folgen daraus nicht.
-- Ein annehmender Pull Request setzt den Status auf `Accepted`, nennt die entscheidende Rolle und hält fest, welche Alternativen verglichen wurden.
-- Eine Ablehnung setzt den Status auf `Rejected` oder ersetzt dieses ADR. Beides ist ein eigener Pull Request.
+- Das Skelett aus GF-006 steht auf dem beschlossenen Stack.
+- Domänenmodelle, Authentisierung und ein Deployment folgen aus diesem ADR nicht.
+- Eine andere Sprache oder ein anderes Framework braucht ein neues ADR, das dieses auf `Superseded` setzt.
 - [ADR-0003](0003-single-assignment-authority.md) und [../../SECURITY.md](../../SECURITY.md) gelten unabhängig von der Sprache.
 
 ## Alternativen
 
-Nicht verglichen. Andere Sprachen und Frameworks bleiben möglich.
-Ein Vergleich wäre Teil eines annehmenden Pull Requests, nicht dieser Baseline.
-Namen von Alternativen werden hier nicht als Auswahlliste geführt.
+Nicht in diesem ADR verglichen. Der Entscheid der CEO vom 09.11.2026 wird
+dokumentiert. Eine Auswahlliste wird nicht nachträglich behauptet.
 
 ## Bezug
 
