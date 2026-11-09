@@ -14,7 +14,7 @@ Betriebsdetails. Regeln: [SECURITY.md](SECURITY.md).
 
 Diese Baseline enthält Architektur, Governance, Sicherheitsregeln, versionierte
 Entscheidungen und ein Anwendungsskelett. Sie legt keine Datenbank an, deployt
-nicht und ändert Railway nicht. Python / FastAPI bleibt ein Vorschlag.
+nicht und ändert Railway nicht.
 
 | Work Package | Inhalt |
 | --- | --- |
@@ -46,12 +46,9 @@ Der Index liegt unter [docs/adr/README.md](docs/adr/README.md).
 Gültig:
 
 - [ADR-0001](docs/adr/0001-postgresql-on-railway.md) PostgreSQL auf Railway, entschieden am 09.11.2026
+- [ADR-0002](docs/adr/0002-python-fastapi.md) Python / FastAPI, entschieden am 09.11.2026
 - [ADR-0003](docs/adr/0003-single-assignment-authority.md) eine Assignment Authority, ein Zustandseigentümer je Domäne
 - [ADR-0012](docs/adr/0012-hosting-region-usa.md) Hosting-Region USA, Railway `sfo`, entschieden am 09.11.2026
-
-Vorschlag, nicht beschlossen:
-
-- [ADR-0002](docs/adr/0002-python-fastapi.md) Python / FastAPI. Das Skelett läuft darauf, der Status bleibt `Proposed`
 
 Offene Punkte stehen im [ADR-Index](docs/adr/README.md).
 

@@ -61,9 +61,8 @@ Umschreiben. Sie ersetzt die Review nicht.
 
 Die CEO-Entscheidung vom 09.11.2026 ist in [ADR-0001](adr/0001-postgresql-on-railway.md)
 und für die Region in [ADR-0012](adr/0012-hosting-region-usa.md) festgehalten.
-Python / FastAPI ist ausdrücklich nicht entschieden
-([ADR-0002](adr/0002-python-fastapi.md)). Das Skelett GF-006 steht auf diesem
-Vorschlag, ohne den Status zu ändern.
+Python / FastAPI ist entschieden
+([ADR-0002](adr/0002-python-fastapi.md)), CEO-Entscheidung vom 09.11.2026.
 
 ## Eine Instanz je Domäne
 
