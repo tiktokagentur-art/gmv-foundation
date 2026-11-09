@@ -33,3 +33,89 @@ jobs:
       - name: Validate structure
         if: ${{ success() || failure() }}
         run: python3 scripts/validate_structure.py
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    # Throwaway database for this job only. Not a deployment secret.
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/foundation
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: foundation
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d foundation"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Ruff
+        run: ruff check app tests migrations scripts
+
+      - name: Pytest
+        run: pytest
+
+  image:
+    name: Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build image
+        run: docker build -t gmv-foundation:ci .
+
+      - name: Smoke image
+        run: |
+          set -eu
+          docker run -d --name foundation-smoke -p 8000:8000 gmv-foundation:ci
+          cleanup() { docker logs foundation-smoke || true; }
+          trap cleanup EXIT
+          test "$(docker exec foundation-smoke id -u)" = "10001"
+          python3 - <<'PY'
+          import json
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+
+          last = "no response"
+          for _ in range(20):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=2) as response:
+                      body = json.load(response)
+                  if response.status == 200 and body == {"status": "ok"}:
+                      break
+              except Exception as exc:
+                  last = str(exc)
+                  time.sleep(1)
+          else:
+              sys.exit(f"health failed: {last}")
+          try:
+              urllib.request.urlopen("http://127.0.0.1:8000/ready", timeout=2)
+          except urllib.error.HTTPError as exc:
+              raw = exc.read().decode()
+              if exc.code != 503 or "://" in raw:
+                  sys.exit(f"ready status {exc.code}: {raw}")
+          else:
+              sys.exit("ready succeeded without a database")
+          PY

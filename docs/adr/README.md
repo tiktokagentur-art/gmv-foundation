@@ -3,7 +3,8 @@
 Versionierte Entscheidungen der Foundation. Die Vorlage ist [template.md](template.md).
 Das Verfahren steht in [../GOVERNANCE.md](../GOVERNANCE.md).
 
-`Proposed` ist keine Entscheidung und keine Erlaubnis zu bauen.
+`Proposed` ist keine Entscheidung. Ein Skelett, das ein ADR ausdrücklich als
+Prüfung des Vorschlags erlaubt, nimmt den Vorschlag nicht an.
 `Accepted` gilt, bis ein neueres ADR es auf `Superseded` setzt.
 
 ## Bestand
@@ -21,6 +22,7 @@ Das Verfahren steht in [../GOVERNANCE.md](../GOVERNANCE.md).
 | [0009](0009-migration-compatibility.md) | API- und Datenbankmigration, Kompatibilität | Proposed |
 | [0010](0010-slo-alerting-incident.md) | SLOs, Alarmierung, Incident-Prozess | Proposed |
 | [0011](0011-release-rollback-authority.md) | Release- und Rollback-Autorität | Proposed |
+| [0012](0012-hosting-region-usa.md) | Hosting-Region USA (Railway sfo) | Accepted |
 
 ## Offene Entscheidungen
 
@@ -30,7 +32,7 @@ Default. Jede Zeile verweist auf das ADR, das die Frage festhält.
 | Thema | ADR |
 | --- | --- |
 | Branch Protection, erforderliche Checks, aktive CODEOWNERS | [0004](0004-branch-protection-codeowners.md) |
-| Railway-Umgebungen, Regionen, Limits | [0005](0005-railway-environments.md) |
+| Railway-Umgebungen und Limits (Region entschieden, ADR-0012) | [0005](0005-railway-environments.md) |
 | Backup-Aufbewahrung, RPO, RTO | [0006](0006-backup-retention-rpo-rto.md) |
 | Secret-Provider, Rotation, Break-glass | [0007](0007-secret-management.md) |
 | Authentisierungsstandard | [0008](0008-auth-standard.md) |
@@ -39,5 +41,9 @@ Default. Jede Zeile verweist auf das ADR, das die Frage festhält.
 | Autorität für Produktionsrelease und Rollback | [0011](0011-release-rollback-authority.md) |
 
 Python / FastAPI ([0002](0002-python-fastapi.md)) ist ebenfalls `Proposed`.
-Es ist der Backend-Vorschlag, nicht ein offener Betriebspunkt, und steht deshalb
-zusätzlich in der Tabelle oben.
+GF-006 baut das Skelett darauf, ohne den Status zu ändern.
+
+Die Hosting-Region USA, Railway `sfo`, ist [0012](0012-hosting-region-usa.md)
+(Accepted, CEO 09.11.2026). Im Arbeitsauftrag heißt sie ADR-0004. Diese Nummer
+ist im Repository Branch Protection
+([0004](0004-branch-protection-codeowners.md)).

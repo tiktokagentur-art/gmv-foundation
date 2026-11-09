@@ -1,15 +1,13 @@
 # Tests
 
-Platzhalter. Es gibt noch keine Verträge und keine Laufzeit, die ein Test prüfen könnte.
+Prüfungen des Skeletts. Sie sind keine zweite Quelle für fachlichen Zustand.
 
-Die heute laufende Prüfung ist die Repository-Struktur:
+| Test | Was belegt wird |
+| --- | --- |
+| `test_health.py` | `/health` ohne Datenbank, keine Dotenv-Datei |
+| `test_ready.py` | `/ready` gegen PostgreSQL, 503 ohne brauchbare Verbindung, keine Secrets in der Antwort |
+| `test_migration.py` | `alembic upgrade head` legt `schema_meta` an |
+| `test_logging.py` | JSON-Logs ohne Zugangsdaten |
 
-```bash
-python3 scripts/validate_structure.py
-```
-
-Spätere Tests gehören zur Infrastructure: sie weisen die Verträge der Foundation
-nach. Ein Test ist keine zweite Quelle für denselben Zustand.
-
-`scripts/validate_structure.py` erwartet in `tests/` ausschließlich diese Datei,
-bis der erste Vertragstest im selben Pull Request die Prüfung anpasst.
+Ohne `DATABASE_URL` werden die Tests übersprungen, die eine Datenbank brauchen.
+In CI ist das keine Option: dort zeigt die Variable auf PostgreSQL 18.

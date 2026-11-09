@@ -27,9 +27,10 @@ build/
 # Node (CI-Werkzeug markdownlint, kein Anwendungsstack)
 node_modules/
 
-# Secrets und lokale Umgebung
+# Secrets und lokale Umgebung. .env.example bleibt im Repository (nur Platzhalter).
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 *.p12

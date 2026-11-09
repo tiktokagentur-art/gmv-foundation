@@ -19,8 +19,10 @@ Dasselbe gilt für:
 - Kommentare, ADRs und Fehlermeldungen
 - lokal eingecheckte Umgebungsdateien
 
-Ein Beispiel zeigt die Form, niemals einen verwendbaren Wert. Ein widerrufener
-Wert bleibt ein Secret und gehört nicht in die Historie.
+Ein Beispiel zeigt die Form, niemals einen verwendbaren Wert. `.env.example`
+enthält nur Platzhalter. Die Anwendung liest diese Datei nicht.
+Anwendungslogs sind JSON und ersetzen Verbindungsdaten, bevor sie geschrieben
+werden. Ein widerrufener Wert bleibt ein Secret und gehört nicht in die Historie.
 
 Welche Secret-Verwaltung, welche Rotation und welcher Break-glass-Zugang gelten,
 ist nicht entschieden ([ADR-0007](docs/adr/0007-secret-management.md)). Bis dahin

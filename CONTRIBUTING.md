@@ -39,8 +39,10 @@ Eine Entscheidung, die Architektur, Sicherheit, Daten, Identität oder Betrieb
 festlegt, ist ein ADR unter `docs/adr/`. Vorlage: [docs/adr/template.md](docs/adr/template.md).
 Ablauf: [docs/GOVERNANCE.md](docs/GOVERNANCE.md).
 
-Solange der Status `Proposed` ist, entsteht daraus kein Anwendungscode und keine
-Infrastruktur. Python / FastAPI ist ein solcher Vorschlag ([ADR-0002](docs/adr/0002-python-fastapi.md)).
+Python / FastAPI ist ein Vorschlag
+([ADR-0002](docs/adr/0002-python-fastapi.md)). Das Skelett in `app/` prüft ihn
+und nimmt ihn nicht an. Domänenmodelle bleiben draußen, solange der Status
+`Proposed` ist.
 
 ## Sicherheit im Diff
 
@@ -55,15 +57,18 @@ Lokal, im Repository-Root:
 ```bash
 npx --yes markdownlint-cli2@0.24.0
 python3 scripts/validate_structure.py
+python -m pip install -e ".[dev]"
+ruff check app tests migrations scripts
+pytest
 ```
 
 Dieselbe Prüfung läuft in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 `markdownlint-cli2` ist auf `0.24.0` festgelegt. Die Konfiguration liegt in
 [`.markdownlint-cli2.jsonc`](.markdownlint-cli2.jsonc).
 
-`app/` und `tests/` enthalten in dieser Baseline nur eine README. Anwendungscode
-kommt erst nach einem angenommenen oder ersetzten Backend-ADR und passt im selben
-Pull Request die Strukturprüfung an.
+`pytest` ohne `DATABASE_URL` überspringt die Tests, die PostgreSQL brauchen.
+In CI ist die Variable gesetzt und zeigt auf den Dienst-Container PostgreSQL 18.
+Ein übersprungener Datenbanktest in CI ist ein Fehler.
 
 ## Durchsetzung in GitHub
 

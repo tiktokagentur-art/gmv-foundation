@@ -25,8 +25,23 @@ REQUIRED_FILES = (
     "docs/adr/README.md",
     "docs/adr/template.md",
     "app/README.md",
+    "app/__init__.py",
+    "app/main.py",
+    "app/config.py",
+    "app/db.py",
+    "app/logging_config.py",
     "tests/README.md",
+    "tests/test_health.py",
+    "tests/test_ready.py",
+    "tests/test_migration.py",
     "scripts/validate_structure.py",
+    "pyproject.toml",
+    "Dockerfile",
+    ".dockerignore",
+    ".env.example",
+    "alembic.ini",
+    "migrations/env.py",
+    "migrations/versions/0001_schema_meta.py",
 )
 
 REQUIRED_DIRS = (
@@ -35,6 +50,8 @@ REQUIRED_DIRS = (
     "app",
     "tests",
     "scripts",
+    "migrations",
+    "migrations/versions",
     ".github",
     ".github/workflows",
 )
@@ -53,12 +70,28 @@ ADR_STATUS = {
     "docs/adr/0009-migration-compatibility.md": "Proposed",
     "docs/adr/0010-slo-alerting-incident.md": "Proposed",
     "docs/adr/0011-release-rollback-authority.md": "Proposed",
+    "docs/adr/0012-hosting-region-usa.md": "Accepted",
+}
+
+ADR_MARKERS = {
+    "docs/adr/0002-python-fastapi.md": ("GF-006",),
+    "docs/adr/0009-migration-compatibility.md": ("schema_meta",),
+    "docs/adr/0012-hosting-region-usa.md": ("sfo", "DSGVO", "Latenz", "derselben Region"),
 }
 
 ADR_FILENAME = re.compile(r"^\d{4}-[a-z0-9-]+\.md$")
 STATUS_LINE = re.compile(r"^- Status: (Proposed|Accepted|Rejected|Superseded)$")
 REQUIRED_HEADINGS = ("## Kontext", "## Entscheidung", "## Konsequenzen")
-SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__"}
+SKIP_DIRS = {
+    ".git",
+    "node_modules",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".ruff_cache",
+    ".pytest_cache",
+    ".mypy_cache",
+}
 SKIP_SUFFIXES = {".pyc", ".pyo"}
 FORBIDDEN_NAMES = {
     ".env",
@@ -81,7 +114,7 @@ SECRET_PATTERNS = (
 def main() -> int:
     errors: list[str] = []
     require_paths(errors)
-    check_placeholders(errors)
+    check_runtime_files(errors)
     check_adrs(errors)
     check_codeowners(errors)
     check_workflow(errors)
@@ -104,21 +137,20 @@ def require_paths(errors: list[str]) -> None:
             errors.append(f"missing directory: {relative}")
 
 
-def check_placeholders(errors: list[str]) -> None:
-    for relative in ("app", "tests"):
-        directory = ROOT / relative
-        if not directory.is_dir():
-            continue
-        files = sorted(
-            path.relative_to(ROOT).as_posix()
-            for path in directory.rglob("*")
-            if path.is_file()
-        )
-        expected = [f"{relative}/README.md"]
-        if files != expected:
-            errors.append(
-                f"{relative}/ must only contain README.md in this baseline, found {files}"
-            )
+def check_runtime_files(errors: list[str]) -> None:
+    dockerfile = ROOT / "Dockerfile"
+    if dockerfile.is_file():
+        text = read_text(dockerfile, errors)
+        if text is not None:
+            for snippet in ("USER app", "/health", "${PORT:-8000}"):
+                if snippet not in text:
+                    errors.append(f"Dockerfile does not contain {snippet!r}")
+    example = ROOT / ".env.example"
+    if example.is_file():
+        text = read_text(example, errors)
+        placeholder = "DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/DBNAME"
+        if text is not None and placeholder not in text:
+            errors.append(".env.example DATABASE_URL must stay a placeholder")
 
 
 def check_adrs(errors: list[str]) -> None:
@@ -187,6 +219,9 @@ def check_adr_file(relative: str, text: str, errors: list[str]) -> None:
         errors.append(f"{relative} decision must start with 'Nicht entschieden.'")
     if expected == "Accepted" and not first.startswith("Entschieden."):
         errors.append(f"{relative} decision must start with 'Entschieden.'")
+    for marker in ADR_MARKERS.get(relative, ()):
+        if marker not in text:
+            errors.append(f"{relative} is missing required marker {marker!r}")
 
 
 def section_body(text: str, heading: str) -> str:
@@ -234,6 +269,10 @@ def check_workflow(errors: list[str]) -> None:
         "markdownlint-cli2@0.24.0",
         "python3 scripts/validate_structure.py",
         "pull_request:",
+        "postgres:18",
+        "ruff check",
+        "pytest",
+        "docker build",
     )
     for snippet in required_snippets:
         if snippet not in text:
