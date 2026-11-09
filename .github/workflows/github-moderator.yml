@@ -41,7 +41,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: github-moderator-${{ github.workflow }}-${{ github.ref }}-${{ inputs.mode || 'AUDIT' }}
+  # Use github.event.inputs so push/PR/schedule runs do not reference the
+    # workflow_dispatch-only inputs context (that aborts the whole workflow).
+    group: github-moderator-${{ github.workflow }}-${{ github.ref }}-${{ github.event.inputs.mode || 'AUDIT' }}
   cancel-in-progress: false
 
 jobs:
@@ -56,7 +58,7 @@ jobs:
         id: resolve
         env:
           EVENT_NAME: ${{ github.event_name }}
-          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_MODE: ${{ github.event.inputs.mode }}
           REPO_TRUSTED: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           REPOSITORY: ${{ github.repository }}
         run: |
