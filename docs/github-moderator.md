@@ -86,6 +86,10 @@ Minimal für V1:
 | Administration | Read and write | Repository-Settings und Rulesets lesen/schreiben |
 | Metadata | Read | Standard für GitHub Apps |
 
+Hinweis: Das Workflow-`GITHUB_TOKEN` hat keinen `administration`-Scope.
+Live-AUDIT, DRY_RUN und APPLY brauchen deshalb die GitHub App. Fehlt sie,
+meldet der Audit-Schritt `BLOCKED` statt stiller Umgehung.
+
 Nicht erforderlich im Pilot, solange keine Datei-Syncs (CODEOWNERS, Workflows, Dependabot) aktiviert sind:
 
 - Contents: write

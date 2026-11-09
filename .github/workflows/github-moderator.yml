@@ -106,8 +106,8 @@ jobs:
     if: ${{ needs.resolve-mode.outputs.mode == 'AUDIT' || needs.resolve-mode.outputs.mode == 'DRY_RUN' || needs.resolve-mode.outputs.mode == 'APPLY' }}
     permissions:
       contents: read
-      # Required to list/read repository rulesets with the default GITHUB_TOKEN.
-      administration: read
+      # Ruleset reads need the GitHub App (Administration). GITHUB_TOKEN has no
+      # administration permission scope; fallback audit may return BLOCKED/403.
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
