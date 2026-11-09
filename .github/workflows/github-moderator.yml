@@ -3,7 +3,7 @@ name: GitHub Moderator
 # GMV GitHub Moderator V1
 # Default mode is AUDIT. APPLY requires the GitHub Environment
 # `github-moderator-apply` with required reviewers plus the repository variable
-# GITHUB_MODERATOR_APPLY_GATE=enabled. A workflow input alone is not approval.
+# GMV_MODERATOR_APPLY_GATE=enabled. A workflow input alone is not approval.
 
 on:
   workflow_dispatch:
@@ -277,7 +277,7 @@ jobs:
       - name: Enforce main ref and apply gate
         env:
           REF: ${{ github.ref }}
-          GATE: ${{ vars.GITHUB_MODERATOR_APPLY_GATE }}
+          GATE: ${{ vars.GMV_MODERATOR_APPLY_GATE }}
         run: |
           set -eu
           if [ "${REF}" != "refs/heads/main" ]; then
@@ -286,7 +286,7 @@ jobs:
             exit 1
           fi
           if [ "${GATE}" != "enabled" ]; then
-            echo "BLOCKED: repository variable GITHUB_MODERATOR_APPLY_GATE is not 'enabled'."
+            echo "BLOCKED: repository variable GMV_MODERATOR_APPLY_GATE is not 'enabled'."
             echo "CEO must enable the gate after the Environment has required reviewers."
             echo "A workflow input is not approval."
             exit 1

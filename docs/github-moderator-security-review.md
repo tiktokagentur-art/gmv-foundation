@@ -71,7 +71,7 @@ Status: **BLOCKED bis CEO-Setup**
 Technisch vorbereitet:
 
 - Environment-Name `github-moderator-apply`
-- Gate-Variable `GITHUB_MODERATOR_APPLY_GATE`
+- Gate-Variable `GMV_MODERATOR_APPLY_GATE`
 - Ref-Zwang auf `refs/heads/main`
 - Readback mit `--expect-aligned`
 

@@ -108,7 +108,7 @@ APPLY verlangt alle Bedingungen gleichzeitig:
 1. `workflow_dispatch` mit `mode=APPLY`
 2. Lauf von `refs/heads/main`
 3. GitHub Environment `github-moderator-apply` mit erforderlichen Reviewern
-4. Repository-Variable `GITHUB_MODERATOR_APPLY_GATE=enabled`
+4. Repository-Variable `GMV_MODERATOR_APPLY_GATE=enabled`
 5. Vorhandene GitHub-App-Credentials
 
 Fehlt eine Bedingung, endet der Lauf mit `BLOCKED`.
@@ -141,7 +141,7 @@ GITHUB_TOKEN=… python3 scripts/github_moderator_audit.py --repo tiktokagentur-
 2. `GMV_GITHUB_MODERATOR_APP_CLIENT_ID` und `GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY` setzen
 3. Environment `github-moderator-apply` anlegen und Required Reviewers setzen
 4. Optional: Deployment Branch Policy auf `main` beschränken
-5. `GITHUB_MODERATOR_APPLY_GATE=enabled` setzen
+5. `GMV_MODERATOR_APPLY_GATE=enabled` setzen
 6. Zuerst `AUDIT`, dann `DRY_RUN`, erst danach `APPLY`
 
 ## Bekannte Einschränkungen
