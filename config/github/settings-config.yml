@@ -1,0 +1,15 @@
+# Desired repository settings for the GMV GitHub Moderator (pilot).
+# Only repositories listed in config/github/repos.yml may be targeted.
+# Unspecified settings remain unchanged (action behavior).
+
+owner: tiktokagentur-art
+
+rules:
+  - selector:
+      repos:
+        - tiktokagentur-art/gmv-foundation
+    settings:
+      # Ruleset sync only for V1 pilot. Do not sync CODEOWNERS, workflows, or
+      # file templates here — that would widen the blast radius.
+      rulesets-file:
+        - ./config/github/rulesets/main-branch-protection.json

@@ -1,0 +1,6 @@
+# Explicit allowlist of repositories managed by the GMV GitHub Moderator.
+# Pilot scope: only tiktokagentur-art/gmv-foundation.
+# Expanding this list requires a separate CEO decision.
+
+repos:
+  - repo: tiktokagentur-art/gmv-foundation

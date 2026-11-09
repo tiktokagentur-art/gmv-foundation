@@ -11,6 +11,8 @@ Sie legen keine Infrastruktur an und enthalten keinen Anwendungscode.
 | [IDENTITY_MODEL.md](IDENTITY_MODEL.md) | Identitäten, Rollen, Autorisierung |
 | [API_SPECIFICATION.md](API_SPECIFICATION.md) | HTTP-Vertrag, Verweis auf OpenAPI |
 | [GOVERNANCE.md](GOVERNANCE.md) | Entscheidungen, Review, Änderung |
+| [github-moderator.md](github-moderator.md) | GitHub Moderator V1: Architektur, Modi, Berechtigungen |
+| [github-moderator-security-review.md](github-moderator-security-review.md) | Sicherheits- und Testnachweis für den Moderator |
 | [adr/README.md](adr/README.md) | Index der ADRs, einschließlich offener Punkte |
 | [../SECURITY.md](../SECURITY.md) | Secrets, Rechte, Identität, Autorisierung, Audit |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Branch, Pull Request, unabhängige Review |

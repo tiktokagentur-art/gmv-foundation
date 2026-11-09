@@ -1,0 +1,387 @@
+name: GitHub Moderator
+
+# GMV GitHub Moderator V1
+# Default mode is AUDIT. APPLY requires the GitHub Environment
+# `github-moderator-apply` with required reviewers plus the repository variable
+# GITHUB_MODERATOR_APPLY_GATE=enabled. A workflow input alone is not approval.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Operating mode"
+        required: true
+        type: choice
+        options:
+          - AUDIT
+          - DRY_RUN
+          - APPLY
+        default: AUDIT
+  pull_request:
+    paths:
+      - "config/github/**"
+      - ".github/workflows/github-moderator.yml"
+      - "scripts/github_moderator_*.py"
+      - "tests/test_github_moderator*.py"
+      - "docs/github-moderator*.md"
+  push:
+    branches:
+      - main
+    paths:
+      - "config/github/**"
+      - ".github/workflows/github-moderator.yml"
+      - "scripts/github_moderator_*.py"
+      - "tests/test_github_moderator*.py"
+      - "docs/github-moderator*.md"
+  schedule:
+    # Weekly audit on Mondays 06:00 UTC
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-moderator-${{ github.workflow }}-${{ github.ref }}-${{ inputs.mode || 'AUDIT' }}
+  cancel-in-progress: false
+
+jobs:
+  resolve-mode:
+    name: Resolve mode
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.resolve.outputs.mode }}
+      trusted: ${{ steps.resolve.outputs.trusted }}
+    steps:
+      - name: Resolve
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode }}
+          REPO_TRUSTED: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -eu
+          mode="${INPUT_MODE:-AUDIT}"
+          if [ "${EVENT_NAME}" != "workflow_dispatch" ]; then
+            mode="AUDIT"
+          fi
+          trusted=false
+          if [ "${REPO_TRUSTED}" = "${REPOSITORY}" ]; then
+            trusted=true
+          fi
+          echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
+          echo "trusted=${trusted}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved mode=${mode} trusted=${trusted}"
+
+  validate:
+    name: Validate configuration
+    runs-on: ubuntu-latest
+    needs: resolve-mode
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: python -m pip install --upgrade pip && python -m pip install 'pyyaml>=6'
+
+      - name: Validate moderator config
+        run: python3 scripts/github_moderator_validate.py
+
+      - name: Unit tests for moderator tooling
+        run: |
+          python -m pip install pytest
+          pytest tests/test_github_moderator_validate.py tests/test_github_moderator_audit.py -q
+
+  audit:
+    name: Audit desired vs actual
+    runs-on: ubuntu-latest
+    needs: [resolve-mode, validate]
+    if: ${{ needs.resolve-mode.outputs.mode == 'AUDIT' || needs.resolve-mode.outputs.mode == 'DRY_RUN' || needs.resolve-mode.outputs.mode == 'APPLY' }}
+    permissions:
+      contents: read
+      # Required to list/read repository rulesets with the default GITHUB_TOKEN.
+      administration: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: python -m pip install --upgrade pip && python -m pip install 'pyyaml>=6'
+
+      - name: Refuse untrusted pull requests for live audit
+        if: ${{ github.event_name == 'pull_request' && needs.resolve-mode.outputs.trusted != 'true' }}
+        run: |
+          echo "BLOCKED: live audit secrets/tokens are not available for fork pull requests."
+          echo "Configuration validation already ran. Live API audit skipped."
+          exit 0
+
+      - name: Generate GitHub App token (optional)
+        id: app-token
+        if: ${{ !(github.event_name == 'pull_request' && needs.resolve-mode.outputs.trusted != 'true') }}
+        continue-on-error: true
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.GMV_GITHUB_MODERATOR_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: gmv-foundation
+
+      - name: Choose token
+        id: token
+        if: ${{ !(github.event_name == 'pull_request' && needs.resolve-mode.outputs.trusted != 'true') }}
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          FALLBACK_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          if [ -n "${APP_TOKEN}" ]; then
+            echo "source=github-app" >> "${GITHUB_OUTPUT}"
+            echo "token=${APP_TOKEN}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "source=github-token" >> "${GITHUB_OUTPUT}"
+            echo "token=${FALLBACK_TOKEN}" >> "${GITHUB_OUTPUT}"
+            echo "::warning::GitHub App credentials missing or unusable; falling back to GITHUB_TOKEN for read-only audit."
+          fi
+
+      - name: Run audit
+        if: ${{ steps.token.outputs.token != '' }}
+        env:
+          GITHUB_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          set -eu
+          mkdir -p artifacts
+          python3 scripts/github_moderator_audit.py \
+            --repo "${{ github.repository }}" \
+            --report artifacts/github-moderator-audit.json
+          {
+            echo "## GitHub Moderator audit"
+            echo
+            echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Mode request: \`${{ needs.resolve-mode.outputs.mode }}\`"
+            echo "- Token source: \`${{ steps.token.outputs.source }}\`"
+            echo "- Repository: \`${{ github.repository }}\`"
+            echo "- Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            echo '```json'
+            cat artifacts/github-moderator-audit.json
+            echo
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload audit report
+        if: ${{ steps.token.outputs.token != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: github-moderator-audit
+          path: artifacts/github-moderator-audit.json
+          if-no-files-found: error
+
+  dry-run:
+    name: Dry run sync preview
+    runs-on: ubuntu-latest
+    needs: [resolve-mode, validate, audit]
+    if: ${{ needs.resolve-mode.outputs.mode == 'DRY_RUN' && github.event_name == 'workflow_dispatch' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Require GitHub App credentials
+        env:
+          CLIENT_ID: ${{ vars.GMV_GITHUB_MODERATOR_APP_CLIENT_ID }}
+          PRIVATE_KEY: ${{ secrets.GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY }}
+        run: |
+          set -eu
+          if [ -z "${CLIENT_ID}" ] || [ -z "${PRIVATE_KEY}" ]; then
+            echo "BLOCKED: DRY_RUN requires the GitHub App identity."
+            echo "Set repository variable GMV_GITHUB_MODERATOR_APP_CLIENT_ID"
+            echo "and repository secret GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY."
+            echo "Do not use a personal access token."
+            exit 1
+          fi
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.GMV_GITHUB_MODERATOR_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: gmv-foundation
+
+      - name: Preview settings and ruleset sync
+        id: sync
+        uses: joshjohanning/bulk-github-repo-settings-sync-action@40134e844f292d0dcdc88c24fde06f085d191a35 # v2.12.4
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          repositories-file: config/github/settings-config.yml
+          delete-unmanaged-rulesets: false
+          dry-run: true
+          write-job-summary: true
+          summary-heading: "GMV GitHub Moderator DRY_RUN"
+
+      - name: Record dry-run outputs
+        env:
+          CHANGED: ${{ steps.sync.outputs.changed-repositories }}
+          FAILED: ${{ steps.sync.outputs.failed-repositories }}
+          RESULTS: ${{ steps.sync.outputs.results }}
+        run: |
+          set -eu
+          mkdir -p artifacts
+          printf '%s\n' "${RESULTS}" > artifacts/github-moderator-dry-run-results.json
+          {
+            echo "## Dry-run summary"
+            echo
+            echo "- Trigger: workflow_dispatch"
+            echo "- Target allowlist: tiktokagentur-art/gmv-foundation only"
+            echo "- changed-repositories: ${CHANGED}"
+            echo "- failed-repositories: ${FAILED}"
+            echo "- Writes performed: none (dry-run=true)"
+            echo "- Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          if [ "${FAILED}" != "0" ] && [ -n "${FAILED}" ]; then
+            echo "Dry-run reported failed repositories: ${FAILED}"
+            exit 1
+          fi
+
+      - name: Upload dry-run results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: github-moderator-dry-run
+          path: artifacts/github-moderator-dry-run-results.json
+
+  apply:
+    name: Apply approved sync
+    runs-on: ubuntu-latest
+    needs: [resolve-mode, validate, audit]
+    if: ${{ needs.resolve-mode.outputs.mode == 'APPLY' && github.event_name == 'workflow_dispatch' }}
+    # Server-enforced approval. Creating this environment without required
+    # reviewers is incomplete; the gate variable must also be enabled by CEO.
+    environment: github-moderator-apply
+    permissions:
+      contents: read
+    steps:
+      - name: Enforce main ref and apply gate
+        env:
+          REF: ${{ github.ref }}
+          GATE: ${{ vars.GITHUB_MODERATOR_APPLY_GATE }}
+        run: |
+          set -eu
+          if [ "${REF}" != "refs/heads/main" ]; then
+            echo "BLOCKED: APPLY is only allowed from refs/heads/main (got ${REF})."
+            echo "Merge the moderator PR first. No bypass."
+            exit 1
+          fi
+          if [ "${GATE}" != "enabled" ]; then
+            echo "BLOCKED: repository variable GITHUB_MODERATOR_APPLY_GATE is not 'enabled'."
+            echo "CEO must enable the gate after the Environment has required reviewers."
+            echo "A workflow input is not approval."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Require GitHub App credentials
+        env:
+          CLIENT_ID: ${{ vars.GMV_GITHUB_MODERATOR_APP_CLIENT_ID }}
+          PRIVATE_KEY: ${{ secrets.GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY }}
+        run: |
+          set -eu
+          if [ -z "${CLIENT_ID}" ] || [ -z "${PRIVATE_KEY}" ]; then
+            echo "BLOCKED: APPLY requires the GitHub App identity."
+            echo "Personal tokens are not permitted."
+            exit 1
+          fi
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.GMV_GITHUB_MODERATOR_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: gmv-foundation
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: python -m pip install --upgrade pip && python -m pip install 'pyyaml>=6'
+
+      - name: Pre-apply audit snapshot
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -eu
+          mkdir -p artifacts
+          python3 scripts/github_moderator_audit.py \
+            --repo "${{ github.repository }}" \
+            --report artifacts/github-moderator-before.json
+
+      - name: Apply settings and ruleset sync
+        id: sync
+        uses: joshjohanning/bulk-github-repo-settings-sync-action@40134e844f292d0dcdc88c24fde06f085d191a35 # v2.12.4
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          repositories-file: config/github/settings-config.yml
+          delete-unmanaged-rulesets: false
+          dry-run: false
+          write-job-summary: true
+          summary-heading: "GMV GitHub Moderator APPLY"
+
+      - name: Post-apply readback
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -eu
+          python3 scripts/github_moderator_audit.py \
+            --repo "${{ github.repository }}" \
+            --report artifacts/github-moderator-after.json \
+            --expect-aligned
+          {
+            echo "## APPLY documentation"
+            echo
+            echo "- Trigger: workflow_dispatch / APPLY"
+            echo "- Actor: \`${{ github.actor }}\`"
+            echo "- Target repository: \`${{ github.repository }}\`"
+            echo "- Environment: \`github-moderator-apply\`"
+            echo "- changed-repositories: ${{ steps.sync.outputs.changed-repositories }}"
+            echo "- failed-repositories: ${{ steps.sync.outputs.failed-repositories }}"
+            echo "- Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            echo "### Before"
+            echo
+            echo '```json'
+            cat artifacts/github-moderator-before.json
+            echo
+            echo '```'
+            echo
+            echo "### After"
+            echo
+            echo '```json'
+            cat artifacts/github-moderator-after.json
+            echo
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload before/after reports
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: github-moderator-apply
+          path: |
+            artifacts/github-moderator-before.json
+            artifacts/github-moderator-after.json
