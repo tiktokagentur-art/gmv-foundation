@@ -1,0 +1,23 @@
+# CODEOWNERS — Entwurf
+#
+# Nicht in Kraft.
+# Branch Protection und "Require review from Code Owners" sind nicht aktiviert.
+# Ob und wie das geschieht, ist ADR-0004 (Status Proposed).
+#
+# Es gibt absichtlich keine aktive Regel. Eine Zeile mit @user oder @org/team
+# würde gelten, sobald Code-Owner-Reviews eingeschaltet werden.
+#
+# Vorgesehene Zuordnung, erst nach Annahme von ADR-0004 und nachdem die Teams
+# tatsächlich existieren (Platzhalter, nicht eintragen, solange die Zeile aktiv wäre):
+#
+# Gesamtes Repository
+# *                                @ORG/foundation-owners
+#
+# Architekturentscheidungen
+# /docs/adr/                       @ORG/architecture-owners
+#
+# Sicherheitsregeln
+# /SECURITY.md                     @ORG/security-owners
+#
+# CI, CODEOWNERS, PR-Vorlage
+# /.github/                        @ORG/foundation-owners
