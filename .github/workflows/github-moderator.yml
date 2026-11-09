@@ -41,9 +41,9 @@ permissions:
   contents: read
 
 concurrency:
-  # Use github.event.inputs so push/PR/schedule runs do not reference the
-    # workflow_dispatch-only inputs context (that aborts the whole workflow).
-    group: github-moderator-${{ github.workflow }}-${{ github.ref }}-${{ github.event.inputs.mode || 'AUDIT' }}
+  # Prefer github.event.inputs so non-dispatch events do not touch the
+  # workflow_dispatch-only inputs context.
+  group: github-moderator-${{ github.workflow }}-${{ github.ref }}-${{ github.event.inputs.mode || 'AUDIT' }}
   cancel-in-progress: false
 
 jobs:
