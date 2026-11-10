@@ -84,10 +84,15 @@ Konfiguration kommt nur aus der Prozessumgebung. `.env.example` enthält
 Platzhalter und wird von der Anwendung nicht gelesen.
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install --require-hashes --only-binary=:all: --no-deps -r requirements-dev.txt
+python -m pip install --no-deps --no-build-isolation -e .
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
+
+`requirements.txt` ist das Laufzeit-Lock mit Hashes und wird im Image
+installiert. `requirements-dev.txt` bindet die Entwicklungswerkzeuge an
+dieselben Laufzeitversionen und wird lokal sowie in CI installiert.
 
 `GET /health` prüft den Prozess und öffnet keine Datenbank.
 `GET /ready` prüft die Verbindung und antwortet bei Fehler mit 503.

@@ -109,6 +109,8 @@ def normalize_ruleset_for_compare(ruleset: dict[str, Any]) -> dict[str, Any]:
         "created_at",
         "updated_at",
         "current_user_can_bypass",
+        # bypass_actors is policy. It is compared on the raw payload in
+        # compare_bypass_actors and must not be dropped here.
     }
     cleaned = {key: value for key, value in ruleset.items() if key not in drop}
     rules = cleaned.get("rules")
@@ -148,10 +150,85 @@ def _normalize_rule(rule: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def describe_bypass_actors(actual: dict[str, Any] | None) -> dict[str, Any]:
+    """Describe the live ``bypass_actors`` field for one ruleset.
+
+    GitHub includes the list only for tokens that may edit the ruleset. The
+    AUDIT job falls back to ``GITHUB_TOKEN`` when the GitHub App token is
+    missing, and that token omits the field or sends JSON ``null``. That is
+    not an empty list and not drift: ``notice`` is ``NICHT VERIFIZIERT``,
+    ``readable`` is false, and ``count`` is null. A delivered list sets
+    ``readable`` and ``count`` so a later run with the App token can show
+    whether the field arrived.
+    """
+    if not isinstance(actual, dict):
+        return {
+            "readable": False,
+            "count": None,
+            "api_state": "ruleset_missing",
+            "notice": None,
+        }
+    if "bypass_actors" not in actual:
+        return {
+            "readable": False,
+            "count": None,
+            "api_state": "missing",
+            "notice": "NICHT VERIFIZIERT",
+        }
+    value = actual["bypass_actors"]
+    if value is None:
+        return {
+            "readable": False,
+            "count": None,
+            "api_state": "null",
+            "notice": "NICHT VERIFIZIERT",
+        }
+    if isinstance(value, list):
+        return {
+            "readable": True,
+            "count": len(value),
+            "api_state": "list",
+            "notice": None,
+        }
+    return {
+        "readable": False,
+        "count": None,
+        "api_state": "invalid",
+        "notice": None,
+    }
+
+
+def compare_bypass_actors(desired: dict[str, Any], actual: dict[str, Any]) -> list[str]:
+    """Return drift lines for a readable ``bypass_actors`` list.
+
+    The pilot desired state is exactly ``[]``. A non-empty live list is
+    drift, including a bypass for the ``gmv-github-moderator`` GitHub App.
+    An empty list matches that desired state.
+
+    A missing or null live value is not a diff. ``describe_bypass_actors``
+    reports it as unverified. Counting it as drift would turn the scheduled
+    AUDIT red whenever it falls back to ``GITHUB_TOKEN``.
+    """
+    if "bypass_actors" not in actual or actual["bypass_actors"] is None:
+        return []
+    actual_actors = actual["bypass_actors"]
+    desired_actors = desired["bypass_actors"] if "bypass_actors" in desired else None
+    non_empty = isinstance(actual_actors, list) and len(actual_actors) > 0
+    if actual_actors != desired_actors or non_empty:
+        return [
+            f"bypass_actors: actual={actual_actors!r} desired={desired_actors!r}"
+        ]
+    return []
+
+
 def compare_rulesets(
     desired: dict[str, Any], actual: dict[str, Any] | None
 ) -> list[str]:
-    """Return human-readable differences between desired and actual rulesets."""
+    """Return human-readable differences between desired and actual rulesets.
+
+    ``bypass_actors`` is compared on the raw payloads. An omitted or null API
+    value is not drift; see ``describe_bypass_actors``.
+    """
     diffs: list[str] = []
     if actual is None:
         diffs.append(f"ruleset {desired.get('name')!r} is missing on the repository")
@@ -163,6 +240,8 @@ def compare_rulesets(
     for field in ("name", "target", "enforcement"):
         if left.get(field) != right.get(field):
             diffs.append(f"{field}: actual={right.get(field)!r} desired={left.get(field)!r}")
+
+    diffs.extend(compare_bypass_actors(desired, actual))
 
     left_conditions = left.get("conditions")
     right_conditions = right.get("conditions")
