@@ -1,4 +1,7 @@
-"""HTTP skeleton. Liveness does not touch the database."""
+"""HTTP skeleton. Liveness does not touch the database.
+
+Responses carry ``X-Request-ID``. ``/health`` and ``/ready`` keep their bodies.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +13,7 @@ from fastapi.responses import JSONResponse
 from app.config import database_url
 from app.db import database_ready
 from app.logging_config import configure_logging
+from app.request_id import RequestIdMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +21,7 @@ logger = logging.getLogger(__name__)
 def create_app() -> FastAPI:
     configure_logging()
     application = FastAPI(title="GMV Foundation", version="0.1.0")
+    application.add_middleware(RequestIdMiddleware)
 
     @application.get("/health")
     def health() -> dict[str, str]:
