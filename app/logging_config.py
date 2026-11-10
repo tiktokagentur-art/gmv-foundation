@@ -1,7 +1,8 @@
 """JSON logs. Secret-bearing values are redacted before they are written.
 
-While a request is active, each line also carries ``request_id``.
-Workload API keys and digests bound for the request are redacted too.
+While a request is active, each line also carries ``request_id``. Uvicorn's
+access line uses this same formatter and the same redaction. Workload API
+keys and digests bound for the request are redacted too.
 """
 
 from __future__ import annotations
@@ -46,6 +47,12 @@ def reset_redactions(token: contextvars.Token[tuple[str, ...]]) -> None:
 
 
 def configure_logging() -> None:
+    """Send process logs, including Uvicorn access lines, through one JSON handler.
+
+    Uvicorn installs its own handlers before the application is imported.
+    Clearing those handlers and propagating makes the access line use this
+    formatter, so it carries ``request_id`` and the same redaction.
+    """
     handler = _StderrHandler()
     handler.setFormatter(JsonFormatter())
     handler.addFilter(RequestIdFilter())
@@ -106,6 +113,10 @@ class JsonFormatter(logging.Formatter):
         error_type = getattr(record, "error_type", None)
         if isinstance(error_type, str) and error_type.isidentifier():
             payload["error_type"] = error_type
+        for name in ("path", "method"):
+            value = getattr(record, name, None)
+            if isinstance(value, str):
+                payload[name] = redact(value)
         if record.exc_info:
             payload["exception"] = redact(self.formatException(record.exc_info))
         return json.dumps(payload, ensure_ascii=False)

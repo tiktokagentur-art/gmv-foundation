@@ -30,10 +30,14 @@ verbindlich gilt, ist nicht entschieden.
   nutzt, ist NICHT VERIFIZIERT.
 - [../github-moderator.md](../github-moderator.md) beschreibt als Sollzustand,
   dass der App-Private-Key nur als Environment-Secret liegt. Ob das umgesetzt
-  ist, ist NICHT VERIFIZIERT (siehe oben). Ob es die verbindliche Regel ist,
-  hält [ADR-0014](0014-github-moderator-trust-boundary.md) offen. Die
-  Environments haben `can_admins_bypass: false`
+  ist, ist NICHT VERIFIZIERT (siehe oben). Die verbindliche Credential-Regel
+  steht in [ADR-0014](0014-github-moderator-trust-boundary.md) (Accepted): der
+  App-Schlüssel liegt nur als Environment-Secret, nicht als Repository-Secret.
+  Die Environments haben `can_admins_bypass: false`
   ([ADR-0004](0004-branch-protection-codeowners.md)).
+- [ADR-0012](0012-hosting-region-usa.md) (Accepted), Ergänzung vom 10.11.2026:
+  Dieser Entscheid gilt nur für Railway, nicht für externe Anbieter. Quelle:
+  CEO-Auswahl im Chat des Head of Engineering, 10.11.2026 05:49 MEZ.
 - Secret Scanning und Push Protection sind aktiv
   ([ADR-0013](0013-repository-visibility-public.md)). CI scannt die Git-Historie
   mit gepinntem gitleaks ([../../CONTRIBUTING.md](../../CONTRIBUTING.md)).
@@ -65,9 +69,6 @@ verbindlich gilt, ist nicht entschieden.
   nicht bestätigt. NICHT VERIFIZIERT. Folge: Das Audit-Log hält nur 48 Stunden.
   Ein Erzwingen von MFA für alle Mitglieder ist laut Railway erst ab Pro möglich
   ([Railway Security](https://docs.railway.com/enterprise/security)).
-- A2: [ADR-0012](0012-hosting-region-usa.md) gilt nur für Railway-Dienste. Ein
-  externer Secret-Manager wäre frei wählbar. Übermittelt vom Head of
-  Engineering, vom CEO nicht bestätigt. NICHT VERIFIZIERT.
 
 ## Entscheidung
 
@@ -96,7 +97,7 @@ Nicht entschieden. Secret-Provider, Rotationsfrist und Break-glass-Verfahren sin
 
 ### Zu klären
 
-- ob A1 und A2 gelten (CEO-Bestätigung)
+- ob A1 gilt (CEO-Bestätigung)
 - Rechtetrennung zwischen `staging` und einer späteren `production`: eigenes
   Projekt oder Enterprise ([ADR-0005](0005-railway-environments.md))
 - wer Break-glass auslösen darf und wie lange Nachweise aufbewahrt werden
@@ -119,7 +120,7 @@ Nicht entschieden. Secret-Provider, Rotationsfrist und Break-glass-Verfahren sin
 | Option | Vorteil | Nachteil |
 | --- | --- | --- |
 | A: Plattform-Secrets (Vorschlag) | kein zusätzliches Hochwert-Secret, kein neuer Anbieter | Audit-Dauer planabhängig; keine Rechtetrennung im selben Projekt ohne Enterprise |
-| B: gehosteter Manager (Infisical, Doppler) | zentrale Rotation und Audit | neues Sync-Token mit hohem Wert, neuer Anbieter (A2) |
+| B: gehosteter Manager (Infisical, Doppler) | zentrale Rotation und Audit | neues Sync-Token mit hohem Wert, neuer Anbieter |
 | C: Vault selbst betrieben | volle Kontrolle | hoher Betriebsaufwand, eigener Dienst mit Backup ([ADR-0006](0006-backup-retention-rpo-rto.md)) |
 | D: Cloud-Secret-Manager (z. B. AWS) | ausgereift | keine Managed Rotation für Railway-Postgres (NICHT VERIFIZIERT), zusätzlicher Cloud-Zugang |
 

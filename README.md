@@ -25,6 +25,7 @@ GMV-V3 laufen die Dienste `backend` und Postgres (Railway-Readback am
 | GF-003 | Architektur, Governance, Sicherheit, ADRs |
 | GF-005 | Daten- und API-Verträge, Identitätsmodell |
 | GF-006 | Skelett: FastAPI, Health, Readiness, Alembic, Image |
+| GF-007 | Request-ID, JSON-Logs mit Access-Zeile, Schwärzung, gitleaks in CI |
 | GF-008 | Workload-Authentisierung: API-Key je Identität |
 
 Menschen-Authentisierung (OIDC-IdP mit MFA) ist zurückgestellt und braucht die

@@ -24,10 +24,10 @@ wird hier nicht festgehalten.
 ### Ist-Stand
 
 - [ADR-0004](0004-branch-protection-codeowners.md) (Accepted): `main` ist per
-  Ruleset geschützt, mit drei Pflicht-Checks und ohne Bypass. Die Zahl
-  erforderlicher Approvals ist 0. Das weicht von
-  [../../CONTRIBUTING.md](../../CONTRIBUTING.md) ab (mindestens eine
-  unabhängige Freigabe).
+  Ruleset geschützt, ohne Bypass. [../../CONTRIBUTING.md](../../CONTRIBUTING.md)
+  und [../GOVERNANCE.md](../GOVERNANCE.md) verlangen dieselbe Merge-Regel:
+  0 Approvals und grüne CI (`Lint and structure`, `Backend`, `Image`), strikte
+  Prüfung gegen den aktuellen Head.
 - Beobachtung als Entscheidungsgrundlage, gelesen am 2026-11-10: Die
   Staging-Deployments gehörten jeweils zu einem Commit auf `main`, und
   „Wait for CI“ war aus. Eine verbindliche Feststellung des Auslösers ist das
@@ -118,7 +118,6 @@ Nicht entschieden. Wer ein Produktionsrelease und wer einen Rollback auslösen d
 - wer RM ist und wer ihn vertritt, und ob „Agent schreibt, Mensch gibt frei“ als Vier-Augen gilt (A2)
 - ob ein Notfall-Rollback ohne Freigabe erlaubt ist und wer einen Datenbank-Restore anordnet
 - ob `staging` weiter automatisch deployt
-- ob das Ruleset aus [ADR-0004](0004-branch-protection-codeowners.md) auf mindestens eine Freigabe angehoben wird
 - eigene Railway-Umgebung oder eigenes Projekt für Produktion ([ADR-0005](0005-railway-environments.md))
 - Versionierung, Changelog und Aufbewahrungsdauer der Nachweise
 
@@ -126,7 +125,10 @@ Nicht entschieden. Wer ein Produktionsrelease und wer einen Rollback auslösen d
 
 - Ein Merge darf nicht als Produktionsfreigabe gelesen werden.
 - Es wird keine Pipeline angelegt, die bei Merge in Produktion deployt. Das automatische Deploy nach `staging` ist Ist-Stand und kein Release. Seine Zulässigkeit ist Teil dieses Entscheids.
-- Die unabhängige Review aus [../../CONTRIBUTING.md](../../CONTRIBUTING.md) bleibt bestehen. Sie allein beantwortet dieses ADR nicht.
+- 0 Approvals und grüne CI (`Lint and structure`, `Backend`, `Image`, strikte
+  Prüfung gegen den aktuellen Head) aus
+  [../../CONTRIBUTING.md](../../CONTRIBUTING.md) und
+  [../GOVERNANCE.md](../GOVERNANCE.md) beantworten dieses ADR nicht.
 - Ein Rollback ist eine Entscheidung der dafür vorgesehenen Rolle, kein stilles Überschreiben durch einen Worker.
 - Ein Rollback der Anwendung setzt die Datenbank nicht zurück. Er ist nur sicher, wenn das Schema zur Vorversion passt ([ADR-0009](0009-migration-compatibility.md)).
 - Ein Restore darf keine zweite schreibende Instanz erzeugen. Die Anwendung schreibt nie parallel in alte und wiederhergestellte Datenbank ([ADR-0003](0003-single-assignment-authority.md)).
@@ -154,3 +156,4 @@ Autorität und ist deshalb nicht der Default.
 - [ADR-0009](0009-migration-compatibility.md)
 - [ADR-0010](0010-slo-alerting-incident.md)
 - [../../CONTRIBUTING.md](../../CONTRIBUTING.md)
+- [../GOVERNANCE.md](../GOVERNANCE.md)

@@ -82,7 +82,7 @@ class RequestIdMiddleware:
             # response built there would miss the header.
             if started:
                 raise
-            _log_unhandled(exc)
+            _log_unhandled(exc, scope)
             response = _server_error(scope, request_id)
             await response(scope, receive, send_with_request_id)
         finally:
@@ -131,13 +131,20 @@ def _authorization_secrets(scope: Scope) -> tuple[str, ...]:
     return tuple(found)
 
 
-def _log_unhandled(exc: Exception) -> None:
-    """Structured error log. The HTTP body stays generic and carries no secrets."""
+def _log_unhandled(exc: Exception, scope: Scope) -> None:
+    """One JSON error line. The HTTP body stays generic and carries no secrets."""
     error_type = type(exc).__name__
     if not error_type.isidentifier():
         error_type = "Exception"
+    extra: dict[str, object] = {"error_type": error_type}
+    path = scope.get("path")
+    method = scope.get("method")
+    if isinstance(path, str):
+        extra["path"] = path
+    if isinstance(method, str):
+        extra["method"] = method
     logger.error(
         "unhandled exception",
-        extra={"error_type": error_type},
+        extra=extra,
         exc_info=exc,
     )

@@ -31,14 +31,21 @@ Logs. Dieselbe ID steht im Antwort-Header `X-Request-ID`. Ein Logging-Filter
 schreibt sie während des Requests als Feld `request_id` in jede JSON-Zeile.
 Nachricht und Traceback werden weiterhin geschwärzt.
 
+Die Access-Logzeile von Uvicorn (`uvicorn.access`) nutzt denselben
+JSON-Formatter und dieselbe Schwärzung. Auch sie trägt die `request_id` des
+Requests. Uvicorn setzt vor dem Import eigene Handler. `configure_logging`
+entfernt sie, damit diese Zeile denselben Formatter erreicht.
+
 `GET /health` und `GET /ready` behalten Statuscode und JSON-Körper. Nur der
 Header kommt hinzu. Sie verlangen keinen API-Key.
 
-Eine unbehandelte Exception wird als JSON-Log mit `request_id` und
-`error_type` geschrieben. Unter `/v1` ist die Antwort dann ein `ErrorBody`
-mit Code `internal`. Außerhalb von `/v1`, also auch bei `/health` und
-`/ready`, bleibt der Text `Internal Server Error`. Die Ursache steht in
-beiden Fällen nicht in der Antwort.
+Eine unbehandelte Exception erzeugt genau eine JSON-Fehlerzeile mit
+`request_id`, `error_type`, `path` und `method`. `path` ist der URL-Pfad ohne
+Query. Pfad und Methode werden wie die Nachricht geschwärzt, bevor die Zeile
+geschrieben wird. Unter `/v1` ist die Antwort ein `ErrorBody` mit Code
+`internal`. Außerhalb von `/v1`, also auch bei `/health` und `/ready`, bleibt
+der Text `Internal Server Error`. Die Ursache steht in beiden Fällen nicht in
+der Antwort.
 
 `GET /v1/whoami` verlangt einen Workload-API-Key. `401`, `403` und `404`
 unter `/v1` nutzen denselben `ErrorBody`, einschließlich `error.request_id`.

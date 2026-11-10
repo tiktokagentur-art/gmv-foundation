@@ -250,6 +250,8 @@ def test_error_body_for_not_found_forbidden_and_internal(migrated: str, capsys) 
         assert len(unhandled) == 1
         assert unhandled[0]["request_id"] == _KEPT
         assert unhandled[0]["error_type"] == "RuntimeError"
+        assert unhandled[0]["path"] == "/v1/boom"
+        assert unhandled[0]["method"] == "GET"
         _assert_secret_absent(captured.err, issued.key)
         _assert_secret_absent(failed.text, issued.key)
         assert "[REDACTED]" in captured.err
