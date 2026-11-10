@@ -35,11 +35,11 @@ Jede Änderung an `main` ist ein Pull Request.
 
 Quelle: CEO-Auswahl im Chat des Head of Engineering, 10.11.2026 05:49 MEZ.
 
-[ADR-0004](adr/0004-branch-protection-codeowners.md) ist der offene Beschluss über
-Branch Protection, erforderliche Checks und CODEOWNERS. Diese Baseline schaltet
-keine Repository-Einstellung ein und stellt nicht fest, ob eine bestehende
-Einstellung der Organisation bereits greift.
+[ADR-0004](adr/0004-branch-protection-codeowners.md) dokumentiert, was GitHub
+technisch durchsetzt: Schutz von `main` durch das aktive Ruleset, erforderliche
+Checks, 0 Approvals, kein direkter Push und kein Force-Push.
 [`.github/CODEOWNERS`](../.github/CODEOWNERS) ist ein Entwurf ohne aktive Owner.
+Dieses Dokument ändert keine Repository-Einstellungen.
 
 ## ADR-Verfahren
 
@@ -51,7 +51,7 @@ Ablauf:
 
 1. Vorlage [adr/template.md](adr/template.md) nach `docs/adr/NNNN-kurzer-titel.md` kopieren.
 2. Status `Proposed`, solange nicht entschieden ist. Der erste Satz der Entscheidung lautet `Nicht entschieden.`
-3. Pull Request, unabhängige Review.
+3. Pull Request. Merge-Voraussetzung sind die drei erforderlichen, grünen Checks (0 Approvals).
 4. Ein Entscheid setzt den Status auf `Accepted` und beginnt die Entscheidung mit `Entschieden.` Wer entscheiden darf, muss im ADR stehen. Fehlt die Rolle, bleibt der Status `Proposed`.
 5. Eine Ersetzung ist ein neues ADR. Das alte wird `Superseded` und verlinkt das neue. Der alte Text bleibt lesbar.
 6. Der Index [adr/README.md](adr/README.md) führt jede Nummer.
