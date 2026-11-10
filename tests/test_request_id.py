@@ -187,8 +187,58 @@ def test_unhandled_exception_log_has_request_id_and_hides_secrets(monkeypatch, c
     assert payloads[0]["message"] == "unhandled exception"
     assert payloads[0]["request_id"] == _KEPT
     assert payloads[0]["error_type"] == "RuntimeError"
+    assert payloads[0]["path"] == "/ready"
+    assert payloads[0]["method"] == "GET"
     assert _SECRET not in payloads[0]["exception"]
     assert "supersecret" not in payloads[0]["exception"]
+    assert _SECRET not in json.dumps(payloads[0])
+    assert "supersecret" not in json.dumps(payloads[0])
+
+
+def test_unhandled_exception_redacts_secret_in_path_and_method(monkeypatch, capsys) -> None:
+    monkeypatch.setenv("DATABASE_URL", _SECRET)
+    configure_logging()
+
+    async def inner(_scope, _receive, _send):
+        raise RuntimeError(f"connect {_SECRET}")
+
+    application = RequestIdMiddleware(inner)
+    messages: list[dict[str, object]] = []
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        messages.append(message)
+
+    scope = {
+        "type": "http",
+        "method": f"GET {_SECRET}",
+        "path": f"/boom/{_SECRET}",
+        "headers": [(b"x-request-id", _KEPT.encode("ascii"))],
+    }
+    asyncio.run(application(scope, receive, send))
+    start = messages[0]
+    assert start["type"] == "http.response.start"
+    assert start["status"] == 500
+    body = b"".join(
+        message["body"]
+        for message in messages
+        if message["type"] == "http.response.body" and isinstance(message.get("body"), bytes)
+    )
+    assert body == b"Internal Server Error"
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert _SECRET not in captured.err
+    assert "supersecret" not in captured.err
+    payload = json.loads(captured.err)
+    assert payload["message"] == "unhandled exception"
+    assert payload["request_id"] == _KEPT
+    assert payload["error_type"] == "RuntimeError"
+    assert payload["path"] == "/boom/[REDACTED]"
+    assert payload["method"] == "GET [REDACTED]"
+    assert _SECRET not in payload["exception"]
+    assert "supersecret" not in payload["exception"]
 
 
 def test_unknown_path_keeps_framework_body() -> None:

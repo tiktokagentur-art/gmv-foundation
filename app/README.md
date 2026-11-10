@@ -28,13 +28,20 @@ Logs. Dieselbe ID steht im Antwort-Header `X-Request-ID`. Ein Logging-Filter
 schreibt sie während des Requests als Feld `request_id` in jede JSON-Zeile.
 Nachricht und Traceback werden weiterhin geschwärzt.
 
+Die Access-Logzeile von Uvicorn (`uvicorn.access`) nutzt denselben
+JSON-Formatter und dieselbe Schwärzung. Auch sie trägt die `request_id` des
+Requests. Uvicorn setzt vor dem Import eigene Handler. `configure_logging`
+entfernt sie, damit diese Zeile denselben Formatter erreicht.
+
 `GET /health` und `GET /ready` behalten Statuscode und JSON-Körper. Nur der
-Header kommt hinzu. Eine unbehandelte Exception wird als JSON-Log mit
-`request_id` und `error_type` geschrieben. Die Antwort ist der bisherige Text
-`Internal Server Error` und nennt die Ursache nicht. Einen Metrik- oder
+Header kommt hinzu. Eine unbehandelte Exception erzeugt genau eine
+JSON-Fehlerzeile mit `request_id`, `error_type`, `path` und `method`. `path`
+ist der URL-Pfad ohne Query. Pfad und Methode werden wie die Nachricht
+geschwärzt, bevor die Zeile geschrieben wird. Die Antwort ist der bisherige
+Text `Internal Server Error` und nennt die Ursache nicht. Einen Metrik- oder
 Fehler-Endpunkt gibt es nicht. V1-Fehlerkörper sind im Skelett nicht
-implementiert. `error.request_id` bleibt das optionale Feld in
-`api/openapi.yaml`.
+implementiert und gehören zu GF-008. `error.request_id` bleibt das optionale
+Feld in `api/openapi.yaml`.
 
 Alembic liest dieselbe Variable. Ein Fehler auf der Konsole von `alembic` kann
 die URL trotzdem enthalten, weil das der Traceback des Werkzeugs ist. Die

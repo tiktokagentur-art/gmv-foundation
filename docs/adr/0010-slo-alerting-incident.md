@@ -2,7 +2,7 @@
 
 - Status: Proposed
 - Datum: 2026-11-09
-- Überarbeitet: 2026-11-10 (Vorschlag ergänzt, nicht entschieden)
+- Überarbeitet: 2026-11-10 (Vorschlag ergänzt, Log-Ist-Stand nachgezogen, nicht entschieden)
 - Entscheider: offen
 
 ## Kontext
@@ -35,10 +35,14 @@ Zahlen im Vorschlag unten sind nur Kandidaten, keine festgesetzten Werte.
   ([../../app/request_id.py](../../app/request_id.py),
   [../../app/logging_config.py](../../app/logging_config.py),
   [../../app/main.py](../../app/main.py)).
-- Ob auch die Uvicorn-Access-Logzeile die Request-ID trägt, ist nicht durch
-  einen Test abgesichert. Ein lokaler Lauf mit den Versionen aus
-  `requirements.txt` am 2026-11-10 zeigte das Feld in der Access-Zeile. Für
-  den Betrieb auf Railway ist das NICHT VERIFIZIERT.
+- Die Uvicorn-Access-Logzeile (`uvicorn.access`) nutzt dasselbe JSON-Format,
+  trägt `request_id` und wird mit derselben Schwärzung geschrieben
+  ([../../tests/test_access_log.py](../../tests/test_access_log.py)).
+  Ob Railway diese Zeile so anzeigt, ist NICHT VERIFIZIERT.
+- Eine unbehandelte Exception erzeugt eine JSON-Fehlerzeile mit `request_id`,
+  `error_type`, `path` und `method`
+  ([../../app/request_id.py](../../app/request_id.py)). Die HTTP-Antwort bleibt
+  der Text `Internal Server Error`.
 - Dauer und Statuscode sind keine eigenen Logfelder. Der Status steht nur im
   Text der Access-Zeile.
 - [../../SECURITY.md](../../SECURITY.md) nennt noch keinen vertraulichen
@@ -133,9 +137,9 @@ Nicht entschieden. SLO-Ziele, Alarmierungswege und der Incident-Prozess sind off
 - Ein Dashboard oder ein Alarm ohne angenommenes ADR ist kein SLO.
 - Produktionsbetrieb setzt neben diesem Entscheid auch [ADR-0006](0006-backup-retention-rpo-rto.md) und [ADR-0011](0011-release-rollback-authority.md) voraus.
 - Wird der Vorschlag angenommen: Logs brauchen Dauer und Status als eigene
-  Felder, und die Request-ID in der Access-Zeile wird durch einen Test
-  abgesichert. Bei A1 halten Railway-Logs nur 3 Tage. Für Postmortems ist ein
-  Export nötig. Ein Security-Incident braucht einen Meldeweg in SECURITY.md.
+  Felder. Die Request-ID in der Access-Zeile ist durch einen Test abgesichert.
+  Bei A1 halten Railway-Logs nur 3 Tage. Für Postmortems ist ein Export nötig.
+  Ein Security-Incident braucht einen Meldeweg in SECURITY.md.
 
 ## Alternativen
 
