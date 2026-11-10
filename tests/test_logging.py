@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import logging
 
-from app.logging_config import JsonFormatter, redact
+from app.config import get_settings
+from app.logging_config import JsonFormatter, configure_logging, redact
 
 
 def test_redact_replaces_database_url(monkeypatch) -> None:
@@ -38,3 +39,23 @@ def test_formatter_emits_one_json_object(monkeypatch) -> None:
     assert payload["logger"] == "app.test"
     assert secret not in payload["message"]
     assert "\n" not in JsonFormatter().format(record)
+
+
+def test_settings_log_hides_database_url(monkeypatch, capsys) -> None:
+    secret = "postgresql+psycopg://user:supersecret@db.example:5432/app"
+    monkeypatch.setenv("DATABASE_URL", secret)
+    configure_logging()
+    settings = get_settings()
+    logging.getLogger("app.config").info(
+        "loaded %s %r %s %r",
+        settings,
+        settings,
+        settings.database_url,
+        settings.database_url,
+    )
+    captured = capsys.readouterr()
+    assert "loaded" in captured.err
+    assert secret not in captured.out
+    assert secret not in captured.err
+    assert "supersecret" not in captured.out
+    assert "supersecret" not in captured.err

@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
+from pydantic import SecretStr
 from sqlalchemy import DateTime, String, create_engine, func, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.pool import NullPool
@@ -34,10 +35,10 @@ class SchemaMeta(Base):
     )
 
 
-def database_ready(url: str) -> bool:
+def database_ready(url: SecretStr) -> bool:
     try:
         engine = create_engine(
-            url,
+            url.get_secret_value(),
             poolclass=NullPool,
             pool_pre_ping=True,
             connect_args={"connect_timeout": _CONNECT_TIMEOUT_SECONDS},
