@@ -27,6 +27,9 @@ PostgreSQL und jeder weitere Dienst dieses Fundaments nutzen `sfo`. Ein Dienst
 in einer anderen Region ist unzulässig. Umgebungen und Limits bleiben in
 ADR-0005 offen. Die Region ist dort nicht mehr offen.
 
+Ergänzung vom 10.11.2026: Dieser Entscheid gilt nur für Railway, nicht für
+externe Anbieter. Quelle: CEO-Auswahl im Chat des Head of Engineering, 10.11.2026 05:49 MEZ.
+
 ## Konsequenzen
 
 - Zwei Nachteile sind benannt und mit dem Entscheid akzeptiert: höherer Dokumentationsaufwand unter der DSGVO, sobald personenbezogene Daten verarbeitet werden, und höhere Latenz aus Deutschland.

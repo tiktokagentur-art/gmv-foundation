@@ -25,14 +25,15 @@ nur damit sie vollständig aussieht. Offene Ziele bleiben `Proposed`.
 
 ## Änderungen
 
-Jede Änderung an `main` ist ein Pull Request mit unabhängiger Review.
+Jede Änderung an `main` ist ein Pull Request.
 [../CONTRIBUTING.md](../CONTRIBUTING.md) ist die Arbeitsregel:
 
 - kein direkter Push und kein Force-Push auf `main`
-- mindestens eine Freigabe
-- die freigebende Person hat keinen Commit an dieser Änderung
-- Autorinnen und Autoren geben ihre eigene Änderung nicht frei
+- 0 erforderliche Approvals
+- Merge erst bei den drei erforderlichen, grünen Checks (ADR-0004)
 - keine Ausnahme für Administratoren
+
+Quelle: CEO-Auswahl im Chat des Head of Engineering, 10.11.2026 05:49 MEZ.
 
 [ADR-0004](adr/0004-branch-protection-codeowners.md) ist der offene Beschluss über
 Branch Protection, erforderliche Checks und CODEOWNERS. Diese Baseline schaltet
