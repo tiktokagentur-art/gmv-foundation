@@ -35,7 +35,9 @@ node_modules/
 *.key
 *.p12
 *.pfx
+*.p8
 credentials.json
+*service-account*.json
 secrets/
 
 # Logs
