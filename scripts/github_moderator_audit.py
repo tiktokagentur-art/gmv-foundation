@@ -25,6 +25,7 @@ from github_moderator_lib import (  # noqa: E402
     ROOT,
     allowlisted_repos,
     compare_rulesets,
+    describe_bypass_actors,
     load_json,
     load_yaml,
     ruleset_paths_from_settings,
@@ -103,6 +104,10 @@ def main(argv: list[str] | None = None) -> int:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(text + "\n", encoding="utf-8")
 
+    emit_unverified_bypass_warning(report)
+
+    # Unverified bypass_actors is a warning, including for --expect-aligned.
+    # Only a real diff fails the readback.
     if report["status"] == "drift" and args.expect_aligned:
         return 5
     if report["status"] == "error":
@@ -153,12 +158,23 @@ def run_audit(*, root: Path, repo: str, token: str, api_url: str) -> dict[str, A
         actual_by_name[str(name)] = detail
 
     diffs: dict[str, list[str]] = {}
+    bypass_actors: dict[str, dict[str, Any]] = {}
     for name, desired in desired_by_name.items():
-        diffs[name] = compare_rulesets(desired, actual_by_name.get(name))
+        actual = actual_by_name.get(name)
+        diffs[name] = compare_rulesets(desired, actual)
+        bypass_actors[name] = describe_bypass_actors(actual)
 
     unmanaged = sorted(set(actual_by_name) - set(desired_by_name))
-    aligned = all(not items for items in diffs.values())
-    status = "aligned" if aligned else "drift"
+    has_drift = any(items for items in diffs.values())
+    unverified = any(
+        info.get("notice") == "NICHT VERIFIZIERT" for info in bypass_actors.values()
+    )
+    if has_drift:
+        status = "drift"
+    elif unverified:
+        status = "bypass_actors_unverified"
+    else:
+        status = "aligned"
 
     return {
         "mode": "AUDIT",
@@ -168,11 +184,48 @@ def run_audit(*, root: Path, repo: str, token: str, api_url: str) -> dict[str, A
         "actual_rulesets": sorted(actual_by_name),
         "unmanaged_actual_rulesets": unmanaged,
         "diffs": diffs,
+        "bypass_actors": bypass_actors,
         "note": (
             "Unmanaged rulesets are reported but not deleted. "
-            "delete-unmanaged-rulesets stays false in the pilot."
+            "delete-unmanaged-rulesets stays false in the pilot. "
+            "A null or missing bypass_actors field is status "
+            "bypass_actors_unverified, not drift."
         ),
     }
+
+
+def emit_unverified_bypass_warning(report: dict[str, Any]) -> None:
+    """Warn once when the API did not return ``bypass_actors``.
+
+    Prints a single GitHub ``::warning::`` and, when ``GITHUB_STEP_SUMMARY``
+    is set, one summary line ``NICHT VERIFIZIERT``. Does not change the
+    process exit code.
+    """
+    observed = report.get("bypass_actors")
+    if not isinstance(observed, dict):
+        return
+    names = [
+        name
+        for name, info in observed.items()
+        if isinstance(info, dict) and info.get("notice") == "NICHT VERIFIZIERT"
+    ]
+    if not names:
+        return
+    described = ", ".join(
+        f"{name} api_state={observed[name].get('api_state')}" for name in names
+    )
+    print(
+        "::warning::bypass_actors NICHT VERIFIZIERT "
+        f"({described}). Not drift; the token could not read the list.",
+        file=sys.stderr,
+    )
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary:
+        return
+    path = Path(summary)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write("\nbypass_actors: NICHT VERIFIZIERT\n")
 
 
 def api_get(api_url: str, path: str, token: str) -> Any:
