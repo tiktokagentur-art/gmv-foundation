@@ -49,6 +49,8 @@ Gültig:
 - [ADR-0001](docs/adr/0001-postgresql-on-railway.md) PostgreSQL auf Railway, entschieden am 09.11.2026
 - [ADR-0002](docs/adr/0002-python-fastapi.md) Python / FastAPI, entschieden am 09.11.2026
 - [ADR-0003](docs/adr/0003-single-assignment-authority.md) eine Assignment Authority, ein Zustandseigentümer je Domäne
+- [ADR-0004](docs/adr/0004-branch-protection-codeowners.md) Branch Protection für `main`, entschieden am 10.11.2026
+- [ADR-0005](docs/adr/0005-railway-environments.md) Railway-Projekt GMV-V3, Umgebung staging, entschieden am 10.11.2026
 - [ADR-0012](docs/adr/0012-hosting-region-usa.md) Hosting-Region USA, Railway `sfo`, entschieden am 09.11.2026
 - [ADR-0013](docs/adr/0013-repository-visibility-public.md) Repository-Sichtbarkeit public, entschieden am 10.11.2026
 

@@ -14,8 +14,8 @@ Prüfung des Vorschlags erlaubt, nimmt den Vorschlag nicht an.
 | [0001](0001-postgresql-on-railway.md) | PostgreSQL auf Railway | Accepted |
 | [0002](0002-python-fastapi.md) | Python / FastAPI | Accepted |
 | [0003](0003-single-assignment-authority.md) | Eine Assignment Authority, ein Eigentümer je Domäne | Accepted |
-| [0004](0004-branch-protection-codeowners.md) | Branch Protection und CODEOWNERS | Proposed |
-| [0005](0005-railway-environments.md) | Railway-Umgebungen, Regionen, Limits | Proposed |
+| [0004](0004-branch-protection-codeowners.md) | Branch Protection und CODEOWNERS | Accepted |
+| [0005](0005-railway-environments.md) | Railway-Umgebungen, Regionen, Limits | Accepted |
 | [0006](0006-backup-retention-rpo-rto.md) | Backup-Aufbewahrung, RPO, RTO | Proposed |
 | [0007](0007-secret-management.md) | Secret-Verwaltung, Rotation, Break-glass | Proposed |
 | [0008](0008-auth-standard.md) | Authentisierungsstandard | Proposed |
@@ -32,8 +32,7 @@ Default. Jede Zeile verweist auf das ADR, das die Frage festhält.
 
 | Thema | ADR |
 | --- | --- |
-| Branch Protection, erforderliche Checks, aktive CODEOWNERS | [0004](0004-branch-protection-codeowners.md) |
-| Railway-Umgebungen und Limits (Region entschieden, ADR-0012) | [0005](0005-railway-environments.md) |
+| Dienstlimits, autoritativer Zustand je Umgebung, Identitäten je Umgebung | [0005](0005-railway-environments.md) (Umgebungsbestand entschieden) |
 | Backup-Aufbewahrung, RPO, RTO | [0006](0006-backup-retention-rpo-rto.md) |
 | Secret-Provider, Rotation, Break-glass | [0007](0007-secret-management.md) |
 | Authentisierungsstandard | [0008](0008-auth-standard.md) |
@@ -51,3 +50,9 @@ ist im Repository Branch Protection
 
 Die Repository-Sichtbarkeit public ist [0013](0013-repository-visibility-public.md)
 (Accepted, CEO 10.11.2026).
+
+Branch Protection für `main` ist [0004](0004-branch-protection-codeowners.md)
+(Accepted, CEO 10.11.2026).
+
+Die Railway-Umgebung staging im Projekt GMV-V3 ist [0005](0005-railway-environments.md)
+(Accepted, CEO 10.11.2026). Limits bleiben dort offen.

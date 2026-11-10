@@ -1,8 +1,8 @@
 # ADR-0004: Branch Protection und CODEOWNERS
 
-- Status: Proposed
-- Datum: 2026-11-09
-- Entscheider: offen
+- Status: Accepted
+- Datum: 2026-11-10
+- Entscheider: CEO
 
 ## Kontext
 
@@ -12,40 +12,61 @@ eigenen Änderung, keine Ausnahme für Administratoren. CI ist in
 [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) vorhanden.
 
 [`.github/CODEOWNERS`](../../.github/CODEOWNERS) ist ein Entwurf ohne aktive
-Owner, damit nicht versehentlich ein Team gebunden wird, das es noch nicht gibt.
-Ob auf `main` bereits Branch Protection oder ein Regelwerk der Organisation
-liegt, stellt dieses ADR nicht fest. Es liest die Einstellung nicht.
+Owner. Die klassische Branch-Protection-API für `main` liefert keinen Schutz
+(HTTP 404). Der technische Schutz liegt auf einem Repository-Ruleset.
 
-Diese Baseline ändert keine Repository-Einstellungen. Ein späteres Einschalten
-ist ein separater Schritt nach diesem Entscheid, nicht Teil des
-Dokumentations-Pull-Requests.
+Die CEO-Entscheidung vom 10.11.2026 nimmt den an diesem Tag gelesenen Ist-Stand
+an. Dieses ADR ändert keine Repository-Einstellungen; es dokumentiert sie.
 
 ## Entscheidung
 
-Nicht entschieden. Wie Branch Protection, erforderliche Checks und CODEOWNERS technisch eingeschaltet werden, ist offen.
+Entschieden. Der Default-Branch `main` wird durch das aktive Repository-Ruleset `main` (ID 26896505) geschützt.
 
-Zu klären ist mindestens:
+Gültig ist der folgende Ist-Stand, gelesen am 10.11.2026:
 
-- geschützte Branches, mindestens `main`
-- Anzahl der Freigaben und Durchsetzung der unabhängigen Review, auch für Personen mit eigenem Commit an der Änderung
-- Verbot von Self-Approval und von direkten Pushes, einschließlich Force-Push
-- ob Administratoren die Regeln umgehen dürfen (die schriftliche Regel sagt nein)
-- erforderlicher Status-Check aus `.github/workflows/ci.yml`, Job `lint-and-structure`
-- ob Reviews von Code Owners Pflicht werden, und welche realen Teams dann in CODEOWNERS stehen
-- Merge-Strategie (Merge-Commit, Squash oder Rebase)
+- Löschen des Branches und Non-Fast-Forward (Force-Push) sind untersagt.
+- Änderungen an `main` nur über Pull Request. Die Zahl der erforderlichen
+  Approvals ist 0. Ein Code-Owner-Review ist nicht vorgeschrieben.
+  `require_last_push_approval` ist aus.
+  `require_extra_approval_for_unattributed_changes` ist an. Zulässige
+  Merge-Methoden sind merge, squash und rebase.
+- Erforderliche Status-Checks mit strikter Prüfung gegen den aktuellen Head:
+  `Lint and structure`, `Backend`, `Image`.
+- `bypass_actors` ist leer. Die lesende Identität kann das Ruleset nicht
+  umgehen (`current_user_can_bypass: never`).
+- [`.github/CODEOWNERS`](../../.github/CODEOWNERS) bleibt Entwurf ohne aktive
+  Owner.
+
+GitHub Moderator V1 darf den Sollzustand dieses Rulesets per APPLY schreiben.
+Der erfolgreiche APPLY-Lauf 42747852555 am 10.11.2026 bezog den Token über eine
+GitHub App (`TOKEN_SOURCE: github-app`). Der anschließende Audit-Lauf
+42748296837 meldete den Zustand `aligned`.
+
+Die Environments `github-moderator-apply` und `github-moderator-privileged`
+haben `can_admins_bypass: false`. Die Repository-Variable und das
+Repository-Secret `GMV_MODERATOR_APPLY_GATE` sind nicht vorhanden.
 
 ## Konsequenzen
 
-- Bis zum Entscheid bleibt der Schutz eine Arbeitsregel. Ein direkter Push auf `main` verstößt gegen [../../CONTRIBUTING.md](../../CONTRIBUTING.md). Ob GitHub ihn zusätzlich blockiert, ist nicht festgestellt.
-- CODEOWNERS erhält keine aktiven Owner, solange dieses ADR `Proposed` ist. Die Strukturprüfung wacht darüber.
-- Ein annehmender Pull Request dokumentiert die gewählten Einstellungen. Die Einstellungen selbst werden erst danach gesetzt, in einem Schritt, der als Repository-Änderung sichtbar ist.
+- Direkter Push und Force-Push auf `main` werden technisch blockiert.
+- Ein Merge ohne die drei erforderlichen, aktuellen Checks ist unzulässig.
+- [../../CONTRIBUTING.md](../../CONTRIBUTING.md) verlangt weiterhin eine
+  unabhängige Review. Das Ruleset erzwingt derzeit keine Approval-Zahl größer
+  0. Diese Abweichung ist festgestellt, nicht stillschweigend aufgehoben.
+- Aktive CODEOWNERS-Regeln bleiben aus, bis ein späterer Entscheid reale Teams
+  einträgt und dieses ADR anpasst.
+- Eine numerische GitHub-App-ID und ein öffentlicher App-Slug sind hier nicht
+  festgehalten, weil sie über die verfügbare API nicht verifiziert wurden.
 
 ## Alternativen
 
-Nicht bewertet. Die schriftlichen Beitragsregeln stehen fest. Offen ist nur
-ihre technische Durchsetzung.
+Nicht in diesem ADR neu bewertet. Der Entscheid dokumentiert den gelesenen
+Ist-Stand vom 10.11.2026. Eine Änderung der Checks, der Approval-Zahl oder der
+CODEOWNERS-Wirkung braucht ein neues oder angepasstes ADR.
 
 ## Bezug
 
 - [../../CONTRIBUTING.md](../../CONTRIBUTING.md)
 - [../GOVERNANCE.md](../GOVERNANCE.md)
+- [../github-moderator.md](../github-moderator.md)
+- [ADR-0013](0013-repository-visibility-public.md)

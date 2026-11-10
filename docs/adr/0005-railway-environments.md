@@ -1,51 +1,54 @@
 # ADR-0005: Railway-Umgebungen, Regionen, Limits
 
-- Status: Proposed
-- Datum: 2026-11-09
-- Entscheider: offen
+- Status: Accepted
+- Datum: 2026-11-10
+- Entscheider: CEO
 
 ## Kontext
 
-[ADR-0001](0001-postgresql-on-railway.md) legt PostgreSQL direkt auf Railway fest
-und erzeugt keine Ressource. Ungeklärt sind die Umgebungen und die Limits der
-Dienste. Die Region ist entschieden
-([ADR-0012](0012-hosting-region-usa.md)): Railway `sfo` in den USA.
+[ADR-0001](0001-postgresql-on-railway.md) legt PostgreSQL direkt auf Railway fest.
+Die Region ist entschieden ([ADR-0012](0012-hosting-region-usa.md)): Railway
+`sfo` in den USA. [ADR-0003](0003-single-assignment-authority.md) verbietet einen
+zweiten Schreiber für dieselbe Domäne. Alle Dienste laufen in `sfo`. Eine
+weitere Region ist nicht offen.
 
-[ADR-0003](0003-single-assignment-authority.md) verbietet einen zweiten Schreiber
-für dieselbe Domäne. [ADR-0012](0012-hosting-region-usa.md) legt zusätzlich fest,
-dass alle Dienste in `sfo` laufen. Eine weitere Region ist nicht mehr offen.
+Interne Projekt-IDs, Kontonummern und Dienstedomains gehören nicht in dieses
+öffentliche Repository ([ADR-0013](0013-repository-visibility-public.md)). Der
+Name des Projekts und der Umgebungen darf beschrieben werden.
 
-Es gibt in diesem Repository kein Railway-Projekt, keine Umgebung und keine
-Kontonummer. Solche Angaben gehören nicht in dieses öffentliche Repository
-([ADR-0013](0013-repository-visibility-public.md)).
+Die CEO-Entscheidung vom 10.11.2026 nimmt den an diesem Tag gelesenen Ist-Stand
+der Umgebungen an. Dienstlimits wurden dabei nicht als festgelegter Wert
+gelesen.
 
 ## Entscheidung
 
-Nicht entschieden. Namen und Anzahl der Railway-Umgebungen und die Dienstlimits sind offen.
+Entschieden. Das Greenfield-Railway-Projekt heißt GMV-V3. Alle Dienste laufen in der Region sfo (USA). In diesem Projekt gibt es die Umgebung staging. Eine Umgebung production gibt es in diesem Projekt nicht.
 
-Die Region ist nicht mehr Teil dieser offenen Frage. Sie steht in
-[ADR-0012](0012-hosting-region-usa.md).
-
-Zu klären ist mindestens:
-
-- welche Umgebungen es gibt und welche davon autoritativen Zustand halten dürfen
-- welche Limits für Verbindungen, Speicher, Rechner und Kosten gelten
-- welche Identität je Umgebung eigene Rechte hat
+Dienstlimits, welche Umgebung autoritativen Zustand halten darf und welche
+Identität je Umgebung eigene Rechte hat, sind durch diesen Entscheid nicht
+festgelegt.
 
 ## Konsequenzen
 
-- Es wird keine Umgebung als bereits vorhanden beschrieben.
-- Produktion wird nicht nebenbei angelegt, solange Backup ([ADR-0006](0006-backup-retention-rpo-rto.md)), Secrets ([ADR-0007](0007-secret-management.md)) und Release-Autorität ([ADR-0011](0011-release-rollback-authority.md)) offen sind.
-- Ein späterer Entscheid, der zwei schreibende Primaries erzeugt, widerspricht ADR-0003 und kann ADR-0001 nicht stillschweigend erweitern.
+- Production wird durch diesen Entscheid nicht angelegt. Backup
+  ([ADR-0006](0006-backup-retention-rpo-rto.md)), Secrets
+  ([ADR-0007](0007-secret-management.md)) und Release-Autorität
+  ([ADR-0011](0011-release-rollback-authority.md)) bleiben eigene offene Punkte.
+- Eine zweite schreibende Primary widerspricht weiter ADR-0003 und kann
+  ADR-0001 nicht stillschweigend erweitern.
+- Limits bleiben offen, bis ein späterer Entscheid sie festlegt.
 
 ## Alternativen
 
-Nicht bewertet. Die Region wird hier nicht erneut gewählt.
+Nicht in diesem ADR neu bewertet. Der Entscheid dokumentiert den gelesenen
+Ist-Stand der Umgebungen. Die Region wird hier nicht erneut gewählt.
 
 ## Bezug
 
 - [ADR-0001](0001-postgresql-on-railway.md)
 - [ADR-0003](0003-single-assignment-authority.md)
 - [ADR-0006](0006-backup-retention-rpo-rto.md)
+- [ADR-0007](0007-secret-management.md)
+- [ADR-0011](0011-release-rollback-authority.md)
 - [ADR-0012](0012-hosting-region-usa.md)
 - [ADR-0013](0013-repository-visibility-public.md)
