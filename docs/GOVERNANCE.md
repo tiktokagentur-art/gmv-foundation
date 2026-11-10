@@ -25,21 +25,21 @@ nur damit sie vollständig aussieht. Offene Ziele bleiben `Proposed`.
 
 ## Änderungen
 
-Jede Änderung an `main` ist ein Pull Request mit unabhängiger Review.
+Jede Änderung an `main` ist ein Pull Request.
 [../CONTRIBUTING.md](../CONTRIBUTING.md) ist die Arbeitsregel:
 
 - kein direkter Push und kein Force-Push auf `main`
-- mindestens eine Freigabe
-- die freigebende Person hat keinen Commit an dieser Änderung
-- Autorinnen und Autoren geben ihre eigene Änderung nicht frei
+- 0 erforderliche Approvals
+- Merge erst bei den drei erforderlichen, grünen Checks (ADR-0004)
 - keine Ausnahme für Administratoren
 
-[ADR-0004](adr/0004-branch-protection-codeowners.md) (Accepted, CEO 10.11.2026)
-dokumentiert den Ist-Stand des Rulesets für `main`. Dieses Dokument ändert
-keine Repository-Einstellungen.
+Quelle: CEO-Auswahl im Chat des Head of Engineering, 10.11.2026 05:49 MEZ.
+
+[ADR-0004](adr/0004-branch-protection-codeowners.md) dokumentiert, was GitHub
+technisch durchsetzt: Schutz von `main` durch das aktive Ruleset, erforderliche
+Checks, 0 Approvals, kein direkter Push und kein Force-Push.
 [`.github/CODEOWNERS`](../.github/CODEOWNERS) ist ein Entwurf ohne aktive Owner.
-Die Abweichung zwischen der Arbeitsregel „mindestens eine Freigabe“ und der im
-Ruleset geltenden Approval-Zahl ist in ADR-0004 festgestellt.
+Dieses Dokument ändert keine Repository-Einstellungen.
 
 ## ADR-Verfahren
 
@@ -51,7 +51,7 @@ Ablauf:
 
 1. Vorlage [adr/template.md](adr/template.md) nach `docs/adr/NNNN-kurzer-titel.md` kopieren.
 2. Status `Proposed`, solange nicht entschieden ist. Der erste Satz der Entscheidung lautet `Nicht entschieden.`
-3. Pull Request, unabhängige Review.
+3. Pull Request. Merge-Voraussetzung sind die drei erforderlichen, grünen Checks (0 Approvals).
 4. Ein Entscheid setzt den Status auf `Accepted` und beginnt die Entscheidung mit `Entschieden.` Wer entscheiden darf, muss im ADR stehen. Fehlt die Rolle, bleibt der Status `Proposed`.
 5. Eine Ersetzung ist ein neues ADR. Das alte wird `Superseded` und verlinkt das neue. Der alte Text bleibt lesbar.
 6. Der Index [adr/README.md](adr/README.md) führt jede Nummer.
