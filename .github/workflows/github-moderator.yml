@@ -355,6 +355,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install PyYAML
+        run: python -m pip install --upgrade pip && python -m pip install 'pyyaml>=6'
+
       - name: Enforce APPLY gate (main + CEO gate + environment)
         env:
           REF: ${{ github.ref }}
@@ -418,9 +421,6 @@ jobs:
           private-key: ${{ secrets.GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: gmv-foundation
-
-      - name: Install PyYAML
-        run: python -m pip install --upgrade pip && python -m pip install 'pyyaml>=6'
 
       - name: Pre-apply audit snapshot
         env:
