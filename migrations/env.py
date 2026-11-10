@@ -1,6 +1,7 @@
 """Alembic environment.
 
-DATABASE_URL is read from the process environment. It is not logged.
+DATABASE_URL is read from the process environment as a secret.
+The plaintext is used only to open the migration connection. It is not logged.
 """
 
 from __future__ import annotations
@@ -11,19 +12,16 @@ from sqlalchemy import create_engine, pool
 from app.config import database_url
 from app.db import Base
 
-config = context.config
-url = database_url()
-if not url:
+configured_url = database_url()
+if configured_url is None:
     raise RuntimeError("DATABASE_URL is not set")
 
-# ConfigParser treats % as interpolation. Keep the raw URL for the engine.
-config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=url,
+        url=configured_url.get_secret_value(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -34,7 +32,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     connectable = create_engine(
-        url,
+        configured_url.get_secret_value(),
         poolclass=pool.NullPool,
         connect_args={"connect_timeout": 5},
     )

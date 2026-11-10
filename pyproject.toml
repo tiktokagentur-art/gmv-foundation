@@ -11,6 +11,7 @@ dependencies = [
   "alembic>=1.14",
   "fastapi>=0.115",
   "psycopg[binary]>=3.2",
+  "pydantic>=2.9",
   "sqlalchemy>=2.0.36",
   "uvicorn>=0.32",
 ]

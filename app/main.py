@@ -24,14 +24,14 @@ def create_app() -> FastAPI:
 
     @application.get("/ready", response_model=None)
     def ready() -> JSONResponse:
-        url = database_url()
-        if url is None:
+        configured_url = database_url()
+        if configured_url is None:
             logger.warning(
                 "database readiness check failed",
                 extra={"error_type": "MissingDatabaseURL"},
             )
             return _unavailable()
-        if not database_ready(url):
+        if not database_ready(configured_url):
             return _unavailable()
         return JSONResponse(status_code=200, content={"status": "ok"})
 
