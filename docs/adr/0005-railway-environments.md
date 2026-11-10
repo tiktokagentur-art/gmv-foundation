@@ -20,6 +20,10 @@ Die CEO-Entscheidung vom 10.11.2026 nimmt den an diesem Tag gelesenen Ist-Stand
 der Umgebungen an. Dienstlimits wurden dabei nicht als festgelegter Wert
 gelesen.
 
+Railway-Readback am 10.11.2026 (Europe/Berlin): In `staging` laufen die Dienste
+`backend` und Postgres. Postgres nutzt ein persistentes Volume. Interne IDs
+und Dienstedomains stehen nicht in diesem Repository.
+
 ## Entscheidung
 
 Entschieden. Das Greenfield-Railway-Projekt heißt GMV-V3. Alle Dienste laufen in der Region sfo (USA). In diesem Projekt gibt es die Umgebung staging. Eine Umgebung production gibt es in diesem Projekt nicht.

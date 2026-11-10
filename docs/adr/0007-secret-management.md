@@ -15,7 +15,14 @@ und wie ein Break-glass-Zugang aussieht. Break-glass meint einen kontrollierten
 Notfallzugriff: personengebunden, zeitlich begrenzt und im Audit-Trail sichtbar.
 Das Verfahren selbst ist nicht beschrieben und nicht entschieden.
 
-In dieser Baseline wird kein Secret gebraucht. Es gibt keinen laufenden Dienst.
+In `staging` laufen die Dienste `backend` und Postgres (Railway-Readback am
+10.11.2026, Europe/Berlin). Der Dienst `backend` hat die Variable
+`DATABASE_URL` (nur der Name; der Wert steht nicht in diesem Repository).
+Laut [ADR-0004](0004-branch-protection-codeowners.md) bezog ein APPLY-Lauf
+des GitHub Moderators V1 den Token über eine GitHub App. Ob in den
+Environments `github-moderator-apply` und `github-moderator-privileged`
+Environment-Secrets liegen, ist NICHT VERIFIZIERT. Welcher Secret-Provider
+verbindlich gilt, ist nicht entschieden.
 
 ## Entscheidung
 
@@ -31,7 +38,9 @@ Zu klären ist mindestens:
 
 ## Konsequenzen
 
-- Bis zum Entscheid wird kein Provider als bereits gewählt genannt und keiner im Repository konfiguriert.
+- Bis zum Entscheid wird kein Secret-Provider als bereits gewählt genannt.
+  Die Railway-Variable `DATABASE_URL` (nur der Name) ist vorgefunden, nicht
+  durch dieses ADR ausgewählt. In diesem Repository liegen keine Secret-Werte.
 - Ein Break-glass-Weg, der nicht auditierbar ist oder ein gemeinsames Dauergeheimnis verteilt, widerspricht SECURITY.md und wird nicht ergänzt, um die Lücke zu füllen.
 - Beispiele bleiben ohne verwendbare Werte.
 
@@ -43,5 +52,9 @@ ist vorausgewählt.
 ## Bezug
 
 - [../../SECURITY.md](../../SECURITY.md)
+- [ADR-0004](0004-branch-protection-codeowners.md)
 - [ADR-0005](0005-railway-environments.md)
+- [ADR-0006](0006-backup-retention-rpo-rto.md)
 - [ADR-0008](0008-auth-standard.md)
+- [ADR-0011](0011-release-rollback-authority.md)
+- [ADR-0013](0013-repository-visibility-public.md)

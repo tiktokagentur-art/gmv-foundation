@@ -41,8 +41,10 @@ Secrets, Deployments, Monitoring und Wiederherstellung.
 Sie führt keine zweite fachliche Wahrheit ein. Eine Datenbankmigration ändert das
 Schema der einen Datenbank. Sie ist kein zweiter Eigentümer des Zustands.
 
-In dieser Baseline existiert keine Infrastructure. [ADR-0001](adr/0001-postgresql-on-railway.md)
-legt nur das Datenbankprodukt fest.
+In `staging` des Railway-Projekts GMV-V3 laufen die Dienste `backend` und
+Postgres (Railway-Readback am 10.11.2026, Europe/Berlin).
+[ADR-0005](adr/0005-railway-environments.md) dokumentiert Projekt und Umgebung.
+Backup, Production und Limits bleiben offene Punkte.
 
 ### Control Plane
 
@@ -158,11 +160,10 @@ des Lease nicht mehr schreiben kann.
 Nicht enthalten und nicht nebenbei angelegt:
 
 - Domänenmodell, fachliche API, produktives Schema über `schema_meta` hinaus
-- angelegte Datenbank, Railway-Projekt, Umgebung, Limits (die Region ist entschieden, siehe [adr/0012-hosting-region-usa.md](adr/0012-hosting-region-usa.md), aber nicht provisioniert)
+- Dienstlimits und eine Umgebung production (`staging` in GMV-V3 existiert, siehe [adr/0005-railway-environments.md](adr/0005-railway-environments.md); Region siehe [adr/0012-hosting-region-usa.md](adr/0012-hosting-region-usa.md))
 - Backup-Lauf, konkrete RPO- oder RTO-Zahlen
-- Secrets, Secret-Store, Rotation, Break-glass-Verfahren
-- Deployment, Release, Rollback
-- aktivierte Branch Protection oder andere Repository-Einstellungen
+- festgelegter Secret-Provider, Rotation, Break-glass-Verfahren
+- Produktions-Deployment, Release, Rollback
 - SLO-Zahlen, Alarmierungswege, Incident-Betrieb
 
 Diese Punkte sind als offene ADRs geführt, nicht als stiller Default.

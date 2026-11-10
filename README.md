@@ -14,14 +14,20 @@ Verbindungsdaten, keine internen Betriebsdetails. Regeln: [SECURITY.md](SECURITY
 ## Stand
 
 Diese Baseline enthält Architektur, Governance, Sicherheitsregeln, versionierte
-Entscheidungen und ein Anwendungsskelett. Sie legt keine Datenbank an, deployt
-nicht und ändert Railway nicht.
+Entscheidungen und ein Anwendungsskelett. In `staging` des Railway-Projekts
+GMV-V3 laufen die Dienste `backend` und Postgres (Railway-Readback am
+10.11.2026, Europe/Berlin). Dieses Repository legt keine Datenbank an und
+ändert Railway nicht selbst.
 
 | Work Package | Inhalt |
 | --- | --- |
 | GF-001 | Repository-Struktur, Beitragsregeln, CI |
 | GF-003 | Architektur, Governance, Sicherheit, ADRs |
+| GF-005 | Daten- und API-Verträge, Identitätsmodell |
 | GF-006 | Skelett: FastAPI, Health, Readiness, Alembic, Image |
+
+Die Umsetzung der Authentisierung ist als GF-008 vorgesehen und liegt nicht in
+dieser Baseline.
 
 ## Schichten
 
@@ -79,10 +85,15 @@ Konfiguration kommt nur aus der Prozessumgebung. `.env.example` enthält
 Platzhalter und wird von der Anwendung nicht gelesen.
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install --require-hashes --only-binary=:all: --no-deps -r requirements-dev.txt
+python -m pip install --no-deps --no-build-isolation -e .
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
+
+`requirements.txt` ist das Laufzeit-Lock mit Hashes und wird im Image
+installiert. `requirements-dev.txt` bindet die Entwicklungswerkzeuge an
+dieselben Laufzeitversionen und wird lokal sowie in CI installiert.
 
 `GET /health` prüft den Prozess und öffnet keine Datenbank.
 `GET /ready` prüft die Verbindung und antwortet bei Fehler mit 503.
@@ -93,8 +104,8 @@ Startbefehl für Railway, Port aus der Umgebung, identisch zum `CMD` im Image:
 uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
-Das Image läuft als Benutzer `app` (uid 10001). Ein Deploy findet in diesem
-Stand nicht statt. `DATABASE_URL` wird nicht ins Repository geschrieben.
+Das Image läuft als Benutzer `app` (uid 10001). Ein Staging-Deploy existiert
+(siehe Stand oben). `DATABASE_URL` wird nicht ins Repository geschrieben.
 
 ## CI
 
@@ -103,9 +114,9 @@ Struktur, scannt die Git-Historie mit gepinntem gitleaks, führt Ruff und Pytest
 gegen PostgreSQL 18 aus und baut das Image.
 Die Jobs heißen `lint-and-structure`, `backend` und `image`.
 
-Die Prüfung ist vorhanden. Diese Baseline macht sie nicht zu einem erzwungenen
-Merge-Schutz und ändert keine Repository-Einstellung
-([ADR-0004](docs/adr/0004-branch-protection-codeowners.md)).
+Die erforderlichen Checks und der übrige Ruleset-Ist-Stand stehen in
+[ADR-0004](docs/adr/0004-branch-protection-codeowners.md). Dieses Dokument
+ändert keine Repository-Einstellung.
 
 ## Mitwirken
 
