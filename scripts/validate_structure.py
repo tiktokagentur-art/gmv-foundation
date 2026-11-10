@@ -82,6 +82,7 @@ ADR_STATUS = {
     "docs/adr/0011-release-rollback-authority.md": "Proposed",
     "docs/adr/0012-hosting-region-usa.md": "Accepted",
     "docs/adr/0013-repository-visibility-public.md": "Accepted",
+    "docs/adr/0014-github-moderator-trust-boundary.md": "Proposed",
 }
 
 ADR_MARKERS = {
