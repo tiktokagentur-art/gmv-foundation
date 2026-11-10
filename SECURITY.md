@@ -52,8 +52,9 @@ Ein Worker führt nur Arbeit aus, die an seine Identität gebunden ist. Die
 Registrierung dieser Identität hat genau einen Eigentümer
 ([ADR-0003](docs/adr/0003-single-assignment-authority.md)).
 
-Welcher Authentisierungsstandard das technisch ist, ist offen
-([ADR-0008](docs/adr/0008-auth-standard.md)).
+Workloads weisen sich mit einem API-Key je Identität aus
+([ADR-0008](docs/adr/0008-auth-standard.md)). Menschen-Logins sind
+zurückgestellt. Ein Key steht nicht in Git. Gespeichert wird nur sein Hash.
 
 ## Autorisierung serverseitig
 

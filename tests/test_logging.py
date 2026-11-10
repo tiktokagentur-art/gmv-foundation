@@ -16,6 +16,13 @@ def test_redact_replaces_database_url(monkeypatch) -> None:
     assert "[REDACTED]" in redact(f"failed {secret}")
 
 
+def test_redact_replaces_workload_key_shape() -> None:
+    key = "gmv_wk_" + ("ab" * 16)
+    rendered = redact(f"saw {key}")
+    assert key not in rendered
+    assert "[REDACTED]" in rendered
+
+
 def test_redact_replaces_userinfo_not_loaded_from_env() -> None:
     rendered = redact("boom postgresql+psycopg://alice:wonder@db.example/app")
     assert "wonder" not in rendered
