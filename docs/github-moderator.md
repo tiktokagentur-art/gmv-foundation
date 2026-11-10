@@ -25,6 +25,10 @@ Genutzte Open-Source-Action:
 
 Ergänzend liest `scripts/github_moderator_audit.py` den Istzustand über die GitHub API
 und vergleicht ihn mit dem Sollzustand. Das deckt AUDIT und den Readback nach APPLY ab.
+Der Vergleich umfasst `bypass_actors` und verlangt exakt den Sollwert `[]`.
+Die Ruleset-API liefert `bypass_actors` nur an Identitäten, die das Ruleset bearbeiten dürfen.
+Fehlt das Feld in der Antwort oder ist es `null`, wertet der Audit das als Drift.
+Ein nicht gelesener Wert ist keine bestätigte leere Liste und darf den Lauf nicht auf `aligned` ziehen.
 Die Trust-Boundary liegt in `scripts/github_moderator_security.py` und in
 workflow-nativen `github.event_name`-Gates.
 
@@ -68,6 +72,7 @@ Sollzustand des Rulesets `main`:
 - Keine verpflichtenden Reviews (`required_approving_review_count: 0`)
 - Schutz vor Force-Push und Löschen
 - Verpflichtende CI-Checks: `Lint and structure`, `Backend`, `Image`
+- Keine Bypass-Actors (`bypass_actors` exakt `[]`). Apps, Teams, Rollen und Admins dürfen das Ruleset nicht umgehen.
 
 Die bestehende CI-Workflow-Datei wird nicht verändert oder abgeschwächt.
 `delete-unmanaged-rulesets` bleibt `false`.

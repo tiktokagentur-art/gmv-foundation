@@ -109,6 +109,8 @@ def normalize_ruleset_for_compare(ruleset: dict[str, Any]) -> dict[str, Any]:
         "created_at",
         "updated_at",
         "current_user_can_bypass",
+        # bypass_actors is policy. It is compared on the raw payload in
+        # compare_bypass_actors and must not be dropped here.
     }
     cleaned = {key: value for key, value in ruleset.items() if key not in drop}
     rules = cleaned.get("rules")
@@ -148,10 +150,46 @@ def _normalize_rule(rule: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def compare_bypass_actors(desired: dict[str, Any], actual: dict[str, Any]) -> list[str]:
+    """Return drift lines for ``bypass_actors``.
+
+    The pilot desired state is exactly ``[]``: no actor, including the
+    ``gmv-github-moderator`` GitHub App, may bypass the ruleset. Callers that
+    persist config (the validator) reject any other desired value. This
+    function still compares the live list to whatever desired value it was
+    given, so a bypass added only on the repository is drift.
+
+    GitHub's "Get a repository ruleset" response includes ``bypass_actors``
+    only for tokens that may edit the ruleset. Otherwise the property is
+    omitted or JSON ``null``. That is not an empty list. Treating it as
+    ``[]`` would hide a bypass the caller is not allowed to see, so a missing
+    or null value is drift, never alignment.
+    """
+    desired_actors = desired["bypass_actors"] if "bypass_actors" in desired else None
+    if "bypass_actors" not in actual or actual["bypass_actors"] is None:
+        observed = "missing" if "bypass_actors" not in actual else "null"
+        return [
+            "bypass_actors: unverifiable "
+            f"(API value {observed}; GitHub returns this list only when the "
+            "token can edit the ruleset). Not treated as []. "
+            f"desired={desired_actors!r}"
+        ]
+    actual_actors = actual["bypass_actors"]
+    if actual_actors != desired_actors:
+        return [
+            f"bypass_actors: actual={actual_actors!r} desired={desired_actors!r}"
+        ]
+    return []
+
+
 def compare_rulesets(
     desired: dict[str, Any], actual: dict[str, Any] | None
 ) -> list[str]:
-    """Return human-readable differences between desired and actual rulesets."""
+    """Return human-readable differences between desired and actual rulesets.
+
+    ``bypass_actors`` is compared on the raw payloads. See
+    ``compare_bypass_actors`` for why an omitted or null API value is drift.
+    """
     diffs: list[str] = []
     if actual is None:
         diffs.append(f"ruleset {desired.get('name')!r} is missing on the repository")
@@ -163,6 +201,8 @@ def compare_rulesets(
     for field in ("name", "target", "enforcement"):
         if left.get(field) != right.get(field):
             diffs.append(f"{field}: actual={right.get(field)!r} desired={left.get(field)!r}")
+
+    diffs.extend(compare_bypass_actors(desired, actual))
 
     left_conditions = left.get("conditions")
     right_conditions = right.get("conditions")

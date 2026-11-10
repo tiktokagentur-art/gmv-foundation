@@ -32,7 +32,45 @@ def test_compare_aligned_when_equal() -> None:
     actual = json.loads(json.dumps(desired))
     actual["id"] = 123
     actual["source"] = "tiktokagentur-art/gmv-foundation"
+    assert desired["bypass_actors"] == []
     assert compare_rulesets(desired, actual) == []
+
+
+def test_compare_detects_integration_bypass() -> None:
+    desired = load_json(ROOT / "config/github/rulesets/main-branch-protection.json")
+    actual = json.loads(json.dumps(desired))
+    bypass = [
+        {
+            "actor_id": 424242,
+            "actor_type": "Integration",
+            "bypass_mode": "always",
+        }
+    ]
+    actual["bypass_actors"] = bypass
+    diffs = compare_rulesets(desired, actual)
+    assert diffs == [f"bypass_actors: actual={bypass!r} desired={[]!r}"]
+
+
+def test_compare_omitted_bypass_actors_is_drift() -> None:
+    desired = load_json(ROOT / "config/github/rulesets/main-branch-protection.json")
+    actual = json.loads(json.dumps(desired))
+    del actual["bypass_actors"]
+    diffs = compare_rulesets(desired, actual)
+    assert len(diffs) == 1
+    assert diffs[0].startswith("bypass_actors: unverifiable (API value missing;")
+    assert "Not treated as []" in diffs[0]
+    assert "desired=[]" in diffs[0]
+
+
+def test_compare_null_bypass_actors_is_drift() -> None:
+    desired = load_json(ROOT / "config/github/rulesets/main-branch-protection.json")
+    actual = json.loads(json.dumps(desired))
+    actual["bypass_actors"] = None
+    diffs = compare_rulesets(desired, actual)
+    assert len(diffs) == 1
+    assert diffs[0].startswith("bypass_actors: unverifiable (API value null;")
+    assert "Not treated as []" in diffs[0]
+    assert "desired=[]" in diffs[0]
 
 
 def test_run_audit_reports_drift(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,6 +81,7 @@ def test_run_audit_reports_drift(monkeypatch: pytest.MonkeyPatch) -> None:
         "name": "main",
         "target": "branch",
         "enforcement": "active",
+        "bypass_actors": [],
         "conditions": desired["conditions"],
         "rules": [
             {"type": "deletion"},
@@ -66,7 +105,69 @@ def test_run_audit_reports_drift(monkeypatch: pytest.MonkeyPatch) -> None:
         api_url="https://api.github.com",
     )
     assert report["status"] == "drift"
-    assert report["diffs"]["main"]
+    assert any("required_status_checks" in item for item in report["diffs"]["main"])
+    assert not any("bypass_actors" in item for item in report["diffs"]["main"])
+
+
+def test_run_audit_reports_bypass_actor_as_drift(monkeypatch: pytest.MonkeyPatch) -> None:
+    desired = load_json(ROOT / "config/github/rulesets/main-branch-protection.json")
+    actual_detail = json.loads(json.dumps(desired))
+    actual_detail["id"] = 1
+    actual_detail["bypass_actors"] = [
+        {
+            "actor_id": 424242,
+            "actor_type": "Integration",
+            "bypass_mode": "always",
+        }
+    ]
+
+    def fake_api_get(_api_url: str, path: str, _token: str):
+        if path.endswith("/rulesets"):
+            return [{"id": 1, "name": "main"}]
+        if path.endswith("/rulesets/1"):
+            return actual_detail
+        raise AssertionError(path)
+
+    monkeypatch.setattr("github_moderator_audit.api_get", fake_api_get)
+    report = run_audit(
+        root=ROOT,
+        repo="tiktokagentur-art/gmv-foundation",
+        token="dummy",
+        api_url="https://api.github.com",
+    )
+    assert report["status"] == "drift"
+    assert any(
+        "bypass_actors" in item and "Integration" in item
+        for item in report["diffs"]["main"]
+    )
+
+
+def test_run_audit_reports_omitted_bypass_actors_as_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    desired = load_json(ROOT / "config/github/rulesets/main-branch-protection.json")
+    actual_detail = json.loads(json.dumps(desired))
+    actual_detail["id"] = 1
+    del actual_detail["bypass_actors"]
+
+    def fake_api_get(_api_url: str, path: str, _token: str):
+        if path.endswith("/rulesets"):
+            return [{"id": 1, "name": "main"}]
+        if path.endswith("/rulesets/1"):
+            return actual_detail
+        raise AssertionError(path)
+
+    monkeypatch.setattr("github_moderator_audit.api_get", fake_api_get)
+    report = run_audit(
+        root=ROOT,
+        repo="tiktokagentur-art/gmv-foundation",
+        token="dummy",
+        api_url="https://api.github.com",
+    )
+    assert report["status"] == "drift"
+    joined = "\n".join(report["diffs"]["main"])
+    assert "bypass_actors: unverifiable (API value missing;" in joined
+    assert "Not treated as []" in joined
 
 
 def test_run_audit_blocks_on_forbidden() -> None:
