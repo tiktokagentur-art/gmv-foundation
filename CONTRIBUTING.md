@@ -59,7 +59,8 @@ Lokal, im Repository-Root:
 npx --yes markdownlint-cli2@0.24.0
 python3 scripts/validate_structure.py
 python3 scripts/gitleaks_scan.py
-python -m pip install -e ".[dev]"
+python -m pip install --require-hashes --only-binary=:all: --no-deps -r requirements-dev.txt
+python -m pip install --no-deps --no-build-isolation -e .
 ruff check app tests migrations scripts
 pytest
 ```
