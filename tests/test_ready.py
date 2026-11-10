@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from app.db import database_ready
+from app.logging_config import REQUEST_ID_PATTERN
 from app.main import create_app
 
 _SECRET = "postgresql+psycopg://dbuser:s3cret-value@127.0.0.1:1/none"
@@ -36,7 +37,9 @@ def test_ready_ok_against_database(monkeypatch, database_url: str, capsys) -> No
         response = client.get("/ready")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    assert REQUEST_ID_PATTERN.fullmatch(response.headers["x-request-id"])
     assert database_url not in response.text
+    assert database_url not in response.headers["x-request-id"]
     captured = capsys.readouterr()
     assert database_url not in captured.out
     assert database_url not in captured.err
