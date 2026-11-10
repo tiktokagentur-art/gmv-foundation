@@ -45,9 +45,11 @@ Domänenmodelle folgen aus diesem ADR nicht.
 
 ## Sicherheit im Diff
 
-Das Repository ist öffentlich. Der Diff darf keine Secrets, Schlüssel,
-Verbindungszeichenfolgen, Tokens oder internen Betriebsdetails enthalten.
-Beispiele und Fixtures ebenso wenig. Details: [SECURITY.md](SECURITY.md).
+Das Repository ist öffentlich (CEO-Entscheidung vom 10.11.2026,
+[ADR-0013](docs/adr/0013-repository-visibility-public.md)). Der Diff darf keine
+Secrets, Schlüssel, Verbindungszeichenfolgen, Tokens oder internen
+Betriebsdetails enthalten. Beispiele und Fixtures ebenso wenig.
+Details: [SECURITY.md](SECURITY.md).
 
 ## Prüfung vor dem Pull Request
 

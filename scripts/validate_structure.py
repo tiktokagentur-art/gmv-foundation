@@ -79,6 +79,7 @@ ADR_STATUS = {
     "docs/adr/0010-slo-alerting-incident.md": "Proposed",
     "docs/adr/0011-release-rollback-authority.md": "Proposed",
     "docs/adr/0012-hosting-region-usa.md": "Accepted",
+    "docs/adr/0013-repository-visibility-public.md": "Accepted",
 }
 
 ADR_MARKERS = {

@@ -4,8 +4,10 @@ Sicherheitsregeln für Greenfield V1. Sie gelten ab dieser Baseline. Ein produkt
 System gibt es noch nicht. Die Regeln sind trotzdem verbindlich, damit der erste
 Code und die erste Infrastruktur nicht gegen sie entstehen.
 
-Das Repository ist öffentlich. Nichts in Git, in einem Issue oder in einem Pull
-Request ist vertraulich.
+Das Repository ist öffentlich (CEO-Entscheidung vom 10.11.2026,
+[ADR-0013](docs/adr/0013-repository-visibility-public.md)). Nichts in Git, in einem
+Issue oder in einem Pull Request ist vertraulich. Secret Scanning und Push
+Protection bleiben aktiv; das ist ein Prüfpunkt, keine hier gesetzte Einstellung.
 
 ## Keine Secrets
 

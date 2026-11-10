@@ -9,8 +9,10 @@
 Greenfield V1 braucht für autoritativen Zustand genau eine Datenbank.
 Die CEO-Entscheidung vom 09.11.2026 legt PostgreSQL direkt auf Railway fest.
 
-Dieses Repository ist öffentlich und legt mit diesem ADR keine Railway-Ressource
-an. Es gibt hier kein Schema, keinen Benutzer und keine Verbindungsdaten.
+Dieses Repository ist öffentlich
+([ADR-0013](0013-repository-visibility-public.md)) und legt mit diesem ADR keine
+Railway-Ressource an. Es gibt hier kein Schema, keinen Benutzer und keine
+Verbindungsdaten.
 
 ## Entscheidung
 
@@ -40,3 +42,4 @@ neues ADR, das dieses auf `Superseded` setzt, und einen neuen Entscheid.
 - [ADR-0005](0005-railway-environments.md)
 - [ADR-0006](0006-backup-retention-rpo-rto.md)
 - [ADR-0009](0009-migration-compatibility.md)
+- [ADR-0013](0013-repository-visibility-public.md)

@@ -16,7 +16,8 @@ für dieselbe Domäne. [ADR-0012](0012-hosting-region-usa.md) legt zusätzlich f
 dass alle Dienste in `sfo` laufen. Eine weitere Region ist nicht mehr offen.
 
 Es gibt in diesem Repository kein Railway-Projekt, keine Umgebung und keine
-Kontonummer. Solche Angaben gehören nicht in ein öffentliches ADR.
+Kontonummer. Solche Angaben gehören nicht in dieses öffentliche Repository
+([ADR-0013](0013-repository-visibility-public.md)).
 
 ## Entscheidung
 
@@ -47,3 +48,4 @@ Nicht bewertet. Die Region wird hier nicht erneut gewählt.
 - [ADR-0003](0003-single-assignment-authority.md)
 - [ADR-0006](0006-backup-retention-rpo-rto.md)
 - [ADR-0012](0012-hosting-region-usa.md)
+- [ADR-0013](0013-repository-visibility-public.md)
