@@ -10,6 +10,7 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from app.config import database_url
+from app.credentials import Credential
 from app.db import Base
 
 configured_url = database_url()
@@ -17,6 +18,7 @@ if configured_url is None:
     raise RuntimeError("DATABASE_URL is not set")
 
 target_metadata = Base.metadata
+_ = Credential.__tablename__
 
 
 def run_migrations_offline() -> None:

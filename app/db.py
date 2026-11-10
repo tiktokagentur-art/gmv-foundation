@@ -1,16 +1,19 @@
 """Database connectivity and the infrastructure schema marker.
 
-schema_meta is not a domain model. Domain tables belong to a later package.
+schema_meta is not a domain model. Workload credentials live in
+``app.credentials``. Domain tables belong to a later package.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 
 from pydantic import SecretStr
 from sqlalchemy import DateTime, String, create_engine, func, text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.pool import NullPool
 
 logger = logging.getLogger(__name__)
@@ -33,6 +36,27 @@ class SchemaMeta(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+
+@contextmanager
+def open_session(url: SecretStr) -> Iterator[Session]:
+    """Open a short-lived session. The URL is read only while connecting.
+
+    Statement parameters are hidden, so a credential hash does not land in an
+    engine error string.
+    """
+    engine = create_engine(
+        url.get_secret_value(),
+        poolclass=NullPool,
+        pool_pre_ping=True,
+        hide_parameters=True,
+        connect_args={"connect_timeout": _CONNECT_TIMEOUT_SECONDS},
+    )
+    try:
+        with Session(engine) as session:
+            yield session
+    finally:
+        engine.dispose()
 
 
 def database_ready(url: SecretStr) -> bool:
