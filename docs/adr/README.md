@@ -23,6 +23,7 @@ Prüfung des Vorschlags erlaubt, nimmt den Vorschlag nicht an.
 | [0010](0010-slo-alerting-incident.md) | SLOs, Alarmierung, Incident-Prozess | Proposed |
 | [0011](0011-release-rollback-authority.md) | Release- und Rollback-Autorität | Proposed |
 | [0012](0012-hosting-region-usa.md) | Hosting-Region USA (Railway sfo) | Accepted |
+| [0013](0013-repository-visibility-public.md) | Repository-Sichtbarkeit: public | Accepted |
 
 ## Offene Entscheidungen
 
@@ -47,3 +48,6 @@ Die Hosting-Region USA, Railway `sfo`, ist [0012](0012-hosting-region-usa.md)
 (Accepted, CEO 09.11.2026). Im Arbeitsauftrag heißt sie ADR-0004. Diese Nummer
 ist im Repository Branch Protection
 ([0004](0004-branch-protection-codeowners.md)).
+
+Die Repository-Sichtbarkeit public ist [0013](0013-repository-visibility-public.md)
+(Accepted, CEO 10.11.2026).

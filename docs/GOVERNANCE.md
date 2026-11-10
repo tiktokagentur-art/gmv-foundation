@@ -81,5 +81,6 @@ widerspricht einem `Accepted`-ADR und wird nicht freigegeben.
 Dokumentation ist Deutsch. Dateinamen und technische Bezeichner sind Englisch.
 Neue Begriffe werden in [ARCHITECTURE.md](ARCHITECTURE.md) einmal definiert.
 
-Das Repository ist öffentlich. Governance-Dokumente nennen keine privaten
-Konten, keine internen Hostnamen und keine Zugangswege.
+Das Repository ist öffentlich (CEO-Entscheidung vom 10.11.2026,
+[ADR-0013](adr/0013-repository-visibility-public.md)). Governance-Dokumente nennen
+keine privaten Konten, keine internen Hostnamen und keine Zugangswege.

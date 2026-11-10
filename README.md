@@ -7,8 +7,9 @@ Es wird kein Legacy-Code importiert.
 
 **Leitsatz:** Build first. Verify everything. Scale after proof.
 
-Das Repository ist öffentlich. Keine Secrets, keine Verbindungsdaten, keine internen
-Betriebsdetails. Regeln: [SECURITY.md](SECURITY.md).
+Das Repository ist öffentlich (CEO-Entscheidung vom 10.11.2026,
+[ADR-0013](docs/adr/0013-repository-visibility-public.md)). Keine Secrets, keine
+Verbindungsdaten, keine internen Betriebsdetails. Regeln: [SECURITY.md](SECURITY.md).
 
 ## Stand
 
@@ -49,6 +50,7 @@ Gültig:
 - [ADR-0002](docs/adr/0002-python-fastapi.md) Python / FastAPI, entschieden am 09.11.2026
 - [ADR-0003](docs/adr/0003-single-assignment-authority.md) eine Assignment Authority, ein Zustandseigentümer je Domäne
 - [ADR-0012](docs/adr/0012-hosting-region-usa.md) Hosting-Region USA, Railway `sfo`, entschieden am 09.11.2026
+- [ADR-0013](docs/adr/0013-repository-visibility-public.md) Repository-Sichtbarkeit public, entschieden am 10.11.2026
 
 Offene Punkte stehen im [ADR-Index](docs/adr/README.md).
 
