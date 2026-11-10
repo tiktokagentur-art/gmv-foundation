@@ -217,9 +217,9 @@ def _validate_bypass_actors(payload: dict[str, object], label: str) -> list[str]
     """Require ``bypass_actors`` to be exactly ``[]``.
 
     The ruleset file is authored here, so a missing or null field is an
-    invalid desired state, not an unverifiable API read. The live readback
-    treats a missing or null API value as drift separately
-    (``compare_bypass_actors``).
+    invalid desired state. A missing or null value from the live API is a
+    separate case: the audit reports ``bypass_actors_unverified`` and does
+    not fail (``describe_bypass_actors``).
     """
     if "bypass_actors" not in payload:
         return [

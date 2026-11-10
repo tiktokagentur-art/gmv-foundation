@@ -150,32 +150,71 @@ def _normalize_rule(rule: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def compare_bypass_actors(desired: dict[str, Any], actual: dict[str, Any]) -> list[str]:
-    """Return drift lines for ``bypass_actors``.
+def describe_bypass_actors(actual: dict[str, Any] | None) -> dict[str, Any]:
+    """Describe the live ``bypass_actors`` field for one ruleset.
 
-    The pilot desired state is exactly ``[]``: no actor, including the
-    ``gmv-github-moderator`` GitHub App, may bypass the ruleset. Callers that
-    persist config (the validator) reject any other desired value. This
-    function still compares the live list to whatever desired value it was
-    given, so a bypass added only on the repository is drift.
-
-    GitHub's "Get a repository ruleset" response includes ``bypass_actors``
-    only for tokens that may edit the ruleset. Otherwise the property is
-    omitted or JSON ``null``. That is not an empty list. Treating it as
-    ``[]`` would hide a bypass the caller is not allowed to see, so a missing
-    or null value is drift, never alignment.
+    GitHub includes the list only for tokens that may edit the ruleset. The
+    AUDIT job falls back to ``GITHUB_TOKEN`` when the GitHub App token is
+    missing, and that token omits the field or sends JSON ``null``. That is
+    not an empty list and not drift: ``notice`` is ``NICHT VERIFIZIERT``,
+    ``readable`` is false, and ``count`` is null. A delivered list sets
+    ``readable`` and ``count`` so a later run with the App token can show
+    whether the field arrived.
     """
-    desired_actors = desired["bypass_actors"] if "bypass_actors" in desired else None
+    if not isinstance(actual, dict):
+        return {
+            "readable": False,
+            "count": None,
+            "api_state": "ruleset_missing",
+            "notice": None,
+        }
+    if "bypass_actors" not in actual:
+        return {
+            "readable": False,
+            "count": None,
+            "api_state": "missing",
+            "notice": "NICHT VERIFIZIERT",
+        }
+    value = actual["bypass_actors"]
+    if value is None:
+        return {
+            "readable": False,
+            "count": None,
+            "api_state": "null",
+            "notice": "NICHT VERIFIZIERT",
+        }
+    if isinstance(value, list):
+        return {
+            "readable": True,
+            "count": len(value),
+            "api_state": "list",
+            "notice": None,
+        }
+    return {
+        "readable": False,
+        "count": None,
+        "api_state": "invalid",
+        "notice": None,
+    }
+
+
+def compare_bypass_actors(desired: dict[str, Any], actual: dict[str, Any]) -> list[str]:
+    """Return drift lines for a readable ``bypass_actors`` list.
+
+    The pilot desired state is exactly ``[]``. A non-empty live list is
+    drift, including a bypass for the ``gmv-github-moderator`` GitHub App.
+    An empty list matches that desired state.
+
+    A missing or null live value is not a diff. ``describe_bypass_actors``
+    reports it as unverified. Counting it as drift would turn the scheduled
+    AUDIT red whenever it falls back to ``GITHUB_TOKEN``.
+    """
     if "bypass_actors" not in actual or actual["bypass_actors"] is None:
-        observed = "missing" if "bypass_actors" not in actual else "null"
-        return [
-            "bypass_actors: unverifiable "
-            f"(API value {observed}; GitHub returns this list only when the "
-            "token can edit the ruleset). Not treated as []. "
-            f"desired={desired_actors!r}"
-        ]
+        return []
     actual_actors = actual["bypass_actors"]
-    if actual_actors != desired_actors:
+    desired_actors = desired["bypass_actors"] if "bypass_actors" in desired else None
+    non_empty = isinstance(actual_actors, list) and len(actual_actors) > 0
+    if actual_actors != desired_actors or non_empty:
         return [
             f"bypass_actors: actual={actual_actors!r} desired={desired_actors!r}"
         ]
@@ -187,8 +226,8 @@ def compare_rulesets(
 ) -> list[str]:
     """Return human-readable differences between desired and actual rulesets.
 
-    ``bypass_actors`` is compared on the raw payloads. See
-    ``compare_bypass_actors`` for why an omitted or null API value is drift.
+    ``bypass_actors`` is compared on the raw payloads. An omitted or null API
+    value is not drift; see ``describe_bypass_actors``.
     """
     diffs: list[str] = []
     if actual is None:

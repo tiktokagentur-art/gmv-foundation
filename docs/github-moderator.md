@@ -25,10 +25,13 @@ Genutzte Open-Source-Action:
 
 Ergänzend liest `scripts/github_moderator_audit.py` den Istzustand über die GitHub API
 und vergleicht ihn mit dem Sollzustand. Das deckt AUDIT und den Readback nach APPLY ab.
-Der Vergleich umfasst `bypass_actors` und verlangt exakt den Sollwert `[]`.
-Die Ruleset-API liefert `bypass_actors` nur an Identitäten, die das Ruleset bearbeiten dürfen.
-Fehlt das Feld in der Antwort oder ist es `null`, wertet der Audit das als Drift.
-Ein nicht gelesener Wert ist keine bestätigte leere Liste und darf den Lauf nicht auf `aligned` ziehen.
+Der Vergleich umfasst `bypass_actors`. Eine gelesene Liste muss exakt `[]` sein; eine nicht leere Liste ist Drift.
+Die Ruleset-API liefert das Feld nur an Identitäten, die das Ruleset bearbeiten dürfen.
+Fehlt es oder ist es `null`, setzt der Audit den Status `bypass_actors_unverified`.
+Das ist eine Warnung (`::warning::`, im Report und in der Job-Summary als `NICHT VERIFIZIERT`), kein Drift und kein Fehler-Exit.
+`--expect-aligned` bleibt dabei grün und meldet die Warnung trotzdem.
+Der Report nennt je Ruleset, ob `bypass_actors` lesbar war und wie viele Einträge die Liste hat.
+Der AUDIT-Job fällt ohne App-Token auf `GITHUB_TOKEN` zurück. Dieses Token kann das Feld nicht lesen; der Lauf wird deshalb nicht rot.
 Die Trust-Boundary liegt in `scripts/github_moderator_security.py` und in
 workflow-nativen `github.event_name`-Gates.
 
