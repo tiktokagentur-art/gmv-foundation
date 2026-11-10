@@ -8,6 +8,8 @@ Das Repository ist öffentlich (CEO-Entscheidung vom 10.11.2026,
 [ADR-0013](docs/adr/0013-repository-visibility-public.md)). Nichts in Git, in einem
 Issue oder in einem Pull Request ist vertraulich. Secret Scanning und Push
 Protection bleiben aktiv; das ist ein Prüfpunkt, keine hier gesetzte Einstellung.
+Der Job `Lint and structure` scannt zusätzlich die Git-Historie mit gepinntem
+gitleaks ([CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## Keine Secrets
 

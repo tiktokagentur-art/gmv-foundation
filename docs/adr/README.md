@@ -24,6 +24,7 @@ Prüfung des Vorschlags erlaubt, nimmt den Vorschlag nicht an.
 | [0011](0011-release-rollback-authority.md) | Release- und Rollback-Autorität | Proposed |
 | [0012](0012-hosting-region-usa.md) | Hosting-Region USA (Railway sfo) | Accepted |
 | [0013](0013-repository-visibility-public.md) | Repository-Sichtbarkeit: public | Accepted |
+| [0014](0014-github-moderator-trust-boundary.md) | GitHub Moderator V1, Betriebsmodi und Credential-Isolation | Proposed |
 
 ## Offene Entscheidungen
 
@@ -39,6 +40,7 @@ Default. Jede Zeile verweist auf das ADR, das die Frage festhält.
 | Strategie für API- und Datenbankmigration und Kompatibilität | [0009](0009-migration-compatibility.md) |
 | SLOs, Alarmierung, Incident-Prozess | [0010](0010-slo-alerting-incident.md) |
 | Autorität für Produktionsrelease und Rollback | [0011](0011-release-rollback-authority.md) |
+| Betriebsmodi und Credential-Isolation des GitHub Moderators V1 | [0014](0014-github-moderator-trust-boundary.md) |
 
 Python / FastAPI ([0002](0002-python-fastapi.md)) ist Accepted
 (CEO-Entscheidung vom 09.11.2026).
