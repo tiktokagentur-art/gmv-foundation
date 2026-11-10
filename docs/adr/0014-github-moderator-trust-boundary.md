@@ -1,8 +1,8 @@
 # ADR-0014: GitHub Moderator V1, Betriebsmodi und Credential-Isolation
 
-- Status: Proposed
+- Status: Accepted
 - Datum: 2026-11-10
-- Entscheider: offen
+- Entscheider: CEO
 
 ## Kontext
 
@@ -31,38 +31,37 @@ In diesem ADR stehen keine App-ID, kein App-Slug und keine Secret-Werte.
 
 ## Entscheidung
 
-Nicht entschieden. Ob die Betriebsmodi AUDIT, DRY_RUN und APPLY und die Credential-Isolation des GitHub Moderators V1 als verbindliche Regel gelten, ist offen.
+Entschieden. Die Betriebsmodi AUDIT, DRY_RUN und APPLY und die
+Credential-Isolation des GitHub Moderators V1 gelten als verbindliche Regel.
 
-Zu klären ist mindestens:
-
-- ob AUDIT der Standardmodus bleibt und keine Schreiboperation ausführt
-- ob DRY_RUN geplante Änderungen nur anzeigt und ebenfalls nicht schreibt
-- ob APPLY nur nach expliziter Freigabe schreibt (Lauf von `main`,
+- AUDIT ist der Standardmodus und führt keine Schreiboperation aus.
+- DRY_RUN zeigt geplante Änderungen nur an und schreibt nicht.
+- APPLY schreibt nur nach expliziter Freigabe (Lauf von `main`,
   Environment-Freigabe, Apply-Gate), nicht schon durch die Wahl eines
-  Workflow-Parameters
-- ob `pull_request`-Läufe, einschließlich Same-Repo-PRs, keine
-  privilegierten Zugangsdaten erhalten
-- ob Privilege über das Workflow-Ereignis entschieden wird, nicht über
-  ausgecheckten PR-Code
-- ob `pull_request_target` unzulässig bleibt
-- ob Tokens nicht in Ausgaben, Logs oder Artefakte geschrieben werden
-- ob der App-Schlüssel nur als Environment-Secret liegt, nicht als
-  Repository-Secret
+  Workflow-Parameters.
+- `pull_request`-Läufe, einschließlich Same-Repo-PRs, erhalten keine
+  privilegierten Zugangsdaten.
+- Privilege wird über das Workflow-Ereignis entschieden, nicht über
+  ausgecheckten PR-Code.
+- `pull_request_target` ist unzulässig.
+- Tokens werden nicht in Ausgaben, Logs oder Artefakte geschrieben.
+- Der App-Schlüssel liegt nur als Environment-Secret, nicht als
+  Repository-Secret.
+
+Quelle: CEO-Auswahl im Chat des Head of Engineering, 10.11.2026 05:49 MEZ.
 
 Tatsache, nicht Annahme: Die Implementierung und die Beschreibung in
-`docs/github-moderator.md` liegen auf `main`. Das ersetzt diesen Entscheid
-nicht. Annahme, nicht Tatsache: Dass der vorliegende Code unverändert die
-endgültige Regel bleibt.
+`docs/github-moderator.md` liegen auf `main`. Annahme, nicht Tatsache:
+Dass der vorliegende Code unverändert die endgültige Regel bleibt.
 
 ## Konsequenzen
 
-- Bis zum Entscheid bleibt die in PR #5 gemergte Implementierung prüfbar,
-  aber kein angenommener Architekturentscheid für Modi und
-  Credential-Isolation.
+- Die in PR #5 gemergte Implementierung ist der angenommene
+  Architekturentscheid für Modi und Credential-Isolation, soweit sie diesen
+  Regeln entspricht.
 - ADR-0004 bleibt gültig für den Ruleset-Schutz und für die Feststellung,
   dass der Moderator den Sollzustand per APPLY schreiben darf.
-- Ein annehmender Pull Request dokumentiert die gewählten Regeln. Er setzt
-  keine Secrets und nennt keine App-ID.
+- Dieses ADR setzt keine Secrets und nennt keine App-ID.
 
 ## Alternativen
 

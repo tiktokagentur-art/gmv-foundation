@@ -16,15 +16,16 @@ Bezeichner sind: `WorkItem`, `Assignment Authority`, `Claim`, `Lease`, `Fencing`
 Jede Änderung ist ein Pull Request gegen `main`. Das gilt für Dokumentation,
 ADRs, CI und später für Anwendungscode. Es gibt keine Ausnahme für Administratoren.
 
-## Pull Request und unabhängige Review
+## Pull Request und Merge-Voraussetzungen
 
-Ein Pull Request braucht mindestens eine Freigabe.
+Ein Pull Request gegen `main` braucht keine Approval-Zahl größer 0.
+Merge-Voraussetzung sind die drei erforderlichen, aktuellen Checks
+(`Lint and structure`, `Backend`, `Image`), jeweils grün gegen den
+aktuellen Head ([ADR-0004](docs/adr/0004-branch-protection-codeowners.md)).
 
-Unabhängig heißt: die freigebende Person hat keinen Commit zu dieser Änderung
-beigetragen. Wer den Pull Request geschrieben hat, gibt ihn nicht frei. Das gilt
-auch für Personen, die nur einen Teil der Commits beigetragen haben.
+Quelle: CEO-Auswahl im Chat des Head of Engineering, 10.11.2026 05:49 MEZ.
 
-Die Review prüft den Inhalt, nicht nur die Form:
+Eine inhaltliche Review bleibt möglich und prüft:
 
 - Passt die Änderung zur Architektur und zu ADRs mit Status `Accepted`?
 - Wird ein Vorschlag (`Proposed`) behandelt, als wäre er beschlossen?
@@ -85,10 +86,8 @@ Ein übersprungener Datenbanktest in CI ist ein Fehler.
 ## Durchsetzung in GitHub
 
 Die Regeln oben gelten als Arbeitsregel. Was GitHub technisch durchsetzt,
-dokumentiert [ADR-0004](docs/adr/0004-branch-protection-codeowners.md)
-(Accepted, CEO 10.11.2026): Schutz von `main` durch das aktive Ruleset,
-erforderliche Checks, kein direkter Push und kein Force-Push. CODEOWNERS hat
-keine aktiven Owner. Die Abweichung bei der Approval-Zahl ist in ADR-0004
-festgestellt, nicht in diesem Dokument aufgelöst.
+dokumentiert [ADR-0004](docs/adr/0004-branch-protection-codeowners.md):
+Schutz von `main` durch das aktive Ruleset, erforderliche Checks, 0 Approvals,
+kein direkter Push und kein Force-Push. CODEOWNERS hat keine aktiven Owner.
 
 Diese Datei ändert keine Repository-Einstellungen.

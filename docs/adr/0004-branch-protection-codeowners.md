@@ -50,9 +50,9 @@ Repository-Secret `GMV_MODERATOR_APPLY_GATE` sind nicht vorhanden.
 
 - Direkter Push und Force-Push auf `main` werden technisch blockiert.
 - Ein Merge ohne die drei erforderlichen, aktuellen Checks ist unzulässig.
-- [../../CONTRIBUTING.md](../../CONTRIBUTING.md) verlangt weiterhin eine
-  unabhängige Review. Das Ruleset erzwingt derzeit keine Approval-Zahl größer
-  0. Diese Abweichung ist festgestellt, nicht stillschweigend aufgehoben.
+- [../../CONTRIBUTING.md](../../CONTRIBUTING.md) und das Ruleset verlangen
+  0 Approvals. Merge-Voraussetzung bleiben die drei erforderlichen, aktuellen
+  Checks. Quelle: CEO-Auswahl im Chat des Head of Engineering, 10.11.2026 05:49 MEZ.
 - Aktive CODEOWNERS-Regeln bleiben aus, bis ein späterer Entscheid reale Teams
   einträgt und dieses ADR anpasst.
 - Eine numerische GitHub-App-ID und ein öffentlicher App-Slug sind hier nicht

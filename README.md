@@ -59,6 +59,7 @@ Gültig:
 - [ADR-0005](docs/adr/0005-railway-environments.md) Railway-Projekt GMV-V3, Umgebung staging, entschieden am 10.11.2026
 - [ADR-0012](docs/adr/0012-hosting-region-usa.md) Hosting-Region USA, Railway `sfo`, entschieden am 09.11.2026
 - [ADR-0013](docs/adr/0013-repository-visibility-public.md) Repository-Sichtbarkeit public, entschieden am 10.11.2026
+- [ADR-0014](docs/adr/0014-github-moderator-trust-boundary.md) GitHub Moderator V1, Betriebsmodi und Credential-Isolation, entschieden am 10.11.2026
 
 Offene Punkte stehen im [ADR-Index](docs/adr/README.md).
 
@@ -121,5 +122,6 @@ Die erforderlichen Checks und der übrige Ruleset-Ist-Stand stehen in
 
 Regeln für Branches und Pull Requests: [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Änderungen an `main` nur per Pull Request. Die Review ist unabhängig: wer die
-Änderung geschrieben hat, gibt sie nicht frei.
+Änderungen an `main` nur per Pull Request. Merge-Voraussetzung sind die
+erforderlichen, grünen CI-Checks. Es gelten 0 Approvals, siehe
+[CONTRIBUTING.md](CONTRIBUTING.md).
