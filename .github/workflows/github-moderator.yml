@@ -256,6 +256,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install PyYAML
+        run: python -m pip install --upgrade pip && python -m pip install 'pyyaml>=6'
+
       - name: Re-verify privileged path policy
         env:
           EVENT_NAME: ${{ github.event_name }}
