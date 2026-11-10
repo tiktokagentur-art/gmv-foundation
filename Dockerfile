@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+# Tag: python:3.12-slim
+FROM python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -10,12 +11,15 @@ WORKDIR /srv
 
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin app
 
-COPY pyproject.toml ./
+COPY requirements.txt pyproject.toml ./
 COPY app ./app
 COPY alembic.ini ./
 COPY migrations ./migrations
 
-RUN pip install --no-cache-dir . \
+# Hashes come from requirements.txt. The project itself is installed without
+# dependencies and without build isolation, so nothing is resolved from the index.
+RUN python -m pip install --no-cache-dir --require-hashes --only-binary=:all: --no-deps -r requirements.txt \
+    && python -m pip install --no-cache-dir --no-deps --no-build-isolation . \
     && chown -R app:app /srv
 
 USER app
