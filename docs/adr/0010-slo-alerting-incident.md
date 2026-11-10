@@ -23,8 +23,19 @@ welche Stufen es gibt und wie ein Incident beendet wird.
   7 HTTP-Requests. Für Produktion existiert damit kein Messobjekt.
 - `/health` antwortet ohne Datenbankprüfung. `/ready` prüft die Datenbank und
   antwortet sonst mit 503 ([../../app/main.py](../../app/main.py)).
-- Die JSON-Logs haben keine Felder für Request-ID, Dauer oder Statuscode
-  ([../../app/logging_config.py](../../app/logging_config.py)).
+- Seit PR [#15](https://github.com/tiktokagentur-art/gmv-foundation/pull/15)
+  (Commit `48599b9`) übernimmt oder erzeugt die Anwendung eine `X-Request-ID`,
+  gibt sie in jeder HTTP-Antwort zurück und schreibt sie während einer Anfrage
+  als Feld `request_id` in jede JSON-Logzeile
+  ([../../app/request_id.py](../../app/request_id.py),
+  [../../app/logging_config.py](../../app/logging_config.py),
+  [../../app/main.py](../../app/main.py)).
+- Ob auch die Uvicorn-Access-Logzeile die Request-ID trägt, ist nicht durch
+  einen Test abgesichert. Ein lokaler Lauf mit den Versionen aus
+  `requirements.txt` am 2026-11-10 zeigte das Feld in der Access-Zeile. Für
+  den Betrieb auf Railway ist das NICHT VERIFIZIERT.
+- Dauer und Statuscode sind keine eigenen Logfelder. Der Status steht nur im
+  Text der Access-Zeile.
 - [../../SECURITY.md](../../SECURITY.md) nennt noch keinen vertraulichen
   Meldeweg für Schwachstellen.
 
@@ -116,8 +127,9 @@ Nicht entschieden. SLO-Ziele, Alarmierungswege und der Incident-Prozess sind off
 - Diese Baseline behauptet kein Verfügbarkeitsziel.
 - Ein Dashboard oder ein Alarm ohne angenommenes ADR ist kein SLO.
 - Produktionsbetrieb setzt neben diesem Entscheid auch [ADR-0006](0006-backup-retention-rpo-rto.md) und [ADR-0011](0011-release-rollback-authority.md) voraus.
-- Wird der Vorschlag angenommen: Logs brauchen Request-ID, Dauer und Status als
-  eigene Felder. Bei A1 halten Railway-Logs nur 3 Tage. Für Postmortems ist ein
+- Wird der Vorschlag angenommen: Logs brauchen Dauer und Status als eigene
+  Felder, und die Request-ID in der Access-Zeile wird durch einen Test
+  abgesichert. Bei A1 halten Railway-Logs nur 3 Tage. Für Postmortems ist ein
   Export nötig. Ein Security-Incident braucht einen Meldeweg in SECURITY.md.
 
 ## Alternativen
