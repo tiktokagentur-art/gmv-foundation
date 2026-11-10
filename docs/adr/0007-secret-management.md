@@ -15,16 +15,24 @@ Offen ist, welcher Secret-Provider die Werte hält, wie oft sie rotiert werden
 und wie ein Break-glass-Zugang aussieht. Break-glass meint einen kontrollierten
 Notfallzugriff: personengebunden, zeitlich begrenzt und im Audit-Trail sichtbar.
 
+In `staging` laufen die Dienste `backend` und Postgres (Railway-Readback am
+10.11.2026, Europe/Berlin). Der Dienst `backend` hat die Variable
+`DATABASE_URL` (nur der Name; der Wert steht nicht in diesem Repository).
+Laut [ADR-0004](0004-branch-protection-codeowners.md) bezog ein APPLY-Lauf
+des GitHub Moderators V1 den Token über eine GitHub App. Ob in den
+Environments `github-moderator-apply` und `github-moderator-privileged`
+Environment-Secrets liegen, ist NICHT VERIFIZIERT. Welcher Secret-Provider
+verbindlich gilt, ist nicht entschieden.
+
 ### Ist-Stand
 
-- In der Railway-Umgebung `staging` ([ADR-0005](0005-railway-environments.md))
-  laufen ein Anwendungsdienst und PostgreSQL. Der Anwendungsdienst erhält die
-  Variable `DATABASE_URL`. Werte wurden nicht gelesen. Ob sie gesealt sind und
-  welche Datenbankrolle sie nutzt, ist NICHT VERIFIZIERT.
-- Der GitHub Moderator legt seinen App-Private-Key laut
-  [../github-moderator.md](../github-moderator.md) nur als Environment-Secret ab.
-  Ob das die verbindliche Regel ist, hält [ADR-0014](0014-github-moderator-trust-boundary.md)
-  offen. Die Environments haben `can_admins_bypass: false`
+- Ob `DATABASE_URL` in `staging` gesealt ist und welche Datenbankrolle sie
+  nutzt, ist NICHT VERIFIZIERT.
+- [../github-moderator.md](../github-moderator.md) beschreibt als Sollzustand,
+  dass der App-Private-Key nur als Environment-Secret liegt. Ob das umgesetzt
+  ist, ist NICHT VERIFIZIERT (siehe oben). Ob es die verbindliche Regel ist,
+  hält [ADR-0014](0014-github-moderator-trust-boundary.md) offen. Die
+  Environments haben `can_admins_bypass: false`
   ([ADR-0004](0004-branch-protection-codeowners.md)).
 - Secret Scanning und Push Protection sind aktiv
   ([ADR-0013](0013-repository-visibility-public.md)). CI scannt die Git-Historie
@@ -97,7 +105,9 @@ Nicht entschieden. Secret-Provider, Rotationsfrist und Break-glass-Verfahren sin
 
 ## Konsequenzen
 
-- Bis zum Entscheid gilt kein Provider als gewählt. Die bestehende Nutzung von Railway-Variablen und GitHub Environment-Secrets ist Ist-Stand, kein Entscheid.
+- Bis zum Entscheid wird kein Secret-Provider als bereits gewählt genannt.
+  Die Railway-Variable `DATABASE_URL` (nur der Name) ist vorgefunden, nicht
+  durch dieses ADR ausgewählt. In diesem Repository liegen keine Secret-Werte.
 - Ein Break-glass-Weg, der nicht auditierbar ist oder ein gemeinsames Dauergeheimnis verteilt, widerspricht SECURITY.md und wird nicht ergänzt, um die Lücke zu füllen.
 - Beispiele bleiben ohne verwendbare Werte. Die Wegwerf-Zugangsdaten der CI-Datenbank in `ci.yml` sind eine kommentierte Ausnahme dafür.
 - Wird der Vorschlag angenommen: Ein Rollback auf ein älteres Deployment stellt

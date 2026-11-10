@@ -20,12 +20,14 @@ Der Leitsatz verlangt Nachweis. Ein RPO oder RTO ohne ausgeführten
 Wiederherstellungstest wäre eine unbelegte Zahl. Zahlen stehen hier deshalb nur
 als Kandidaten.
 
+In der Umgebung `staging` des Projekts GMV-V3 läuft eine PostgreSQL-Datenbank
+mit persistentem Volume (Railway-Readback am 10.11.2026, Europe/Berlin).
+Ob ein Backup oder PITR eingerichtet ist, ist NICHT VERIFIZIERT.
+
 ### Ist-Stand
 
-- [ADR-0005](0005-railway-environments.md) (Accepted): Im Projekt GMV-V3 gibt es
-  die Umgebung `staging`, keine `production`. In `staging` läuft eine
-  PostgreSQL-Instanz. Ob dort ein Backup oder PITR eingerichtet ist, ist
-  NICHT VERIFIZIERT.
+- [ADR-0005](0005-railway-environments.md) (Accepted): Eine Umgebung
+  `production` gibt es nicht.
 - Welche Umgebung autoritativen Zustand halten darf, ist offen (ADR-0005).
 
 ### Fakten aus Primärquellen

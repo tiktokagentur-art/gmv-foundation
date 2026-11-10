@@ -7,20 +7,25 @@
 
 ## Kontext
 
-Es gibt kein gemessenes Service Level Objective (SLO). Zahlen ohne Messpfad
-würden den Leitsatz verletzen: Verify everything. Deshalb setzt dieses ADR keine
-Verfügbarkeit, keine Latenz und keine Fehlerquote fest. Zahlen stehen hier nur
-als Kandidaten.
+Es gibt noch kein gemessenes Service Level Objective (SLO). In `staging`
+laufen die Dienste `backend` und Postgres (Railway-Readback am 10.11.2026,
+Europe/Berlin). Zahlen ohne Messpfad würden den Leitsatz verletzen: Verify
+everything. Deshalb setzt dieses ADR keine Verfügbarkeit, keine Latenz und
+keine Fehlerquote.
 
 Ebenfalls offen sind Alarmierung und der Incident-Prozess: wer informiert wird,
-welche Stufen es gibt und wie ein Incident beendet wird.
+welche Stufen es gibt und wie ein Incident beendet wird. Ein Werkzeug dafür
+ist nicht gewählt. [ADR-0005](0005-railway-environments.md) dokumentiert die
+Umgebung `staging`. Ein SLO für `staging` oder production ist nicht festgelegt.
+
+Zahlen im Vorschlag unten sind nur Kandidaten, keine festgesetzten Werte.
 
 ### Ist-Stand
 
-- [ADR-0005](0005-railway-environments.md) (Accepted): Es gibt die Umgebung
-  `staging`, keine `production`. In `staging` läuft der Anwendungsdienst
-  öffentlich erreichbar. Laut Railway gab es in den 7 Tagen bis 2026-11-10
-  7 HTTP-Requests. Für Produktion existiert damit kein Messobjekt.
+- Eine Umgebung `production` gibt es nicht ([ADR-0005](0005-railway-environments.md)),
+  für Produktion existiert also kein Messobjekt. Der Dienst `backend` in
+  `staging` ist öffentlich erreichbar. Laut Railway gab es in den 7 Tagen bis
+  2026-11-10 7 HTTP-Requests.
 - `/health` antwortet ohne Datenbankprüfung. `/ready` prüft die Datenbank und
   antwortet sonst mit 503 ([../../app/main.py](../../app/main.py)).
 - Seit PR [#15](https://github.com/tiktokagentur-art/gmv-foundation/pull/15)

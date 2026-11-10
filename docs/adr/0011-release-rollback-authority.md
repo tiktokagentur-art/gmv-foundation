@@ -16,6 +16,11 @@ Rolle einen Rollback auslösen darf. Das können verschiedene Rollen sein.
 Sie sind nicht besetzt. Eine Person wird hier nicht genannt, weil keine
 benannt entschieden wurde.
 
+In `staging` gibt es ein laufendes Deployment der Dienste `backend` und
+Postgres (Railway-Readback am 10.11.2026, Europe/Berlin). Ein
+Produktionsdeployment gibt es nicht. Der genaue Auslöser eines Staging-Deploys
+wird hier nicht festgehalten.
+
 ### Ist-Stand
 
 - [ADR-0004](0004-branch-protection-codeowners.md) (Accepted): `main` ist per
@@ -23,10 +28,10 @@ benannt entschieden wurde.
   erforderlicher Approvals ist 0. Das weicht von
   [../../CONTRIBUTING.md](../../CONTRIBUTING.md) ab (mindestens eine
   unabhängige Freigabe).
-- [ADR-0005](0005-railway-environments.md) (Accepted): Es gibt `staging`, keine
-  `production`.
-- Die Umgebung `staging` deployt jeden Commit auf `main` automatisch, ohne auf
-  CI zu warten (gelesen am 2026-11-10). Railway meldet diese Deployments als
+- Beobachtung als Entscheidungsgrundlage, gelesen am 2026-11-10: Die
+  Staging-Deployments gehörten jeweils zu einem Commit auf `main`, und
+  „Wait for CI“ war aus. Eine verbindliche Feststellung des Auslösers ist das
+  nicht (siehe oben). Railway meldet diese Deployments als
   GitHub-Deployments (Environment „GMV-V3 / staging“, nicht als Produktion
   markiert). Ein Merge setzt grüne Pflicht-Checks des Pull Requests voraus.
 - Das Environment `github-moderator-apply` hat einen Required Reviewer, erlaubt
