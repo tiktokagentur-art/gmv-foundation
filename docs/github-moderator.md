@@ -25,6 +25,8 @@ Genutzte Open-Source-Action:
 
 Ergänzend liest `scripts/github_moderator_audit.py` den Istzustand über die GitHub API
 und vergleicht ihn mit dem Sollzustand. Das deckt AUDIT und den Readback nach APPLY ab.
+Die Trust-Boundary liegt in `scripts/github_moderator_security.py` und in
+workflow-nativen `github.event_name`-Gates.
 
 ## Dateien
 
@@ -36,6 +38,7 @@ und vergleicht ihn mit dem Sollzustand. Das deckt AUDIT und den Readback nach AP
 | `config/github/rulesets/main-branch-protection.json` | Versioniertes Ruleset für `main` |
 | `scripts/github_moderator_validate.py` | Konfigurationsvalidierung |
 | `scripts/github_moderator_audit.py` | Live-Audit und Readback |
+| `scripts/github_moderator_security.py` | Trust-Boundary und APPLY-Gate |
 | `docs/github-moderator-security-review.md` | Sicherheits- und Testnachweis |
 
 ## Betriebsmodi
@@ -50,7 +53,8 @@ Der Standardmodus ist immer `AUDIT`.
 
 Auslöser:
 
-- `pull_request` / `push` auf relevante Pfade / wöchentlicher Cron: immer `AUDIT`
+- `pull_request`: nur Konfigurationsvalidierung und Unit-/Security-Tests, **keine** App-Secrets
+- `push` auf `main` / wöchentlicher Cron: `AUDIT` auf privilegiertem Pfad
 - `workflow_dispatch`: Modus wählbar, Standard `AUDIT`
 
 ## Pilotumfang
@@ -74,8 +78,20 @@ Die bestehende CI-Workflow-Datei wird nicht verändert oder abgeschwächt.
 
 - Technische Identität: GitHub App, keine persönlichen Passwörter oder PATs
 - Installation zunächst ausschließlich auf `tiktokagentur-art/gmv-foundation`
-- Repository-Variable: `GMV_GITHUB_MODERATOR_APP_CLIENT_ID`
-- Repository-Secret: `GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY`
+- Client-ID: Variable `GMV_GITHUB_MODERATOR_APP_CLIENT_ID`
+- Private Key: Secret `GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY` **nur als Environment-Secret**
+  auf `github-moderator-privileged` und `github-moderator-apply`
+- Keine Repository-Secrets für den App-Private-Key (sonst wären Same-Repo-PRs gefährdet)
+
+### Trust-Boundary (P0)
+
+- `pull_request` erhält grundsätzlich keine GitHub-App-Secrets
+- Same-Repo-PRs gelten **nicht** als vertrauenswürdig
+- Privilege wird im Workflow über `github.event_name != 'pull_request'` entschieden,
+  nicht über ausgecheckten PR-Python-Code
+- `pull_request_target` wird nicht verwendet
+- Tokens werden nicht in `GITHUB_OUTPUT`, Logs, Artefakte oder Job-Summaries geschrieben
+- App-Token-Minting ist auf Repository `gmv-foundation` beschränkt
 
 ### Benötigte GitHub-App-Berechtigungen
 
@@ -89,6 +105,10 @@ Minimal für V1:
 Hinweis: Das Workflow-`GITHUB_TOKEN` hat keinen `administration`-Scope.
 Live-AUDIT, DRY_RUN und APPLY brauchen deshalb die GitHub App. Fehlt sie,
 meldet der Audit-Schritt `BLOCKED` statt stiller Umgehung.
+
+AUDIT bleibt lesend (Vergleich Ist/Soll, keine Writes).
+DRY_RUN setzt `dry-run: true` und führt keine Schreiboperationen aus.
+APPLY schreibt erst nach expliziter Freigabe.
 
 Nicht erforderlich im Pilot, solange keine Datei-Syncs (CODEOWNERS, Workflows, Dependabot) aktiviert sind:
 
@@ -109,15 +129,16 @@ APPLY verlangt alle Bedingungen gleichzeitig:
 2. Lauf von `refs/heads/main`
 3. GitHub Environment `github-moderator-apply` mit erforderlichen Reviewern
 4. Repository-Variable `GMV_MODERATOR_APPLY_GATE=enabled`
-5. Vorhandene GitHub-App-Credentials
+5. Vorhandene GitHub-App-Credentials (Environment-Secrets)
+6. Vorher-Audit und anschließender Readback (`--expect-aligned`)
 
 Fehlt eine Bedingung, endet der Lauf mit `BLOCKED`.
 
-### Pull Requests und Forks
+### Pull Requests
 
-- Fork-PRs erhalten keine Secrets.
-- Live-Audit mit App-Token läuft nicht für untrusted Fork-PRs.
-- Konfigurationsvalidierung und Unit-Tests laufen trotzdem.
+- Same-Repo- und Fork-PRs erhalten keine App-Secrets
+- Live-Audit / DRY_RUN / APPLY mit App-Token laufen nicht auf `pull_request`
+- Konfigurationsvalidierung und Unit-/Negativtests laufen ohne privilegierte Zugangsdaten
 
 ## Bedienung
 
@@ -125,6 +146,7 @@ Fehlt eine Bedingung, endet der Lauf mit `BLOCKED`.
 
 ```bash
 python3 scripts/github_moderator_validate.py
+python3 scripts/github_moderator_security.py check-workflow
 GITHUB_TOKEN=… python3 scripts/github_moderator_audit.py --repo tiktokagentur-art/gmv-foundation
 ```
 
@@ -138,9 +160,16 @@ GITHUB_TOKEN=… python3 scripts/github_moderator_audit.py --repo tiktokagentur-
 ## CEO-Checkliste vor dem ersten APPLY
 
 1. GitHub App anlegen mit Administration read/write, nur dieses Repository
-2. `GMV_GITHUB_MODERATOR_APP_CLIENT_ID` und `GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY` setzen
-3. Environment `github-moderator-apply` anlegen und Required Reviewers setzen
-4. Optional: Deployment Branch Policy auf `main` beschränken
+2. Environment `github-moderator-privileged` anlegen
+   - Deployment Branch Policy: nur `main`
+   - Environment-Secret `GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY`
+   - Environment- oder Repository-Variable `GMV_GITHUB_MODERATOR_APP_CLIENT_ID`
+   - Keine Required Reviewers (nur Credential-Isolation)
+3. Environment `github-moderator-apply` anlegen
+   - Required Reviewers setzen
+   - Deployment Branch Policy: nur `main`
+   - denselben App-Private-Key als Environment-Secret
+4. Repository-Secret für den App-Private-Key **entfernen**, falls vorhanden
 5. `GMV_MODERATOR_APPLY_GATE=enabled` setzen
 6. Zuerst `AUDIT`, dann `DRY_RUN`, erst danach `APPLY`
 
@@ -150,3 +179,5 @@ GITHUB_TOKEN=… python3 scripts/github_moderator_audit.py --repo tiktokagentur-
 - Ohne Environment-Reviewer ist die Freigabekette unvollständig; das Apply-Gate bleibt aus.
 - Die Sync-Action pinnt auf einen Commit-SHA; Updates brauchen eine bewusste Prüfung.
 - ADR-0004 bleibt `Proposed`. Dieses Modul setzt den CEO-Pilot-Sollzustand um, ersetzt aber keinen ADR-Statuswechsel.
+- Solange der App-Private-Key als Repository-Secret liegt, kann ein Same-Repo-PR den
+  Workflow umschreiben und Secrets lesen. Environment-Secrets mit Branch-Policy sind Pflicht.

@@ -20,6 +20,12 @@ def _seed_valid_tree(tmp_path: Path) -> Path:
     src = ROOT / "config" / "github"
     dest = tmp_path / "config" / "github"
     shutil.copytree(src, dest)
+    workflow_dir = tmp_path / ".github" / "workflows"
+    workflow_dir.mkdir(parents=True)
+    shutil.copy(
+        ROOT / ".github" / "workflows" / "github-moderator.yml",
+        workflow_dir / "github-moderator.yml",
+    )
     return tmp_path
 
 

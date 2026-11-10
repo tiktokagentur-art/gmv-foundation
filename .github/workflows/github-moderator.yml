@@ -4,6 +4,16 @@ name: GitHub Moderator
 # Default mode is AUDIT. APPLY requires the GitHub Environment
 # `github-moderator-apply` with required reviewers plus the repository variable
 # GMV_MODERATOR_APPLY_GATE=enabled. A workflow input alone is not approval.
+#
+# Trust boundary (P0):
+# - pull_request runs never receive GitHub App secrets, including same-repo PRs.
+# - Privilege is decided from github.event_name in the workflow expression itself
+#   (not from checked-out PR Python, which an attacker could rewrite).
+# - App credentials must live as Environment secrets on
+#   `github-moderator-privileged` and `github-moderator-apply` (not repository
+#   secrets) with a deployment branch policy limited to main.
+# - Configuration validation and unit tests never require privileged credentials.
+# - pull_request_target is intentionally not used.
 
 on:
   workflow_dispatch:
@@ -52,14 +62,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mode: ${{ steps.resolve.outputs.mode }}
-      trusted: ${{ steps.resolve.outputs.trusted }}
+      privileged: ${{ steps.resolve.outputs.privileged }}
     steps:
       - name: Resolve
         id: resolve
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_MODE: ${{ github.event.inputs.mode }}
-          REPO_TRUSTED: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          # Informational only — never used to grant privilege.
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || '' }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -eu
@@ -67,13 +78,29 @@ jobs:
           if [ "${EVENT_NAME}" != "workflow_dispatch" ]; then
             mode="AUDIT"
           fi
-          trusted=false
-          if [ "${REPO_TRUSTED}" = "${REPOSITORY}" ]; then
-            trusted=true
-          fi
           echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
-          echo "trusted=${trusted}" >> "${GITHUB_OUTPUT}"
-          echo "Resolved mode=${mode} trusted=${trusted}"
+
+          # Privilege is derived only from the Actions event name.
+          # Same-repository pull requests are NOT trusted.
+          # Do not call checked-out Python here — PR code could rewrite it.
+          privileged=false
+          case "${EVENT_NAME}" in
+            workflow_dispatch|schedule|push)
+              privileged=true
+              ;;
+            pull_request|pull_request_target)
+              privileged=false
+              ;;
+            *)
+              privileged=false
+              ;;
+          esac
+          echo "privileged=${privileged}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved mode=${mode} privileged=${privileged}"
+          echo "head_repo=${HEAD_REPO:-none} repository=${REPOSITORY}"
+          if [ "${privileged}" != "true" ]; then
+            echo "BLOCKED for privileged credentials on this event path."
+          fi
 
   validate:
     name: Validate configuration
@@ -91,19 +118,42 @@ jobs:
       - name: Install PyYAML
         run: python -m pip install --upgrade pip && python -m pip install 'pyyaml>=6'
 
-      - name: Validate moderator config
+      - name: Validate moderator config (no privileged credentials)
         run: python3 scripts/github_moderator_validate.py
 
-      - name: Unit tests for moderator tooling
+      - name: Workflow security invariants (no privileged credentials)
+        run: python3 scripts/github_moderator_security.py check-workflow
+
+      - name: Unit and negative security tests (no privileged credentials)
         run: |
           python -m pip install pytest
-          pytest tests/test_github_moderator_validate.py tests/test_github_moderator_audit.py -q
+          pytest tests/test_github_moderator_validate.py \
+            tests/test_github_moderator_audit.py \
+            tests/test_github_moderator_security.py -q
+
+      - name: Document PR trust boundary
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set -eu
+          {
+            echo "## GitHub Moderator PR path"
+            echo
+            echo "- Event: \`pull_request\`"
+            echo "- Privileged credentials: **not available**"
+            echo "- Same-repository PRs are not auto-trusted"
+            echo "- Jobs run: configuration validation + unit/security tests only"
+            echo "- Live AUDIT / DRY_RUN / APPLY with App tokens: skipped"
+            echo "- Resolve privileged flag: \`${{ needs.resolve-mode.outputs.privileged }}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   audit:
     name: Audit desired vs actual
     runs-on: ubuntu-latest
     needs: [resolve-mode, validate]
-    if: ${{ needs.resolve-mode.outputs.mode == 'AUDIT' || needs.resolve-mode.outputs.mode == 'DRY_RUN' || needs.resolve-mode.outputs.mode == 'APPLY' }}
+    # YAML-native event gate: never on pull_request, even if a PR rewrites
+    # helper scripts. Environment secrets further restrict credential access.
+    if: ${{ github.event_name != 'pull_request' && needs.resolve-mode.outputs.privileged == 'true' && (needs.resolve-mode.outputs.mode == 'AUDIT' || needs.resolve-mode.outputs.mode == 'DRY_RUN' || needs.resolve-mode.outputs.mode == 'APPLY') }}
+    environment: github-moderator-privileged
     permissions:
       contents: read
       # Ruleset reads need the GitHub App (Administration). GITHUB_TOKEN has no
@@ -120,16 +170,20 @@ jobs:
       - name: Install PyYAML
         run: python -m pip install --upgrade pip && python -m pip install 'pyyaml>=6'
 
-      - name: Refuse untrusted pull requests for live audit
-        if: ${{ github.event_name == 'pull_request' && needs.resolve-mode.outputs.trusted != 'true' }}
+      - name: Re-verify privileged path policy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          echo "BLOCKED: live audit secrets/tokens are not available for fork pull requests."
-          echo "Configuration validation already ran. Live API audit skipped."
-          exit 0
+          set -eu
+          python3 scripts/github_moderator_security.py check-trust \
+            --event "${EVENT_NAME}" \
+            --repository "${REPOSITORY}" \
+            --ref "${REF}"
 
       - name: Generate GitHub App token (optional)
         id: app-token
-        if: ${{ !(github.event_name == 'pull_request' && needs.resolve-mode.outputs.trusted != 'true') }}
         continue-on-error: true
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
@@ -138,27 +192,25 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: gmv-foundation
 
-      - name: Choose token
-        id: token
-        if: ${{ !(github.event_name == 'pull_request' && needs.resolve-mode.outputs.trusted != 'true') }}
+      - name: Choose token source
+        id: token-source
         env:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
-          FALLBACK_TOKEN: ${{ github.token }}
         run: |
           set -eu
+          # Never write the token value to GITHUB_OUTPUT, logs, or summaries.
           if [ -n "${APP_TOKEN}" ]; then
             echo "source=github-app" >> "${GITHUB_OUTPUT}"
-            echo "token=${APP_TOKEN}" >> "${GITHUB_OUTPUT}"
           else
             echo "source=github-token" >> "${GITHUB_OUTPUT}"
-            echo "token=${FALLBACK_TOKEN}" >> "${GITHUB_OUTPUT}"
             echo "::warning::GitHub App credentials missing or unusable; falling back to GITHUB_TOKEN for read-only audit."
           fi
 
       - name: Run audit
-        if: ${{ steps.token.outputs.token != '' }}
         env:
-          GITHUB_TOKEN: ${{ steps.token.outputs.token }}
+          # Token stays in env only for this step. Not published as a job output.
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          TOKEN_SOURCE: ${{ steps.token-source.outputs.source }}
         run: |
           set -eu
           mkdir -p artifacts
@@ -170,7 +222,7 @@ jobs:
             echo
             echo "- Trigger: \`${{ github.event_name }}\`"
             echo "- Mode request: \`${{ needs.resolve-mode.outputs.mode }}\`"
-            echo "- Token source: \`${{ steps.token.outputs.source }}\`"
+            echo "- Token source: \`${TOKEN_SOURCE}\`"
             echo "- Repository: \`${{ github.repository }}\`"
             echo "- Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             echo
@@ -181,7 +233,6 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload audit report
-        if: ${{ steps.token.outputs.token != '' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: github-moderator-audit
@@ -192,12 +243,30 @@ jobs:
     name: Dry run sync preview
     runs-on: ubuntu-latest
     needs: [resolve-mode, validate, audit]
-    if: ${{ needs.resolve-mode.outputs.mode == 'DRY_RUN' && github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name != 'pull_request' && needs.resolve-mode.outputs.mode == 'DRY_RUN' && needs.resolve-mode.outputs.privileged == 'true' && github.event_name == 'workflow_dispatch' }}
+    environment: github-moderator-privileged
     permissions:
       contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Re-verify privileged path policy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -eu
+          python3 scripts/github_moderator_security.py check-trust \
+            --event "${EVENT_NAME}" \
+            --repository "${REPOSITORY}" \
+            --ref "${REF}"
 
       - name: Require GitHub App credentials
         env:
@@ -207,8 +276,9 @@ jobs:
           set -eu
           if [ -z "${CLIENT_ID}" ] || [ -z "${PRIVATE_KEY}" ]; then
             echo "BLOCKED: DRY_RUN requires the GitHub App identity."
-            echo "Set repository variable GMV_GITHUB_MODERATOR_APP_CLIENT_ID"
-            echo "and repository secret GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY."
+            echo "Set Environment secrets on github-moderator-privileged"
+            echo "(not repository secrets) for GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY"
+            echo "and variable GMV_GITHUB_MODERATOR_APP_CLIENT_ID."
             echo "Do not use a personal access token."
             exit 1
           fi
@@ -267,19 +337,34 @@ jobs:
     name: Apply approved sync
     runs-on: ubuntu-latest
     needs: [resolve-mode, validate, audit]
-    if: ${{ needs.resolve-mode.outputs.mode == 'APPLY' && github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name != 'pull_request' && needs.resolve-mode.outputs.mode == 'APPLY' && needs.resolve-mode.outputs.privileged == 'true' && github.event_name == 'workflow_dispatch' }}
     # Server-enforced approval. Creating this environment without required
     # reviewers is incomplete; the gate variable must also be enabled by CEO.
     environment: github-moderator-apply
     permissions:
       contents: read
     steps:
-      - name: Enforce main ref and apply gate
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Enforce APPLY gate (main + CEO gate + environment)
         env:
           REF: ${{ github.ref }}
           GATE: ${{ vars.GMV_MODERATOR_APPLY_GATE }}
+          EVENT_NAME: ${{ github.event_name }}
+          MODE: ${{ needs.resolve-mode.outputs.mode }}
+          REPOSITORY: ${{ github.repository }}
+          # Reaching this step means GitHub already enforced environment
+          # reviewers for github-moderator-apply on this workflow_dispatch run.
+          ENVIRONMENT_APPROVED: "true"
         run: |
           set -eu
+          # Defense in depth: enforce main in the workflow before the policy module.
           if [ "${REF}" != "refs/heads/main" ]; then
             echo "BLOCKED: APPLY is only allowed from refs/heads/main (got ${REF})."
             echo "Merge the moderator PR first. No bypass."
@@ -291,9 +376,22 @@ jobs:
             echo "A workflow input is not approval."
             exit 1
           fi
-
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          set +e
+          python3 scripts/github_moderator_security.py check-apply \
+            --event "${EVENT_NAME}" \
+            --mode "${MODE}" \
+            --ref "${REF}" \
+            --gate "${GATE}" \
+            --environment-name github-moderator-apply \
+            --environment-approved "${ENVIRONMENT_APPROVED}" \
+            --has-app-credentials true \
+            --repository "${REPOSITORY}"
+          rc=$?
+          set -e
+          if [ "${rc}" -ne 0 ]; then
+            echo "BLOCKED: APPLY prerequisites not met."
+            exit 1
+          fi
 
       - name: Require GitHub App credentials
         env:
@@ -304,6 +402,8 @@ jobs:
           if [ -z "${CLIENT_ID}" ] || [ -z "${PRIVATE_KEY}" ]; then
             echo "BLOCKED: APPLY requires the GitHub App identity."
             echo "Personal tokens are not permitted."
+            echo "Store App credentials as Environment secrets on"
+            echo "github-moderator-apply (not repository secrets)."
             exit 1
           fi
 
@@ -315,11 +415,6 @@ jobs:
           private-key: ${{ secrets.GMV_GITHUB_MODERATOR_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: gmv-foundation
-
-      - name: Setup Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
 
       - name: Install PyYAML
         run: python -m pip install --upgrade pip && python -m pip install 'pyyaml>=6'
@@ -348,6 +443,8 @@ jobs:
       - name: Post-apply readback
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          CHANGED: ${{ steps.sync.outputs.changed-repositories }}
+          FAILED: ${{ steps.sync.outputs.failed-repositories }}
         run: |
           set -eu
           python3 scripts/github_moderator_audit.py \
@@ -361,8 +458,8 @@ jobs:
             echo "- Actor: \`${{ github.actor }}\`"
             echo "- Target repository: \`${{ github.repository }}\`"
             echo "- Environment: \`github-moderator-apply\`"
-            echo "- changed-repositories: ${{ steps.sync.outputs.changed-repositories }}"
-            echo "- failed-repositories: ${{ steps.sync.outputs.failed-repositories }}"
+            echo "- changed-repositories: ${CHANGED}"
+            echo "- failed-repositories: ${FAILED}"
             echo "- Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             echo
             echo "### Before"

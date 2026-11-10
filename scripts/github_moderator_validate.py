@@ -27,6 +27,7 @@ from github_moderator_lib import (  # noqa: E402
     ruleset_paths_from_settings,
     settings_target_repos,
 )
+from github_moderator_security import validate_workflow_file  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -130,6 +131,9 @@ def validate(root: Path) -> list[str]:
             if name in seen_names:
                 errors.append(f"duplicate ruleset name {name!r}")
             seen_names.add(name)
+
+    # Workflow trust-boundary invariants (no privileged PR paths).
+    errors.extend(validate_workflow_file(root))
     return errors
 
 
