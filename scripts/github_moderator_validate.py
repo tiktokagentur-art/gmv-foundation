@@ -151,6 +151,8 @@ def _validate_ruleset(payload: object, label: str) -> list[str]:
     if payload.get("name") != "main":
         errors.append(f"{label}: pilot ruleset name must be 'main' (updates existing)")
 
+    errors.extend(_validate_bypass_actors(payload, label))
+
     conditions = payload.get("conditions")
     if isinstance(conditions, dict):
         include = (conditions.get("ref_name") or {}).get("include")
@@ -209,6 +211,29 @@ def _validate_ruleset(payload: object, label: str) -> list[str]:
                     f"{label}: strict_required_status_checks_policy must be true"
                 )
     return errors
+
+
+def _validate_bypass_actors(payload: dict[str, object], label: str) -> list[str]:
+    """Require ``bypass_actors`` to be exactly ``[]``.
+
+    The ruleset file is authored here, so a missing or null field is an
+    invalid desired state. A missing or null value from the live API is a
+    separate case: the audit reports ``bypass_actors_unverified`` and does
+    not fail (``describe_bypass_actors``).
+    """
+    if "bypass_actors" not in payload:
+        return [
+            f"{label}: bypass_actors must be present and exactly [] "
+            "(omitted is not an empty bypass list)"
+        ]
+    actors = payload["bypass_actors"]
+    if actors != []:
+        return [
+            f"{label}: bypass_actors must be exactly [] "
+            "(no bypass for apps, teams, roles, or admins); "
+            f"got {actors!r}"
+        ]
+    return []
 
 
 if __name__ == "__main__":

@@ -119,6 +119,48 @@ def test_validate_rejects_all_selector(tmp_path: Path) -> None:
     assert any("all: true" in error for error in errors)
 
 
+def test_validate_rejects_integration_bypass(tmp_path: Path) -> None:
+    root = _seed_valid_tree(tmp_path)
+    ruleset_path = root / "config/github/rulesets/main-branch-protection.json"
+    payload = json.loads(ruleset_path.read_text(encoding="utf-8"))
+    payload["bypass_actors"] = [
+        {
+            "actor_id": 424242,
+            "actor_type": "Integration",
+            "bypass_mode": "always",
+        }
+    ]
+    ruleset_path.write_text(json.dumps(payload), encoding="utf-8")
+    errors = validate(root)
+    assert any(
+        "bypass_actors must be exactly []" in error and "Integration" in error
+        for error in errors
+    )
+
+
+def test_validate_rejects_omitted_bypass_actors(tmp_path: Path) -> None:
+    root = _seed_valid_tree(tmp_path)
+    ruleset_path = root / "config/github/rulesets/main-branch-protection.json"
+    payload = json.loads(ruleset_path.read_text(encoding="utf-8"))
+    del payload["bypass_actors"]
+    ruleset_path.write_text(json.dumps(payload), encoding="utf-8")
+    errors = validate(root)
+    assert any("omitted is not an empty bypass list" in error for error in errors)
+
+
+def test_validate_rejects_null_bypass_actors(tmp_path: Path) -> None:
+    root = _seed_valid_tree(tmp_path)
+    ruleset_path = root / "config/github/rulesets/main-branch-protection.json"
+    payload = json.loads(ruleset_path.read_text(encoding="utf-8"))
+    payload["bypass_actors"] = None
+    ruleset_path.write_text(json.dumps(payload), encoding="utf-8")
+    errors = validate(root)
+    assert any(
+        "bypass_actors must be exactly []" in error and "got None" in error
+        for error in errors
+    )
+
+
 def test_validate_rejects_invalid_json_ruleset(tmp_path: Path) -> None:
     root = _seed_valid_tree(tmp_path)
     ruleset_path = root / "config/github/rulesets/main-branch-protection.json"
