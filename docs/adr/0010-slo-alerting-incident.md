@@ -6,15 +6,16 @@
 
 ## Kontext
 
-Es gibt keinen laufenden Dienst und deshalb kein gemessenes Service Level
-Objective (SLO). Zahlen ohne Messpfad würden den Leitsatz verletzen: Verify
+Es gibt noch kein gemessenes Service Level Objective (SLO). In `staging`
+laufen die Dienste `backend` und Postgres (Railway-Readback am 10.11.2026,
+Europe/Berlin). Zahlen ohne Messpfad würden den Leitsatz verletzen: Verify
 everything. Deshalb setzt dieses ADR keine Verfügbarkeit, keine Latenz und
 keine Fehlerquote.
 
 Ebenfalls offen sind Alarmierung und der Incident-Prozess: wer informiert wird,
 welche Stufen es gibt und wie ein Incident beendet wird. Ein Werkzeug dafür
-ist nicht gewählt. [ADR-0005](0005-railway-environments.md) hat noch keine
-Umgebung, auf die sich ein SLO beziehen könnte.
+ist nicht gewählt. [ADR-0005](0005-railway-environments.md) dokumentiert die
+Umgebung `staging`. Ein SLO für `staging` oder production ist nicht festgelegt.
 
 ## Entscheidung
 

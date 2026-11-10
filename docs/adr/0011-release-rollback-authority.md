@@ -15,7 +15,10 @@ Rolle einen Rollback auslösen darf. Das können verschiedene Rollen sein.
 Sie sind nicht besetzt. Eine Person wird hier nicht genannt, weil keine
 benannt entschieden wurde.
 
-Es gibt kein Deployment in diesem Repository.
+In `staging` gibt es ein laufendes Deployment der Dienste `backend` und
+Postgres (Railway-Readback am 10.11.2026, Europe/Berlin). Ein
+Produktionsdeployment gibt es nicht. Der genaue Auslöser eines Staging-Deploys
+wird hier nicht festgehalten.
 
 ## Entscheidung
 
@@ -45,6 +48,9 @@ Autorität und ist deshalb nicht der Default.
 
 - [ADR-0003](0003-single-assignment-authority.md)
 - [ADR-0004](0004-branch-protection-codeowners.md)
+- [ADR-0005](0005-railway-environments.md)
 - [ADR-0006](0006-backup-retention-rpo-rto.md)
+- [ADR-0007](0007-secret-management.md)
+- [ADR-0009](0009-migration-compatibility.md)
 - [ADR-0010](0010-slo-alerting-incident.md)
 - [../../CONTRIBUTING.md](../../CONTRIBUTING.md)
