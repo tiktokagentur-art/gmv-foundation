@@ -58,6 +58,7 @@ Lokal, im Repository-Root:
 ```bash
 npx --yes markdownlint-cli2@0.24.0
 python3 scripts/validate_structure.py
+python3 scripts/gitleaks_scan.py
 python -m pip install -e ".[dev]"
 ruff check app tests migrations scripts
 pytest
@@ -66,6 +67,15 @@ pytest
 Dieselbe Prüfung läuft in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 `markdownlint-cli2` ist auf `0.24.0` festgelegt. Die Konfiguration liegt in
 [`.markdownlint-cli2.jsonc`](.markdownlint-cli2.jsonc).
+
+`scripts/gitleaks_scan.py` lädt gitleaks `8.30.1` für Linux x86_64 und prüft die
+gepinnte SHA-256-Summe. `gitleaks git --log-opts=--all` liest die vorhandene
+Git-Historie; ein shallow Clone endet mit einem Fehler. Anschließend legt das
+Skript ein temporäres Repository außerhalb dieses Baums an und erwartet, dass
+gitleaks dort ein synthetisches Secret meldet. Der Wert wird erst zur Laufzeit
+zusammengesetzt. Der Job `Lint and structure` startet dieses Skript. Die
+gehostete Action bleibt ungenutzt, weil sie für Repositories einer Organisation
+einen Lizenzschlüssel verlangt.
 
 `pytest` ohne `DATABASE_URL` überspringt die Tests, die PostgreSQL brauchen.
 In CI ist die Variable gesetzt und zeigt auf den Dienst-Container PostgreSQL 18.

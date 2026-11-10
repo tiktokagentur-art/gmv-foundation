@@ -67,7 +67,7 @@ scripts/validate_structure.py
 docs/ARCHITECTURE.md
 docs/GOVERNANCE.md
 docs/adr/                    ADR-Vorlage, Index, Entscheidungen
-.github/workflows/ci.yml     Markdown, Struktur, Ruff, Pytest, Image
+.github/workflows/ci.yml     Markdown, Struktur, gitleaks, Ruff, Pytest, Image
 Dockerfile                   non-root, Healthcheck auf /health
 .env.example                 Platzhalter, wird nicht gelesen
 ```
@@ -98,7 +98,8 @@ Stand nicht statt. `DATABASE_URL` wird nicht ins Repository geschrieben.
 ## CI
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) lintet Markdown, prüft die
-Struktur, führt Ruff und Pytest gegen PostgreSQL 18 aus und baut das Image.
+Struktur, scannt die Git-Historie mit gepinntem gitleaks, führt Ruff und Pytest
+gegen PostgreSQL 18 aus und baut das Image.
 Die Jobs heißen `lint-and-structure`, `backend` und `image`.
 
 Die Prüfung ist vorhanden. Diese Baseline macht sie nicht zu einem erzwungenen
