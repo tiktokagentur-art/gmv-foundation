@@ -34,11 +34,12 @@ Jede Änderung an `main` ist ein Pull Request mit unabhängiger Review.
 - Autorinnen und Autoren geben ihre eigene Änderung nicht frei
 - keine Ausnahme für Administratoren
 
-[ADR-0004](adr/0004-branch-protection-codeowners.md) ist der offene Beschluss über
-Branch Protection, erforderliche Checks und CODEOWNERS. Diese Baseline schaltet
-keine Repository-Einstellung ein und stellt nicht fest, ob eine bestehende
-Einstellung der Organisation bereits greift.
+[ADR-0004](adr/0004-branch-protection-codeowners.md) (Accepted, CEO 10.11.2026)
+dokumentiert den Ist-Stand des Rulesets für `main`. Dieses Dokument ändert
+keine Repository-Einstellungen.
 [`.github/CODEOWNERS`](../.github/CODEOWNERS) ist ein Entwurf ohne aktive Owner.
+Die Abweichung zwischen der Arbeitsregel „mindestens eine Freigabe“ und der im
+Ruleset geltenden Approval-Zahl ist in ADR-0004 festgestellt.
 
 ## ADR-Verfahren
 

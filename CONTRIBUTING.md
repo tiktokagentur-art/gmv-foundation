@@ -1,7 +1,7 @@
 # Mitwirken
 
-Regeln für Änderungen an diesem Repository. Was davon in GitHub-Einstellungen
-technisch durchgesetzt wird, ist offen und am Ende benannt.
+Regeln für Änderungen an diesem Repository. Was GitHub technisch durchsetzt,
+dokumentiert [ADR-0004](docs/adr/0004-branch-protection-codeowners.md).
 
 ## Sprache
 
@@ -83,10 +83,11 @@ Ein übersprungener Datenbanktest in CI ist ein Fehler.
 
 ## Durchsetzung in GitHub
 
-Die Regeln oben gelten als Arbeitsregel. In diesem Stand ist nur belegt, was im
-Repository steht: CODEOWNERS hat keine aktiven Owner, und die CI-Prüfung liegt
-als Workflow vor. Ob GitHub direkte Pushes auf `main` bereits blockiert, ist
-von dieser Änderung aus nicht festgestellt.
+Die Regeln oben gelten als Arbeitsregel. Was GitHub technisch durchsetzt,
+dokumentiert [ADR-0004](docs/adr/0004-branch-protection-codeowners.md)
+(Accepted, CEO 10.11.2026): Schutz von `main` durch das aktive Ruleset,
+erforderliche Checks, kein direkter Push und kein Force-Push. CODEOWNERS hat
+keine aktiven Owner. Die Abweichung bei der Approval-Zahl ist in ADR-0004
+festgestellt, nicht in diesem Dokument aufgelöst.
 
-Das ist absichtlich offen und in [ADR-0004](docs/adr/0004-branch-protection-codeowners.md)
-festgehalten. Diese Baseline ändert keine Repository-Einstellungen.
+Diese Datei ändert keine Repository-Einstellungen.

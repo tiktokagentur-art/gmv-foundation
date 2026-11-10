@@ -19,7 +19,10 @@ Der Leitsatz verlangt Nachweis. Ein RPO oder RTO ohne beschriebenen und später
 ausgeführten Wiederherstellungstest wäre eine unbelegte Zahl. Deshalb wird hier
 keine Zahl eingesetzt.
 
-Es gibt noch keine Datenbank und kein Backup.
+In der Umgebung `staging` des Projekts GMV-V3 läuft eine PostgreSQL-Datenbank
+mit persistentem Volume (Railway-Readback am 10.11.2026, Europe/Berlin;
+Postgres-Deploy seit 09.11.2026). Ob ein Backup oder PITR eingerichtet ist,
+ist NICHT VERIFIZIERT.
 
 ## Entscheidung
 
