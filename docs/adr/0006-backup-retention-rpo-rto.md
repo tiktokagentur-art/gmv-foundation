@@ -20,9 +20,8 @@ ausgeführten Wiederherstellungstest wäre eine unbelegte Zahl. Deshalb wird hie
 keine Zahl eingesetzt.
 
 In der Umgebung `staging` des Projekts GMV-V3 läuft eine PostgreSQL-Datenbank
-mit persistentem Volume (Railway-Readback am 10.11.2026, Europe/Berlin;
-Postgres-Deploy seit 09.11.2026). Ob ein Backup oder PITR eingerichtet ist,
-ist NICHT VERIFIZIERT.
+mit persistentem Volume (Railway-Readback am 10.11.2026, Europe/Berlin).
+Ob ein Backup oder PITR eingerichtet ist, ist NICHT VERIFIZIERT.
 
 ## Entscheidung
 
