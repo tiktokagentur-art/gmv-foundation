@@ -4,6 +4,7 @@ Prüfungen des Skeletts. Sie sind keine zweite Quelle für fachlichen Zustand.
 
 | Test | Was belegt wird |
 | --- | --- |
+| `test_gitleaks_scan.py` | gepinntes gitleaks erkennt ein synthetisches Secret außerhalb des Repos |
 | `test_health.py` | `/health` ohne Datenbank, keine Dotenv-Datei |
 | `test_ready.py` | `/ready` gegen PostgreSQL, 503 ohne brauchbare Verbindung, keine Secrets in der Antwort |
 | `test_migration.py` | `alembic upgrade head` legt `schema_meta` an |

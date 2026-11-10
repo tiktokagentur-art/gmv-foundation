@@ -36,11 +36,13 @@ REQUIRED_FILES = (
     "app/logging_config.py",
     "app/lifecycle.py",
     "tests/README.md",
+    "tests/test_gitleaks_scan.py",
     "tests/test_health.py",
     "tests/test_ready.py",
     "tests/test_migration.py",
     "tests/test_lifecycle_contract.py",
     "api/openapi.yaml",
+    "scripts/gitleaks_scan.py",
     "scripts/validate_structure.py",
     "pyproject.toml",
     "Dockerfile",
@@ -128,6 +130,7 @@ def main() -> int:
     check_adrs(errors)
     check_codeowners(errors)
     check_workflow(errors)
+    check_gitleaks_script(errors)
     scan_tree(errors)
     if errors:
         for err in errors:
@@ -290,6 +293,45 @@ def check_workflow(errors: list[str]) -> None:
             errors.append(f".github/workflows/ci.yml does not contain {snippet!r}")
     if re.search(r"contents:\s*write", text):
         errors.append(".github/workflows/ci.yml must not grant contents: write")
+    if "gitleaks/gitleaks-action" in text or "GITLEAKS_LICENSE" in text:
+        errors.append(
+            ".github/workflows/ci.yml must run pinned gitleaks without a license secret"
+        )
+    lint_section, separator, rest = text.partition("\n  backend:\n")
+    if not separator:
+        errors.append(".github/workflows/ci.yml is missing the backend job")
+        return
+    if "name: Lint and structure" not in lint_section:
+        errors.append("Lint and structure job name must stay unchanged")
+    if "python3 scripts/gitleaks_scan.py" not in lint_section:
+        errors.append("gitleaks must run inside the Lint and structure job")
+    if lint_section.count("fetch-depth: 0") != 1:
+        errors.append("Lint and structure must check out full git history once")
+    if "gitleaks" in rest:
+        errors.append("gitleaks must not run in Backend or Image")
+    if lint_section.count("runs-on:") != 1 or rest.count("runs-on:") != 2:
+        errors.append(".github/workflows/ci.yml must keep exactly three jobs")
+
+
+def check_gitleaks_script(errors: list[str]) -> None:
+    path = ROOT / "scripts" / "gitleaks_scan.py"
+    if not path.is_file():
+        return
+    text = read_text(path, errors)
+    if text is None:
+        return
+    if not re.search(r'^GITLEAKS_SHA256 = "[0-9a-f]{64}"$', text, re.MULTILINE):
+        errors.append("scripts/gitleaks_scan.py must pin the archive sha256")
+    if "https://github.com/gitleaks/gitleaks/releases/download/" not in text:
+        errors.append("scripts/gitleaks_scan.py must download the pinned release archive")
+    if "GITLEAKS_LICENSE" in text or "gitleaks-action" in text:
+        errors.append("scripts/gitleaks_scan.py must not require a gitleaks license")
+    if "--log-opts=--all" not in text:
+        errors.append("scripts/gitleaks_scan.py must scan all git history")
+    if "aws-access-token" not in text:
+        errors.append(
+            "scripts/gitleaks_scan.py must expect the synthetic aws-access-token finding"
+        )
 
 
 def scan_tree(errors: list[str]) -> None:
