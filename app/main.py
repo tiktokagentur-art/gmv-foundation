@@ -62,7 +62,7 @@ async def _http_error(request: Request, exc: StarletteHTTPException) -> JSONResp
     if is_v1_path(request.url.path):
         request_id = current_request_id()
         if request_id is not None:
-            body = v1_error_response(exc.status_code, request_id)
+            body = v1_error_response(exc.status_code, request_id, exc.headers)
             if body is not None:
                 return body
     headers = exc.headers if exc.headers else None

@@ -118,6 +118,14 @@ def test_bearer_parser_accepts_only_one_token() -> None:
     assert bearer_token(f"Bearer {key} extra") is None
 
 
+def test_wrong_method_under_v1_uses_error_body_and_keeps_allow_header() -> None:
+    with TestClient(create_app()) as client:
+        response = client.post("/v1/whoami", headers={"X-Request-ID": _KEPT})
+    assert response.status_code == 405
+    assert response.headers["allow"] == "GET"
+    _assert_error(response, "validation_error", _KEPT)
+
+
 def test_unknown_key_compares_digest(monkeypatch, migrated: str) -> None:
     calls: list[tuple[bytes, bytes]] = []
     real = secrets.compare_digest
@@ -389,7 +397,7 @@ def _whoami(key: str):
 
 
 def _assert_error(response, code: str, request_id: str) -> None:
-    assert response.status_code in {401, 403, 404, 500}
+    assert response.status_code in {401, 403, 404, 405, 500}
     assert response.headers.get_list("x-request-id") == [request_id]
     body = response.json()
     assert set(body) == {"error"}

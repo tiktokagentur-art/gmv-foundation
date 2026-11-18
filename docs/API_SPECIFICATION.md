@@ -37,6 +37,7 @@ Verbindungsdaten enthalten.
 | 401 | unauthorized | keine anerkannte Identity |
 | 403 | forbidden | Identity ohne die nötige Rolle |
 | 404 | not_found | die Ressource gibt es nicht |
+| 405 | validation_error | die Methode ist für diesen Pfad nicht erlaubt |
 | 409 | version_conflict | `If-Match` ist nicht die aktuelle `resource_version` |
 | 409 | idempotency_conflict | derselbe Schlüssel, anderer Körper |
 | 409 | fencing_rejected | Token fehlt, ist alt oder gehört zu einer beendeten Zuweisung |

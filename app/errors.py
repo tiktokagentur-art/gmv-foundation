@@ -7,16 +7,19 @@ response header.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from starlette.responses import JSONResponse
 
 from app.logging_config import REQUEST_ID_PATTERN, request_id_context
 
 # Stable English codes from api/openapi.yaml. ``internal`` is the code for an
-# unhandled failure under /v1; the other three were already in the contract.
+# unhandled failure under /v1. Unsupported methods use validation_error.
 V1_STATUS: dict[int, tuple[str, str]] = {
     401: ("unauthorized", "Keine anerkannte Identität."),
     403: ("forbidden", "Keine Berechtigung."),
     404: ("not_found", "Nicht gefunden."),
+    405: ("validation_error", "Methode nicht erlaubt."),
     500: ("internal", "Interner Fehler."),
 }
 
@@ -33,13 +36,17 @@ def current_request_id() -> str | None:
     return None
 
 
-def v1_error_response(status_code: int, request_id: str) -> JSONResponse | None:
+def v1_error_response(
+    status_code: int, request_id: str, headers: Mapping[str, str] | None = None
+) -> JSONResponse | None:
     """Return an ErrorBody, or ``None`` when this status keeps another shape."""
     mapped = V1_STATUS.get(status_code)
     if mapped is None:
         return None
     code, message = mapped
-    headers = {"WWW-Authenticate": "Bearer"} if status_code == 401 else None
+    response_headers = dict(headers or {})
+    if status_code == 401:
+        response_headers.setdefault("WWW-Authenticate", "Bearer")
     return JSONResponse(
         status_code=status_code,
         content={
@@ -49,5 +56,5 @@ def v1_error_response(status_code: int, request_id: str) -> JSONResponse | None:
                 "request_id": request_id,
             }
         },
-        headers=headers,
+        headers=response_headers,
     )
