@@ -18,7 +18,7 @@ Prüfung des Vorschlags erlaubt, nimmt den Vorschlag nicht an.
 | [0005](0005-railway-environments.md) | Railway-Umgebungen, Regionen, Limits | Accepted |
 | [0006](0006-backup-retention-rpo-rto.md) | Backup-Aufbewahrung, RPO, RTO | Proposed |
 | [0007](0007-secret-management.md) | Secret-Verwaltung, Rotation, Break-glass | Proposed |
-| [0008](0008-auth-standard.md) | Authentisierungsstandard | Proposed |
+| [0008](0008-auth-standard.md) | Authentisierungsstandard | Accepted |
 | [0009](0009-migration-compatibility.md) | API- und Datenbankmigration, Kompatibilität | Proposed |
 | [0010](0010-slo-alerting-incident.md) | SLOs, Alarmierung, Incident-Prozess | Proposed |
 | [0011](0011-release-rollback-authority.md) | Release- und Rollback-Autorität | Proposed |
@@ -36,7 +36,6 @@ Default. Jede Zeile verweist auf das ADR, das die Frage festhält.
 | Dienstlimits, autoritativer Zustand je Umgebung, Identitäten je Umgebung | [0005](0005-railway-environments.md) (Umgebungsbestand entschieden) |
 | Backup-Aufbewahrung, RPO, RTO | [0006](0006-backup-retention-rpo-rto.md) |
 | Secret-Provider, Rotation, Break-glass | [0007](0007-secret-management.md) |
-| Authentisierungsstandard | [0008](0008-auth-standard.md) |
 | Strategie für API- und Datenbankmigration und Kompatibilität | [0009](0009-migration-compatibility.md) |
 | SLOs, Alarmierung, Incident-Prozess | [0010](0010-slo-alerting-incident.md) |
 | Autorität für Produktionsrelease und Rollback | [0011](0011-release-rollback-authority.md) |
@@ -64,3 +63,7 @@ beschränkt (CEO-Auswahl 10.11.2026 05:49 MEZ).
 GitHub Moderator V1, Betriebsmodi und Credential-Isolation sind
 [0014](0014-github-moderator-trust-boundary.md)
 (Accepted, CEO 10.11.2026).
+
+Die Workload-Authentisierung ist [0008](0008-auth-standard.md)
+(Accepted für Workloads, Head of Engineering, delegiert vom CEO, 10.11.2026).
+Menschen-Logins bleiben dort zurückgestellt.
