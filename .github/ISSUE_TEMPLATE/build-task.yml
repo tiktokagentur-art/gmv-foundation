@@ -1,0 +1,77 @@
+name: "Build-Auftrag V2"
+description: "Kleiner, überprüfbarer Entwicklungsauftrag; kein Worker-Claim"
+title: "[BUILD] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ein Issue beschreibt einen Auftrag, vergibt aber keine autoritative
+        Worker-Zuweisung. Maßgeblich bleiben Accepted-ADRs, Governance
+        und die Freigabegrenzen des Repositories.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: "Erwartetes Ergebnis"
+      description: "Welches überprüfbare Ergebnis soll entstehen?"
+      placeholder: "Ein einzelner überprüfbarer Liefergegenstand"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "Akzeptanzkriterien"
+      description: "Konkrete Tests oder eindeutig prüfbare Kriterien"
+      placeholder: |
+        - [ ] Kriterium 1
+        - [ ] Kriterium 2
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: "Nicht-Ziele und Grenzen"
+      description: "Was gehört ausdrücklich nicht zum Auftrag?"
+      placeholder: "Kein Deployment, keine Änderungen am Ruleset"
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: "Vorläufige Risikoklasse"
+      description: "Nur eine Einordnung, keine operative Freigabe"
+      options:
+        - "R0 - reine Dokumentation"
+        - "R1 - begrenzte Code- oder Teständerung"
+        - "R2 - sicherheits- oder betriebsrelevant"
+        - "R3 - produktions- oder berechtigungskritisch"
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: "Verantwortung und Freigaben"
+      description: "Wer darf beauftragen, ausführen, prüfen und abnehmen?"
+      placeholder: "Offene Zuständigkeiten ausdrücklich kennzeichnen"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: "Kontext und Quellverweise"
+      description: "Relevante Dateien, Accepted-ADRs und Abhängigkeiten"
+    validations:
+      required: false
+  - type: textarea
+    id: evidence
+    attributes:
+      label: "Nachweise (nach Ausführung)"
+      description: "PR, Commit, Testprotokoll, CI-Run, offene Fehler"
+    validations:
+      required: false
+  - type: textarea
+    id: independent_review
+    attributes:
+      label: "Unabhängige Prüfung und Abnahme (nach Ausführung)"
+      description: "Review-Link, Befunde, Restrisiken, Abnahmeentscheidung"
+    validations:
+      required: false
