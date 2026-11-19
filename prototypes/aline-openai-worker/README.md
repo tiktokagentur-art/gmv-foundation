@@ -17,6 +17,15 @@ lesende Prüfaufträge; **keine** Aufgabenvergabe, Ticketänderung oder Freigabe
 - Snapshot-Evidenzlinks werden nicht selbst aufgerufen.
 - Nachfilter weist unbekannte Ticket-IDs/Links und fingierte verified-Belege ab.
 - OpenAI-Tracing aus, aber Snapshot wird an den OpenAI-API-Anbieter übermittelt.
+- Für Modellaufrufe ist ausschließlich der unveränderte, gebündelte synthetische
+  Testsnapshot zulässig; die Kennzeichnung synthetic=true allein reicht nicht.
+- Modellfreigabe-Vorlage: gpt-6.1-terra; ein Agent-Turn, maximal 2.000
+  Ausgabetokens, keine automatischen HTTP-Retries, API store=False.
+- Ein administrativer Pilotbudget-Vorschlag (2 USD) ist KEINE automatische
+  OpenAI-Account-Ausgabensperre; externe Kostenfreigabe bleibt notwendig.
+- Noch keine ausdrückliche Datentransferfreigabe, kein API-Aufruf und kein
+  unabhaengig bestaetigtes Sicherheitsreview. Keinen produktiven Deploy ausloesen.
+
 - Nur freigegebene, minimierte Daten an ein explizit freigegebenes Modell senden.
 - Assignment Authority bleibt gemäß Accepted ADR-0003 ausschließlich bei der
   Control Plane: keine Claims, Leases, Fencing oder WorkItem-Statusschreibrechte.
