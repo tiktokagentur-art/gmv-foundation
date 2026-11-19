@@ -30,6 +30,8 @@ python -m pip install 'pydantic>=2.9,<3'
 python -m unittest discover -s prototypes/aline-openai-worker/tests -v
 python prototypes/aline-openai-worker/worker.py \
   --input prototypes/aline-openai-worker/examples/synthetic.json --validate-only
+python prototypes/aline-openai-worker/worker.py \
+  --input prototypes/aline-openai-worker/examples/synthetic.json --offline-demo
 ```
 
 ## Echter LLM-Aufruf – nur nach separater API- und Datenfreigabe
@@ -39,8 +41,11 @@ python -m pip install openai-agents 'pydantic>=2.9,<3'
 # OPENAI_API_KEY über Secret-Manager / geschützte Runtime injizieren
 # OPENAI_MODEL explizit freigeben und als Umgebungsvariable setzen
 python prototypes/aline-openai-worker/worker.py \
-  --input prototypes/aline-openai-worker/examples/synthetic.json
+  --input prototypes/aline-openai-worker/examples/synthetic.json \
+  --confirm-api-call
 ```
+
+`--offline-demo` liefert einen deterministischen Prüfbericht **ohne SDK, API-Key, Netzwerkzugriff oder echte Modellantwort**. Eine echte API-Anfrage erfordert `--confirm-api-call`. Bei nicht-synthetischen Daten zusätzlich `--confirm-data-transfer` (nur nach gesonderter Datentransfer-Freigabe). Der Modellname muss explizit über `OPENAI_MODEL` gesetzt werden. API-Kosten, Modellzugriff und Datenverarbeitung sind vorab separat zu klären.
 
 Die Beispieldaten sind synthetisch; kein echter Ticket- oder Abnahmenachweis.
 Vor Staging: unabhängiges Review, CI, Modell-/Budget-/Datenschutzfreigabe,
