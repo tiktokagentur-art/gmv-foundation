@@ -1,0 +1,33 @@
+{
+  "snapshot_id": "SYNTHETIC-2026-11-19-001",
+  "captured_at": "2026-11-19T19:45:00+01:00",
+  "synthetic": true,
+  "work_items": [
+    {
+      "ticket_id": "EX-001",
+      "department": "Personal & Organisation",
+      "title": "Beispiel: SOP-Abnahme",
+      "priority": "P0",
+      "status": "In Prüfung",
+      "owner": null,
+      "blocker": "Review-Nachweis fehlt",
+      "evidence": [
+        {
+          "url": "https://example.invalid/evidence/EX-001",
+          "assessment": "unknown",
+          "note": "Nur Testdaten"
+        }
+      ]
+    },
+    {
+      "ticket_id": "EX-002",
+      "department": "Engineering",
+      "title": "Beispiel: Staging-Gate",
+      "priority": "P1",
+      "status": "Blockiert",
+      "owner": null,
+      "blocker": "Unabhängige Prüfung nicht belegt",
+      "evidence": []
+    }
+  ]
+}
