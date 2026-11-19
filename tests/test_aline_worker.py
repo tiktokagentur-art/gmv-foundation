@@ -132,6 +132,17 @@ class TestAlineWorker(unittest.TestCase):
             real, approved=True, data_transfer_approved=True
         )
 
+    def test_forged_synthetic_label_is_rejected(self):
+        altered = self.snapshot.model_copy(deep=True)
+        altered.work_items[0].title = "Potential real ticket disguised as synthetic"
+        with self.assertRaisesRegex(RuntimeError, "reviewed synthetic fixture"):
+            worker.assert_pilot_fixture(altered)
+
+    def test_even_explicit_data_flag_cannot_send_real_pilot_data(self):
+        real = self.snapshot.model_copy(update={"synthetic": False})
+        with self.assertRaisesRegex(RuntimeError, "reviewed synthetic fixture"):
+            asyncio.run(worker.run(real, approved=True, data_transfer_approved=True))
+
     def test_missing_key_blocks_model_call(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "", "OPENAI_MODEL": "test"}, clear=False):
             with self.assertRaisesRegex(RuntimeError, "OPENAI_API_KEY"):
