@@ -4,11 +4,13 @@
 **Worker-Rollenkennung:** `GMV-VE-001`. Organisation: Pizza Club / GMVGANG.
 
 ## Zweck
+
 Aline prüft als AI Chief of Staff einen **übergebenen** Ticket-Snapshot auf
 P0/P1, Blocker, fehlende Nachweise und CEO-Gates. Nur Empfehlungen und
 lesende Prüfaufträge; **keine** Aufgabenvergabe, Ticketänderung oder Freigabe.
 
 ## Architektur und Grenzen
+
 - OpenAI Agents SDK / Responses API mit strukturiertem Pydantic-Output.
 - Kein Tool, kein Handoff, kein Notion-/GitHub-/Railway-Schreibzugang.
 - Keine autonom ausgeführten Folgeaktionen und keine periodische Ausführung.
