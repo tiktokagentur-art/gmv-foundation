@@ -51,10 +51,10 @@ python -m pip install openai-agents 'pydantic>=2.9,<3'
 # OPENAI_MODEL explizit freigeben und als Umgebungsvariable setzen
 python prototypes/aline-openai-worker/worker.py \
   --input prototypes/aline-openai-worker/examples/synthetic.json \
-  --confirm-api-call
+  --confirm-api-call --confirm-data-transfer
 ```
 
-`--offline-demo` liefert einen deterministischen Prüfbericht **ohne SDK, API-Key, Netzwerkzugriff oder echte Modellantwort**. Eine echte API-Anfrage erfordert `--confirm-api-call`. Bei nicht-synthetischen Daten zusätzlich `--confirm-data-transfer` (nur nach gesonderter Datentransfer-Freigabe). Der Modellname muss explizit über `OPENAI_MODEL` gesetzt werden. API-Kosten, Modellzugriff und Datenverarbeitung sind vorab separat zu klären.
+`--offline-demo` liefert einen deterministischen Prüfbericht **ohne SDK, API-Key, Netzwerkzugriff oder echte Modellantwort**. Eine echte API-Anfrage erfordert zwei getrennte Bestätigungen: `--confirm-api-call` und `--confirm-data-transfer`. Auch für synthetische Eingaben wird die Übertragung explizit freigegeben; nur die unveränderte gebündelte Testdatei ist zulässig. Nicht-synthetische Daten sind in diesem Pilot unabhängig von den Flags blockiert. Der Modellname muss explizit über `OPENAI_MODEL` gesetzt werden. API-Kosten, Modellzugriff und Datenverarbeitung sind vorab separat zu klären.
 
 Die Beispieldaten sind synthetisch; kein echter Ticket- oder Abnahmenachweis.
 Vor Staging: unabhängiges Review, CI, Modell-/Budget-/Datenschutzfreigabe,
