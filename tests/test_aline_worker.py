@@ -143,15 +143,19 @@ class TestAlineWorker(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "reviewed synthetic fixture"):
             asyncio.run(worker.run(real, approved=True, data_transfer_approved=True))
 
+    def test_synthetic_transfer_requires_separate_consent(self):
+        with self.assertRaisesRegex(RuntimeError, "confirm-data-transfer"):
+            asyncio.run(worker.run(self.snapshot, approved=True))
+
     def test_missing_key_blocks_model_call(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "", "OPENAI_MODEL": "test"}, clear=False):
             with self.assertRaisesRegex(RuntimeError, "OPENAI_API_KEY"):
-                asyncio.run(worker.run(self.snapshot, approved=True))
+                asyncio.run(worker.run(self.snapshot, approved=True, data_transfer_approved=True))
 
     def test_missing_model_blocks_model_call(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "placeholder", "OPENAI_MODEL": ""}):
             with self.assertRaisesRegex(RuntimeError, "OPENAI_MODEL"):
-                asyncio.run(worker.run(self.snapshot, approved=True))
+                asyncio.run(worker.run(self.snapshot, approved=True, data_transfer_approved=True))
 
 
 if __name__ == "__main__":
