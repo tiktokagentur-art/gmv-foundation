@@ -92,7 +92,68 @@ def validate_analysis(snapshot: Snapshot, analysis: Analysis) -> Analysis:
             raise ValueError(f"unsupported verification: {finding.ticket_id}")
     return analysis
 
-async def run(snapshot: Snapshot) -> Analysis:
+
+def offline_demo(snapshot: Snapshot) -> Analysis:
+    """Deterministic demonstration; does not perform a model call or verify sources."""
+    ranking = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
+    risk = {"P0": "critical", "P1": "high", "P2": "medium", "P3": "low"}
+    findings = []
+    for ticket in sorted(
+        snapshot.work_items,
+        key=lambda item: (ranking[item.priority], item.ticket_id),
+    ):
+        # No independent source examination happens in offline mode.
+        description = (
+            f"Ticket {ticket.ticket_id}, Prioritaet {ticket.priority}, "
+            f"Status {ticket.status}. "
+            f"Blocker: {ticket.blocker or 'nicht gemeldet'}. "
+            f"Owner: {ticket.owner or 'unbekannt'}. "
+            "Nur synthetische/uebergebene Angaben; nicht extern verifiziert."
+        )
+        findings.append(
+            Finding(
+                ticket_id=ticket.ticket_id,
+                severity=risk[ticket.priority],
+                evidence_status="unknown",
+                explanation=description,
+                evidence_urls=[],
+                next_readonly_check=(
+                    f"Originalquelle und Freigabenachweise fuer {ticket.ticket_id} lesen"
+                ),
+                ceo_decision_required=bool(ticket.blocker or not ticket.owner),
+            )
+        )
+    report = Analysis(
+        executive_summary=(
+            f"Offline-Demonstration fuer Snapshot {snapshot.snapshot_id}: "
+            f"{len(findings)} Tickets; kein OpenAI-Aufruf und keine Quellenpruefung."
+        ),
+        findings=findings,
+        unresolved_questions=[
+            "Welche Originaltickets und Freigabebelege sind tatsaechlich aktuell?"
+        ],
+    )
+    return validate_analysis(snapshot, report)
+
+
+def require_api_approval(
+    snapshot: Snapshot, *, approved: bool, data_transfer_approved: bool
+) -> None:
+    """Fail closed before sending any snapshot data to a remote model."""
+    if not approved:
+        raise RuntimeError("Remote model invocation requires explicit --confirm-api-call")
+    if not snapshot.synthetic and not data_transfer_approved:
+        raise RuntimeError(
+            "Non-synthetic data requires explicit --confirm-data-transfer"
+        )
+
+
+async def run(
+    snapshot: Snapshot, *, approved: bool = False, data_transfer_approved: bool = False
+) -> Analysis:
+    require_api_approval(
+        snapshot, approved=approved, data_transfer_approved=data_transfer_approved
+    )
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is missing")
     model = os.getenv("OPENAI_MODEL")
@@ -121,17 +182,36 @@ async def run(snapshot: Snapshot) -> Analysis:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--validate-only", action="store_true")
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--validate-only", action="store_true")
+    mode.add_argument("--offline-demo", action="store_true")
+    mode.add_argument("--confirm-api-call", action="store_true")
+    parser.add_argument("--confirm-data-transfer", action="store_true")
     args = parser.parse_args()
     snapshot = load_snapshot(args.input)
     if args.validate_only:
         print(json.dumps({"valid": True, "tickets": len(snapshot.work_items),
                           "synthetic": snapshot.synthetic}))
         return
-    result = asyncio.run(run(snapshot))
+    if args.offline_demo:
+        result = offline_demo(snapshot)
+        execution_mode = "offline_deterministic_demo"
+        api_requests_made = 0
+    else:
+        result = asyncio.run(
+            run(
+                snapshot,
+                approved=args.confirm_api_call,
+                data_transfer_approved=args.confirm_data_transfer,
+            )
+        )
+        execution_mode = "openai_model_call"
+        api_requests_made = 1
     print(json.dumps({
         "worker_id": WORKER_ID,
         "runtime_status": "advisory_only_not_authoritative",
+        "execution_mode": execution_mode,
+        "api_requests_made": api_requests_made,
         "snapshot_id": snapshot.snapshot_id,
         "synthetic_input": snapshot.synthetic,
         "writes_performed": 0,
