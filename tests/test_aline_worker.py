@@ -89,15 +89,35 @@ class TestAlineWorker(unittest.TestCase):
         result = worker.validate_analysis(self.snapshot, self.analysis(self.finding()))
         self.assertEqual(result.findings[0].ticket_id, "EX-001")
 
+    def test_offline_demo_is_priority_sorted_and_not_verified(self):
+        result = worker.offline_demo(self.snapshot)
+        self.assertEqual([x.ticket_id for x in result.findings], ["EX-001", "EX-002"])
+        self.assertEqual([x.evidence_status for x in result.findings], ["unknown", "unknown"])
+        self.assertTrue(all(not x.evidence_urls for x in result.findings))
+
+    def test_remote_call_requires_explicit_approval(self):
+        with self.assertRaisesRegex(RuntimeError, "confirm-api-call"):
+            asyncio.run(worker.run(self.snapshot))
+
+    def test_non_synthetic_transfer_requires_extra_approval(self):
+        real = self.snapshot.model_copy(update={"synthetic": False})
+        with self.assertRaisesRegex(RuntimeError, "confirm-data-transfer"):
+            worker.require_api_approval(
+                real, approved=True, data_transfer_approved=False
+            )
+        worker.require_api_approval(
+            real, approved=True, data_transfer_approved=True
+        )
+
     def test_missing_key_blocks_model_call(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "", "OPENAI_MODEL": "test"}, clear=False):
             with self.assertRaisesRegex(RuntimeError, "OPENAI_API_KEY"):
-                asyncio.run(worker.run(self.snapshot))
+                asyncio.run(worker.run(self.snapshot, approved=True))
 
     def test_missing_model_blocks_model_call(self):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "placeholder", "OPENAI_MODEL": ""}):
             with self.assertRaisesRegex(RuntimeError, "OPENAI_MODEL"):
-                asyncio.run(worker.run(self.snapshot))
+                asyncio.run(worker.run(self.snapshot, approved=True))
 
 
 if __name__ == "__main__":
