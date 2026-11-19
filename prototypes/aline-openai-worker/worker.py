@@ -153,9 +153,9 @@ def require_api_approval(
     """Fail closed before sending any snapshot data to a remote model."""
     if not approved:
         raise RuntimeError("Remote model invocation requires explicit --confirm-api-call")
-    if not snapshot.synthetic and not data_transfer_approved:
+    if not data_transfer_approved:
         raise RuntimeError(
-            "Non-synthetic data requires explicit --confirm-data-transfer"
+            "Every remote transfer requires explicit --confirm-data-transfer"
         )
 
 
