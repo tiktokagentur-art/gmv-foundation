@@ -4,6 +4,8 @@ import asyncio
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -94,6 +96,27 @@ class TestAlineWorker(unittest.TestCase):
         self.assertEqual([x.ticket_id for x in result.findings], ["EX-001", "EX-002"])
         self.assertEqual([x.evidence_status for x in result.findings], ["unknown", "unknown"])
         self.assertTrue(all(not x.evidence_urls for x in result.findings))
+
+    def test_offline_cli_runs_without_openai_credentials(self):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "", "OPENAI_MODEL": ""}):
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(MODULE_PATH),
+                    "--input",
+                    str(SNAPSHOT_PATH),
+                    "--offline-demo",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=15,
+            )
+        report = json.loads(result.stdout)
+        self.assertEqual(report["execution_mode"], "offline_deterministic_demo")
+        self.assertEqual(report["api_requests_made"], 0)
+        self.assertEqual(report["writes_performed"], 0)
+        self.assertEqual(len(report["report"]["findings"]), 2)
 
     def test_remote_call_requires_explicit_approval(self):
         with self.assertRaisesRegex(RuntimeError, "confirm-api-call"):
