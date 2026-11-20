@@ -1,6 +1,6 @@
-name: ALINE-HELLO-001 one-shot greeting
+name: ALINE-HELLO-001 bounded manual greeting
 
-# Separate from the autonomous ALINE-L1 runner; never runs on push, PR or cron.
+# Five additional CEO-controlled greetings; never runs on push, PR or cron.
 on:
   workflow_dispatch:
 
@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check CEO identity and reject every rerun or second dispatch
+      - name: Check CEO identity and bounded history (max five new dispatches)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python scripts/aline_hello_once.py --preflight
