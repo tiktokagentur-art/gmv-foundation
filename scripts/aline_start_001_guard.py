@@ -73,7 +73,7 @@ def fetch_history(token):
         return json.loads(data)
     except GateError:
         raise
-    except Exception as exc:
+    except Exception:
         # Do not echo HTTP headers, request objects, token, or provider messages.
         raise GateError("GitHub history unavailable; fail closed") from None
 
