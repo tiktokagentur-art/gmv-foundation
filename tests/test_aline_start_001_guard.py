@@ -1,7 +1,15 @@
 """Offline-only negative tests for the ALINE-START-001 dispatch guard."""
+import importlib.util
+from pathlib import Path
 import unittest
 
-from scripts.aline_start_001_guard import GateError, check_context, check_history
+guard_path = Path(__file__).resolve().parents[1] / "scripts" / "aline_start_001_guard.py"
+spec = importlib.util.spec_from_file_location("aline_start_001_guard", guard_path)
+guard = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(guard)
+GateError = guard.GateError
+check_context = guard.check_context
+check_history = guard.check_history
 
 ENV = {
     "GITHUB_REPOSITORY": "tiktokagentur-art/gmv-foundation",
