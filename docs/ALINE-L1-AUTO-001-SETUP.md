@@ -37,7 +37,7 @@ Einmal-Test und wird nicht umgangen.**
    prüfen. Bei unklaren früheren Aufrufen oder offenen Kosten: NO-GO.
 
 OpenAI-Quelle für Projekte und Hard-Limit:
-https://help.openai.com/en/articles/9186755-managing-projects-in-the-api-platform
+[OpenAI – API-Projekte und Ausgabenlimits](https://help.openai.com/en/articles/9186755-managing-projects-in-the-api-platform)
 
 ## 2. GitHub-Identität und Environment
 
