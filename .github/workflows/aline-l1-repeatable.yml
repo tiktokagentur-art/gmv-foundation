@@ -37,6 +37,7 @@ jobs:
           ALINE_L1_BUDGET_USD: ${{ vars.ALINE_L1_BUDGET_USD }}
           ALINE_L1_MODEL: ${{ vars.ALINE_L1_MODEL }}
           ALINE_L1_ACTOR: ${{ vars.ALINE_L1_ACTOR }}
+          ALINE_L1_ACTOR_ID: ${{ vars.ALINE_L1_ACTOR_ID }}
           ALINE_L1_FIXTURE_PATH: worker-src/prototypes/aline-openai-worker/examples/synthetic.json
         run: |
           set -euo pipefail
