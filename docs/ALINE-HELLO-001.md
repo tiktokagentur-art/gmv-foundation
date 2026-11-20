@@ -22,6 +22,7 @@ Die frühere Einmal-Regel wird nur innerhalb dieses Korridors ersetzt.
 - Keine Reruns, keine parallelen API-Tests, keine automatischen Retries (`max_retries=0`). Jede neue Ausführung benötigt die bestehende Environment-Freigabe.
 - Pro Dispatch höchstens **ein Modellturn**, maximal 128 Ausgabetokens, keine Tools, Writes, Handoffs oder Live-Ticketdaten.
 - Gepinnter Aline-Worker `6dc875ecd4e7acb70b7f09023ab9af08d5c906ec`; Modell bleibt `gpt-6.1-terra`.
+- Ein möglicher nächster `RateLimitError` protokolliert ausschließlich einen fest zugelassenen `error.code` (sonst `unclassified`), niemals vollständige API-Fehlermeldungen oder vertrauliche Inhalte.
 - Das bereits vom CEO freigegebene **10-USD-Budget** bleibt maßgeblich. Der GitHub-Dispatch-Zähler ist *kein* Geld-Hard-Limit. Projekt-Key-Zuordnung, tatsächliche Quoten, Guthaben und Durchsetzung sind vor weiteren API-Aufrufen im OpenAI-Projekt separat zu prüfen.
 - Secret `OPENAI_API_KEY` ausschließlich im geschützten `aline-l1-staging`-Environment; nie im Code oder Log.
 
