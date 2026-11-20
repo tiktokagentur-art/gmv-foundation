@@ -1,73 +1,39 @@
-# ALINE-HELLO-001 – einmaliger Dialogtest
+# ALINE-HELLO-001 – begrenzte manuelle Dialogtests
 
-## Zweck
+## CEO-Freigabe, 20.11.2026
 
-Ein einziges, manuell durch den CEO ausgelöstes „Hallo Aline, wie geht es dir?“
-über die echte OpenAI-API. Das ist **kein** vollständiger Test von Aline als
-autonome Mitarbeiterin, kein Ticket-Test und keine Agent-Runtime-Aktivierung.
+Mehr als ein Test ist zulässig. Diese konservative technische Umsetzung erlaubt
+**höchstens fünf zusätzliche manuelle Dispatches** über die drei bereits
+dokumentierten Läufe hinaus; das ist kein unbegrenztes Testmandat.
+Die frühere Einmal-Regel wird nur innerhalb dieses Korridors ersetzt.
 
-## Technische Grenzen
+## Bisherige Läufe
 
-- Nur `workflow_dispatch`; keine Ausführung bei Push, PR, Zeitplan oder Deployment.
-- Nur auf `main` und nur der bekannte CEO-GitHub-Actor samt unveränderlicher ID.
-- Genau ein erlaubter Dispatch in der GitHub-Historie; Re-runs und neue Dispatches
-  scheitern geschlossen. Bei fehlender oder verzögerter Historie kein Aufruf.
-- Bestehendes Environment `aline-l1-staging` mit Environment-Secret
-  `OPENAI_API_KEY`, ohne Secret-Ausgabe.
-- Pinned Aline-Worker-Commit `6dc875ecd4e7acb70b7f09023ab9af08d5c906ec`
-  liefert die unveränderte Rollenbeschreibung `GMV-VE-001`.
-- Bestehendes Aline Agents SDK, festes Modell `gpt-6.1-terra`,
-  `max_turns=1`, `max_retries=0`, maximal 128 Ausgabetokens, keine Tools,
-  keine Handoffs und kein Tracing oder Response-Speichern.
-- Keine Ticketdaten, fremden Nutzerdaten, WorkItem-Schreibrechte, Merges,
-  Railway-Deployments oder sonstigen Konfigurationsänderungen.
-- Ausgabe zeigt ausschließlich die kurze tatsächliche Modellantwort oder
-  eine sanitisierte Fehlerklasse. **Keine simulierte Antwort**.
+- [#44694430741](https://github.com/tiktokagentur-art/gmv-foundation/actions/runs/44694430741): failure, vor Runnerstart, keine Steps, kein Modellaufruf.
+- [#44697167267](https://github.com/tiktokagentur-art/gmv-foundation/actions/runs/44697167267): failure, echte API-Verbindung versucht; `RateLimitError`, keine Aline-Antwort. Ob Quote, Guthaben oder anderes API-Limit auslöste, ist noch nicht verifiziert.
+- [#44705555401](https://github.com/tiktokagentur-art/gmv-foundation/actions/runs/44705555401): am 20.11. um 09:49 Uhr wartend auf Environment-Freigabe. **Diesen alten Lauf abbrechen**. Er wurde mit der früheren Workflow-SHA gestartet und übernimmt keine nachträglich gemergten Änderungen. Neue Testläufe sind erst nach seinem Abschluss zulässig.
 
-## Ausführungsvoraussetzungen
+## Ausführungsgrenzen
 
-1. CI, Engineering- und Security-Review des Draft-PR durchführen.
-2. Für den Workflow ein gesondertes CEO-Merge nach `main` genehmigen.
-   GitHub `workflow_dispatch` kann einen neuen Workflow nicht aufrufen,
-   solange er ausschließlich in einem Feature-Branch liegt.
-3. `aline-l1-staging` muss die Branch-Freigabe für `main` zulassen
-   und das dedizierte `OPENAI_API_KEY`-Secret enthalten. Fehlende Einrichtung
-   darf nicht durch Hardcoding oder Kopieren des Secrets in GitHub-Code
-   umgangen werden.
-4. Das Key-Projekt muss Modellzugriff und das vom CEO freigegebene
-   10-USD-Ausgabenlimit besitzen; die technische Zuordnung sowie die
-   tatsächliche Budgetdurchsetzung sind separat zu verifizieren.
-5. Dann **einmalig** über GitHub Actions → ALINE-HELLO-001 → Run workflow
-   auf `main` starten. Nach der Environment-Freigabe die Run-ID, Antwort,
-   Ausführungsstatus und den OpenAI-Verbrauch dokumentieren.
+- Nur CEO-Actor `tiktokagentur-art` einschließlich unveränderlicher GitHub-ID.
+- Nur `workflow_dispatch` auf `main`; keine Zeitplanung, kein Push- oder PR-Trigger.
+- Insgesamt maximal acht Dispatches in dieser Workflow-Historie: die drei historischen und **fünf weitere**.
+- Historische IDs, Actor, Commit, Status und Abschluss werden per GitHub-API geprüft. Die dritte Ausführung muss beendet (`cancelled` oder `failure`) sein. Alle früheren neuen Läufe müssen abgeschlossen sein. Bei unvollständiger oder unplausibler Historie: fail closed.
+- Keine Reruns, keine parallelen API-Tests, keine automatischen Retries (`max_retries=0`). Jede neue Ausführung benötigt die bestehende Environment-Freigabe.
+- Pro Dispatch höchstens **ein Modellturn**, maximal 128 Ausgabetokens, keine Tools, Writes, Handoffs oder Live-Ticketdaten.
+- Gepinnter Aline-Worker `6dc875ecd4e7acb70b7f09023ab9af08d5c906ec`; Modell bleibt `gpt-6.1-terra`.
+- Das bereits vom CEO freigegebene **10-USD-Budget** bleibt maßgeblich. Der GitHub-Dispatch-Zähler ist *kein* Geld-Hard-Limit. Projekt-Key-Zuordnung, tatsächliche Quoten, Guthaben und Durchsetzung sind vor weiteren API-Aufrufen im OpenAI-Projekt separat zu prüfen.
+- Secret `OPENAI_API_KEY` ausschließlich im geschützten `aline-l1-staging`-Environment; nie im Code oder Log.
 
-## Abgrenzung
+## Freigabeprozess und nächster Test
 
-Dieser humaninitiierte Einmaltest nutzt `aline-l1-staging` und verändert
-weder das permanente L1-Autotest-Environment noch `ALINE_L1_ACTIVATED`.
-Ein erfolgreicher „Wie geht's?“-Dialog ist kein Beleg für Autonomie,
-Bot-Identität, Zustandsrechte oder produktive Betriebsbereitschaft.
+1. Wartenden alten Lauf #44705555401 in GitHub abbrechen; **nicht** freigeben.
+2. Den `RateLimitError` des zweiten Laufs im API-Projekt (Rate Limits, Billing/Quota und Usage) diagnostizieren. Kein blindes Wiederholen des fehlgeschlagenen API-Aufrufs.
+3. Änderungen als Draft-PR prüfen, CI/Negativtests grün bestätigen und Merge nach `main` gesondert freigeben. **Keine Ausführung durch die Erstellung dieses PR.**
+4. Erst dann einen **neuen** manuellen Workflow-Dispatch auf `main` auslösen; die vorherige wartende Ausführung nutzt noch die alte Code-SHA.
+5. Den Run über `aline-l1-staging` freigeben und danach Job-Log, tatsächliche Aline-Antwort, Rate-Limit-Fehlerklasse sowie OpenAI-Usage kontrollieren.
+6. Vor jedem weiteren Versuch den vorherigen Lauf auswerten; nach fünf zusätzlichen Dispatches ist der Korridor ausgeschöpft.
 
-## Fehlgeschlagener Erststart, 20.11.2026
-
-Der manuelle Run [44694430741](https://github.com/tiktokagentur-art/gmv-foundation/actions/runs/44694430741)
-endete `failure`, bevor ein Runner gestartet oder ein einziger Step ausgeführt
-wurde (GitHub API: `runner_name=""`, `steps=[]`). Damit ist kein API-Aufruf
-aus diesem Run erfolgt. Ursache ist vermutlich die vorhandene
-Environment-Branchregel, die laut CEO-Screenshot nur den Prototyp-Branch
-zulässt, während dieses Verfahren strikt `main` verlangt. Die exakte
-Annotationsmeldung war nicht abrufbar.
-
-Die ursprüngliche strenge Einmal-Sperre zählt auch den gescheiterten Start.
-Daher wird **nur dieser exakte vor Runnerbeginn gescheiterte Run** als
-Ausnahme zugelassen: Die GitHub-API muss bei jedem Preflight den historischen
-Lauf, Commit, Status und die fehlende Runner-/Step-Ausführung nachweisen.
-Das gestattet höchstens einen Ersatz-Dispatch. Der dritte Dispatch oder
-fehlende Evidenz sperrt dauerhaft. Keine erweiterte Schreibberechtigung,
-kein anderer Actor, keine automatischen Retries.
-
-VOR EINEM ERSATZVERSUCH: `main` explizit zu den zulässigen Deployment-Branches
-von `aline-l1-staging` aufnehmen, Reviewer-Gate prüfen, Secret-Zuordnung und
-OpenAI-Projektlimit verifizieren. Diese Korrektur muss als neuer PR mit grüner
-CI und separater Freigabe nach `main` gemergt werden. Bis dahin
-keinen weiteren Workflow-Dispatch auslösen.
+Dies ist nur ein synthetischer Grußtest. Der separate autonome
+`aline-l1-autotest`-Runner und `ALINE_L1_ACTIVATED` bleiben unverändert.
+Es erfolgen keine Railway-Deployments oder produktiven Konfigurationsänderungen.
