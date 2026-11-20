@@ -28,8 +28,8 @@ Primärquellen:
 ## Bestands- und Dublettenprüfung
 
 Die bestehenden CI-Checks, der GitHub Moderator, PR-Triage (#35 / Draft-PR #36),
-Aline-L1-Workflows (#38 / gemergter #43), die Coding-Agent-Anleitung (Draft-PR
-#30) und die Command-Center-Demo (Draft-PR #37) bleiben Eigentum ihrer
+Aline-L1-Workflows (#38 / gemergter #43), die Coding-Agent-Anleitung
+(Draft-PR #30) und die Command-Center-Demo (Draft-PR #37) bleiben Eigentum ihrer
 bisherigen Bereiche. Diese V1 fügt **keinen** GitHub-Actions-Trigger hinzu,
 beansprucht keine Assignment Authority und aktiviert keine neuen Berechtigungen.
 
