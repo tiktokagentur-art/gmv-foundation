@@ -1,4 +1,5 @@
 """ALINE-NOTION-001 negative and happy-path tests: no outbound traffic."""
+
 import importlib.util
 import json
 import sys
