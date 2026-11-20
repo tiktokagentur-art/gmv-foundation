@@ -14,9 +14,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from aline_hello_once import (  # noqa: E402
     MAX_NEW_DISPATCHES,
     GateError,
+    safe_rate_limit_code,
     validate_bounded_dispatch,
     validate_identity,
-    safe_rate_limit_code,
 )
 
 FIRST = 44694430741
