@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "repository": "tiktokagentur-art/gmv-foundation",
+  "handoff_mode": "MANUAL_CODEX_CLOUD",
+  "tasks": [
+    {
+      "task_id": "SELLER-HEALTH-001",
+      "title": "Seller Health Check MVP",
+      "source": {
+        "kind": "issue",
+        "number": 40
+      },
+      "scope": "Pruefe Issue #40, implementiere einen isolierten responsiven MVP mit den 16 Diagnosen, einer nachvollziehbaren P0/P1/P2-Ausgabe und synthetischen Tests. Keine Shop-API-Anbindung und keine reale Compliance-Zertifizierung behaupten.",
+      "acceptance": [
+        "Alle 16 Diagnosemodule mit Unbekannt-Status bei fehlenden Daten abbilden.",
+        "Deterministische P0/P1/P2-Testfaelle und konkrete Vorschlaege fuer Rewrites liefern.",
+        "Nur neuer Feature-Branch und Draft-PR; keine externen bezahlten APIs."
+      ],
+      "handoff_status": "PROPOSED_NOT_STARTED"
+    },
+    {
+      "task_id": "UI-FOUND-002",
+      "title": "Bestehendes Command Center pruefen und gezielt verbessern",
+      "source": {
+        "kind": "pull",
+        "number": 37
+      },
+      "scope": "Pruefe die bestehende statische Command-Center-Demo aus Draft-PR #37 auf Browserfunktionen, Barrierefreiheit, Rollenmodell und Sicherheitsgrenzen. Keine zweite UI aufbauen; nur gezielte, isolierte Verbesserungen auf Basis der vorhandenen Arbeit vorschlagen.",
+      "acceptance": [
+        "PR #37, Commit und Tests zuerst lesen und dokumentieren.",
+        "Responsive, Accessibility- und Offline-Sicherheitspruefungen mit Belegen.",
+        "Keine echten Logins, Credentials, Backend-Anbindung oder Deployment."
+      ],
+      "handoff_status": "PROPOSED_NOT_STARTED"
+    },
+    {
+      "task_id": "WEB-DEPLOY-001",
+      "title": "Cloudflare-Staging vorbereiten – ohne Veroeffentlichung",
+      "source": {
+        "kind": "issue",
+        "number": 39
+      },
+      "scope": "Pruefe die bestehende Demo und Issue #39. Erstelle nur einen reviewbaren Vorschlag fuer statische Cloudflare-Pages-Konfiguration, Preview-Schutz, Rollback und ein Test-Runbook. Kein Cloudflare-Konto verbinden, keine URL aktivieren.",
+      "acceptance": [
+        "Vorschlag referenziert die bestehende Demo aus PR #37.",
+        "Runbook beschreibt Preview-Schutz und Rollback ohne aktive Einrichtung.",
+        "Keine Deployments, Domains, Credentials oder produktiven Workflow-Aenderungen."
+      ],
+      "handoff_status": "PROPOSED_NOT_STARTED"
+    }
+  ]
+}
