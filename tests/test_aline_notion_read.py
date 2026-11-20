@@ -8,7 +8,6 @@ from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
-
 ROOT = Path(__file__).resolve().parents[1] / "prototypes" / "aline-openai-worker"
 SPEC = importlib.util.spec_from_file_location("aline_notion_read", ROOT / "notion_read.py")
 if SPEC is None or SPEC.loader is None:
