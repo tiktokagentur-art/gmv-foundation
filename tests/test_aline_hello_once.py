@@ -134,6 +134,9 @@ class BoundedGreetingTests(unittest.TestCase):
         with self.assertRaises(GateError):
             self.check(history(new), CURRENT + MAX_NEW_DISPATCHES)
 
+    def test_third_original_completed_failure(self):
+        self.check(history(third_conclusion="failure"))
+
     def test_third_original_still_waiting(self):
         with self.assertRaises(GateError):
             self.check(history(third_conclusion=None))
