@@ -19,7 +19,13 @@ python3 -m http.server 8080 --bind 127.0.0.1
 # Im eigenen Browser: http://127.0.0.1:8080/
 ```
 
-Statische Smoke-Checks (Node.js 20+):\n\n```bash\nnode prototypes/pizza-club-command-center/smoke.test.mjs\n```\n\nAlternativ `index.html` lokal oeffnen. Der Demo-Code laedt keine externen
+Statische Smoke-Checks (Node.js 20+):
+
+```bash
+node prototypes/pizza-club-command-center/smoke.test.mjs
+```
+
+Alternativ `index.html` lokal oeffnen. Der Demo-Code laedt keine externen
 Ressourcen. Bei einem spaeteren Produktaufbau kann der HTML/CSS/JS-Prototyp
 in Next.js/React uebernommen werden. **Next.js ist hier absichtlich noch nicht
 eingefuehrt**, da die finale Authentisierung und der API-Integrationsvertrag
@@ -32,6 +38,7 @@ noch offen sind und diese Designabnahme kein produktives Laufzeitsystem verlangt
 | CEO | Cockpit, Navigation und Beispieldaten | Live-KPIs, echte Autorisierung |
 | Aline Chat | Texteingabe, Schnelleinstiege, lokale Nachrichten, Auftragsentwuerfe | LLM-Aufruf, persistenter Chat |
 | Abteilungen | Chat-/Entwurfsraeume fuer Deniz, Samira, Malik, Lea | Echte KI-Leiter- oder Rollenidentitaeten |
+| Mitarbeiterzugang | persoenliche Logins, Einladungsablauf, Rollen-/Scope-Matrix als UI-Konzept | Echte Konten, IdP, Einladungen, IAM-Aenderungen |
 | Auftraege | Liste, Status, Ergebnisbeispiele und Detaildialog | WorkItems, Assignment Authority, Claims |
 | Freigaben | Lokaler Statuswechsel nach Browser-Bestaetigung | Backend-Freigabe, Rechteaenderung, Audit-Trail |
 | Kosten | 0 EUR Demo-API-Kosten und Beispiel-Budgetprozess | Provider Usage, Rechnung, wirksames Budgetlimit |
@@ -52,6 +59,26 @@ externe Skripte oder Backend-Endpunkte.
   `app/`, `api/`, `docs/adr/` oder `.github/` geaendert.
 - Das Repo hat den Python/FastAPI-Stack bereits als Backend-Baseline.
   Die spaetere UI darf die fachliche Zustandsfuehrung NICHT duplizieren.
+
+## Mehrbenutzeranforderung fuer echte Mitarbeiter
+
+Das Command Center ist von Beginn an als spaetere Mehrbenutzer-Anwendung
+vorgesehen. Jede reale Person soll einen eigenen Login mit MFA bekommen,
+sowohl Mitarbeiter als auch Abteilungsleitende. Ausgewaehlte Abteilungen,
+Rollen und Projekt-Scopes begrenzen den Datenzugriff **serverseitig**.
+CEO-Freigaben stehen nicht automatisch allen eingeloggten Nutzern offen.
+
+Aline und andere KI-Mitarbeiter haben **keine** Human-Login-Identitaet.
+Ihre Workload-Identitaeten und Berechtigungen bleiben getrennt.
+
+Die neue Seite **Mitarbeiterzugang** illustriert den Ablauf, hat aber
+weder eine Authentisierung noch eine echte Benutzerverwaltung.
+Details, Datenmodell, Rechte-Matrix, API-Entwurf, Sicherheits- und
+Abnahmetests: [HUMAN_ACCESS_DESIGN.md](HUMAN_ACCESS_DESIGN.md).
+
+Die Auswahl des Identity Providers und das genaue Verfahren sind
+weiterhin ADR-0008 (Proposed) vorbehalten. Keine Vorfestlegung oder
+produktive Freigabe durch dieses PR.
 
 ## Vorgeschlagene Produktarchitektur (nicht umgesetzt)
 
@@ -117,6 +144,7 @@ Zustandsgrenzen, Schemas, Zugriffsregeln und Statusuebergaenge sind mit
 - [x] Simulierte Freigaben mit eindeutiger Demo-Kennzeichnung
 - [x] Getrennte Darstellung von nicht angefallenen Demo-Kosten
 - [x] Aline-/Abteilungsansichten mit eindeutiger Nicht-Verbindung
+- [x] Entwurfsansicht fuer spaetere individuelle Mitarbeiterzugaenge
 - [ ] Browser- und Accessibility-Review durch unabhaengige Pruefer
 - [ ] CI/Nachweise zu Javascript- und HTML-Validierung
 - [ ] Security-Review durch Shafo, Engineering-Abnahme Deniz
@@ -124,7 +152,7 @@ Zustandsgrenzen, Schemas, Zugriffsregeln und Statusuebergaenge sind mit
 
 ## Testplan (ohne produktive Aktionen)
 
-1. Lokal oeffnen: alle 9 Sidebar-Ansichten erreichbar.
+1. Lokal oeffnen: alle 10 Sidebar-Ansichten erreichbar.
 2. Auf dem iPhone-Simulator und bei 320, 390, 768 und 1440 px pruefen.
 3. Einen Beispieltext in Aline Chat absenden: lokaler Entwurf erscheint;
    kein Network-Request.
@@ -134,6 +162,7 @@ Zustandsgrenzen, Schemas, Zugriffsregeln und Statusuebergaenge sind mit
    Storage ohne Eintraege, keine entfernten Skripte.
 7. Tastatur: Fokus, Navigation, Dialog, Escape und mobile Menues testen.
 8. Kein OAuth, LLM/Worker-Call, externer Link, GitHub Write oder Deploy.
+9. Mitarbeiterzugang: keine Anmeldung/Einladung, Scope/Rechte nur als Demo.
 
 ## Ownership und Pruefgates
 
