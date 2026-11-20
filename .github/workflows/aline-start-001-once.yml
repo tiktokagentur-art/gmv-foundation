@@ -32,8 +32,8 @@ jobs:
           persist-credentials: false
       - name: Reject prior runs, unexpected actor, reruns or wrong ref
         env:
-          GITHUB_TOKEN: ${{ github.token }
-          ALINE_AUTHORIZATION: ${{ inputs.authorization }
+          GITHUB_TOKEN: ${{ github.token }}
+          ALINE_AUTHORIZATION: ${{ inputs.authorization }}
         run: python3 scripts/aline_start_001_guard.py
 
   invoke-once:
@@ -95,14 +95,14 @@ jobs:
 
       - name: Recheck global run history after environment approval
         env:
-          GITHUB_TOKEN: ${{ github.token }
-          ALINE_AUTHORIZATION: ${{ inputs.authorization }
+          GITHUB_TOKEN: ${{ github.token }}
+          ALINE_AUTHORIZATION: ${{ inputs.authorization }}
         run: python3 trusted-main/scripts/aline_start_001_guard.py
 
       - name: Single OpenAI API invocation (no retries, fail closed)
         shell: bash
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-6.1-terra
         run: |
           set -euo pipefail
