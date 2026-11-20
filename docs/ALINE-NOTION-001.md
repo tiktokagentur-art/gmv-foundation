@@ -9,7 +9,7 @@ keine Staging- oder Produktionsaktivierung. Abhängig von Draft-PR #31.
   auf Branch prototype/aline-openai-worker-l1 (Draft-PR #31).
 - Historisch existiert der „Notion MCP Governance Adapter V1“ im alten
   Repository fabianmartens95-art/gmv-platform, dokumentiert unter
-  https://app.notion.com/p/3e576c6817ac813eaac1fc86f4a17eed.
+  [historischer Notion-Adapter](https://app.notion.com/p/3e576c6817ac813eaac1fc86f4a17eed).
   Dessen begrenzter Lese-/Schreibvertrag ist eine Governance-Referenz.
   Ein betriebsbereiter Credential-Pfad im aktuellen GMV-V3-Worker
   ist damit nicht nachgewiesen. Keine Übernahme alter Tokens.
