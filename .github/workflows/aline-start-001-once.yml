@@ -1,0 +1,143 @@
+name: ALINE-START-001 One-shot OpenAI test
+
+# Workflow-dispatch only. This workflow must be reviewed and merged to the
+# default branch before GitHub will make the Run workflow control available.
+# NO pull_request, push, schedule, workflow_run or automatic retries.
+on:
+  workflow_dispatch:
+    inputs:
+      authorization:
+        description: "After manually checking previous API attempts and the OpenAI project budget, type: ALINE-START-001 EINMALIG FREIGEGEBEN"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+# Serialize all dispatches. Never cancel a potentially billed in-flight call.
+concurrency:
+  group: aline-start-001-global-once
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: History, actor and explicit-authorization gate (no secrets)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout trusted default-branch guard
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Reject prior runs, unexpected actor, reruns or wrong ref
+        env:
+          GITHUB_TOKEN: ${{ github.token }
+          ALINE_AUTHORIZATION: ${{ inputs.authorization }
+        run: python3 scripts/aline_start_001_guard.py
+
+  invoke-once:
+    name: One synthetic worker invocation (separate protected environment)
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: aline-l1-staging
+    steps:
+      - name: Checkout trusted default-branch guard
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: trusted-main
+
+      - name: Checkout fixed reviewed Aline worker commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: worker-src
+          ref: 6dc875ecd4e7acb70b7f09023ab9af08d5c906ec
+
+      - name: Confirm exact commit and reviewed synthetic fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C worker-src rev-parse HEAD)" = "6dc875ecd4e7acb70b7f09023ab9af08d5c906ec"
+          test "$(git -C worker-src hash-object prototypes/aline-openai-worker/examples/synthetic.json)" = "d6ff931080fa69de5998f2626e8c2702509242f1"
+          echo "Fixed worker and synthetic fixture integrity: OK"
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install worker dependencies (no OpenAI call)
+        run: python -m pip install --disable-pip-version-check --no-cache-dir -r worker-src/prototypes/aline-openai-worker/requirements.txt
+
+      - name: Offline validation, SDK compatibility and input restrictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          f=worker-src/prototypes/aline-openai-worker
+          python "$f/worker.py" --input "$f/examples/synthetic.json" --validate-only > /dev/null
+          python "$f/worker.py" --input "$f/examples/synthetic.json" --offline-demo > "$RUNNER_TEMP/aline-offline.json"
+          python - <<'PY'
+          import json
+          import os
+          from agents import Agent, ModelSettings, RunConfig, Runner
+          d = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "aline-offline.json"), encoding="utf-8"))
+          assert d["execution_mode"] == "offline_deterministic_demo"
+          assert d["api_requests_made"] == 0
+          assert d["writes_performed"] == 0
+          assert [x["ticket_id"] for x in d["report"]["findings"]] == ["EX-001", "EX-002"]
+          ModelSettings(max_tokens=2000, store=False, timeout=45)
+          print("Offline and SDK preflight OK; no model call so far")
+          PY
+          rm -f "$RUNNER_TEMP/aline-offline.json"
+
+      - name: Recheck global run history after environment approval
+        env:
+          GITHUB_TOKEN: ${{ github.token }
+          ALINE_AUTHORIZATION: ${{ inputs.authorization }
+        run: python3 trusted-main/scripts/aline_start_001_guard.py
+
+      - name: Single OpenAI API invocation (no retries, fail closed)
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }
+          OPENAI_MODEL: gpt-6.1-terra
+        run: |
+          set -euo pipefail
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::Environment secret OPENAI_API_KEY missing. No model request."
+            exit 1
+          fi
+          umask 077
+          response_file="$(mktemp "$RUNNER_TEMP/aline-once-XXXXXX.json")"
+          trap 'rm -f "$response_file"' EXIT
+          python worker-src/prototypes/aline-openai-worker/worker.py \
+            --input worker-src/prototypes/aline-openai-worker/examples/synthetic.json \
+            --confirm-api-call --confirm-data-transfer > "$response_file"
+          python - "$response_file" <<'PY'
+          import json
+          import sys
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              result = json.load(stream)
+          assert result["worker_id"] == "GMV-VE-001"
+          assert result["runtime_status"] == "advisory_only_not_authoritative"
+          assert result["execution_mode"] == "openai_model_call"
+          assert result["api_requests_made"] == 1
+          assert result["synthetic_input"] is True
+          assert result["writes_performed"] == 0
+          assert result["approval_status"] == "not_requested_or_granted"
+          findings = result["report"]["findings"]
+          assert [x["ticket_id"] for x in findings] == ["EX-001", "EX-002"]
+          assert all(x["evidence_status"] == "unknown" for x in findings)
+          print(json.dumps({
+              "result": "PASS",
+              "pilot": "ALINE-START-001",
+              "model": "gpt-6.1-terra",
+              "worker_id": "GMV-VE-001",
+              "execution_mode": "openai_model_call",
+              "accepted_findings": len(findings),
+              "writes_performed": 0,
+          }, ensure_ascii=False))
+          PY
