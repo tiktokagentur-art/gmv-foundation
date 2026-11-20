@@ -309,8 +309,10 @@ def check_workflow(errors: list[str]) -> None:
         errors.append("Lint and structure must check out full git history once")
     if "gitleaks" in rest:
         errors.append("gitleaks must not run in Backend or Image")
-    if lint_section.count("runs-on:") != 1 or rest.count("runs-on:") != 2:
-        errors.append(".github/workflows/ci.yml must keep exactly three jobs")
+    if "\n  aline-pilot:\n" not in rest or "name: Aline pilot" not in rest:
+        errors.append(".github/workflows/ci.yml is missing the Aline pilot job")
+    if lint_section.count("runs-on:") != 1 or rest.count("runs-on:") != 3:
+        errors.append(".github/workflows/ci.yml must keep exactly four jobs")
 
 
 def check_gitleaks_script(errors: list[str]) -> None:

@@ -1,18 +1,48 @@
-"""Authenticated, offline-only FastAPI adapter for the Aline L1 pilot.
-
-This service deliberately makes zero model calls and performs no external writes.
-"""
+"""Aline's single FastAPI runtime: existing offline fixture and gated live dialogue."""
 import hmac
+import json
+import logging
 import os
+import re
+from datetime import UTC, datetime
 from typing import Literal
 
+import live_runtime
 from fastapi import Depends, FastAPI, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from worker import WORKER_ID, Analysis, Snapshot, assert_pilot_fixture, offline_demo
 
-from worker import Analysis, Snapshot, WORKER_ID, assert_pilot_fixture, offline_demo
+
+class _JsonLogFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        data = {
+            "timestamp": datetime.fromtimestamp(record.created, UTC).isoformat(),
+            "level": record.levelname,
+            "event": record.getMessage(),
+            "worker_id": WORKER_ID,
+        }
+        run_id = getattr(record, "run_id", None)
+        if isinstance(run_id, str):
+            data["run_id"] = run_id
+        error_type = getattr(record, "error_type", None)
+        if isinstance(error_type, str):
+            data["error_type"] = error_type
+        return json.dumps(data, ensure_ascii=False)
+
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(_JsonLogFormatter())
+logger = logging.getLogger("aline.api")
+logger.handlers[:] = [_handler]
+logger.propagate = False
+logger.setLevel(logging.INFO)
+GREETING = (
+    "Hallo Aline, wie geht es dir heute? Bitte stelle dich kurz vor und "
+    "bestätige deinen aktuellen Betriebsstatus."
+)
 
 app = FastAPI(
-    title="Aline L1 offline pilot",
+    title="Aline L1 pilot",
     version="0.1.0",
     docs_url=None,
     redoc_url=None,
@@ -42,17 +72,87 @@ def require_pilot_token(
         raise HTTPException(status_code=401, detail="unauthorized")
 
 
+def require_ceo_token(
+    x_ceo_token: str | None = Header(default=None, alias="X-CEO-Token"),
+) -> None:
+    """Keep the dialogue credential distinct from the old offline demo token."""
+    expected = os.environ.get("ALINE_CEO_TOKEN", "")
+    if len(expected) < 32:
+        raise HTTPException(status_code=503, detail="dialogue authentication not configured")
+    if x_ceo_token is None or not hmac.compare_digest(expected, x_ceo_token):
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+
+class DialogRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=500)
+    synthetic: Literal[True]
+
+
+def _ceo_scope_ready() -> bool:
+    return len(os.environ.get("ALINE_CEO_TOKEN", "")) >= 32
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "aline-l1-offline-api"}
+    return {"status": "ok", "service": "aline-openai-worker-l1"}
 
 
 @app.get("/ready")
 def ready() -> dict[str, str]:
-    # Readiness is NOT a signal that the model, IAM or real sources are authorized.
-    if len(os.environ.get("ALINE_PILOT_TOKEN", "")) < 32:
-        raise HTTPException(status_code=503, detail="pilot authentication not configured")
-    return {"status": "ready", "mode": "synthetic_offline_only"}
+    # Deployment readiness is a local gate; provider access is proved only by a live call.
+    if not _ceo_scope_ready():
+        raise HTTPException(status_code=503, detail="dialogue authentication not configured")
+    okay, reason = live_runtime.readiness()
+    if not okay:
+        raise HTTPException(status_code=503, detail=reason)
+    return {"status": "ready", "mode": "ready_for_probe"}
+
+
+@app.get("/v1/status")
+def status(_auth: None = Depends(require_ceo_token)) -> dict:
+    return live_runtime.get_status()
+
+
+@app.post("/v1/dialog")
+async def dialog(
+    request: DialogRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    _auth: None = Depends(require_ceo_token),
+) -> dict:
+    if idempotency_key is None or not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", idempotency_key):
+        raise HTTPException(status_code=400, detail="valid Idempotency-Key required")
+    if request.message != GREETING and os.environ.get("ALINE_CEO_DIALOG_APPROVED") != "true":
+        raise HTTPException(status_code=403, detail="message outside approved synthetic corridor")
+    try:
+        result = await live_runtime.dialog(request.message, idempotency_key)
+    except live_runtime.RuntimeDuplicate:
+        logger.warning("dialogue duplicate rejected", extra={"error_type": "RuntimeDuplicate"})
+        raise HTTPException(
+            status_code=409, detail="request key already used; inspect status"
+        ) from None
+    except live_runtime.RuntimeBusy:
+        logger.warning("dialogue rejected", extra={"error_type": "RuntimeBusy"})
+        raise HTTPException(status_code=409, detail="another run is active") from None
+    except live_runtime.RuntimeUncertain:
+        logger.error("dialogue outcome uncertain", extra={"error_type": "RuntimeUncertain"})
+        raise HTTPException(
+            status_code=502, detail="model outcome uncertain; pilot paused"
+        ) from None
+    except live_runtime.RuntimeBlocked as exc:
+        logger.warning("dialogue blocked", extra={"error_type": "RuntimeBlocked"})
+        raise HTTPException(status_code=503, detail=str(exc)) from None
+    logger.info("dialogue succeeded", extra={"run_id": result.get("run_id")})
+    return result
+
+
+@app.post("/v1/stop")
+def stop(_auth: None = Depends(require_ceo_token)) -> dict[str, str]:
+    try:
+        live_runtime.stop()
+    except live_runtime.RuntimeBlocked as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from None
+    logger.warning("pilot stopped by CEO")
+    return {"status": "stopped", "worker_id": WORKER_ID}
 
 
 @app.post("/v1/offline-analysis", response_model=OfflineAnalysisResponse)
