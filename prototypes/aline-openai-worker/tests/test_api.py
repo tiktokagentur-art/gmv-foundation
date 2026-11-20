@@ -70,7 +70,8 @@ class AlineApiTests(unittest.TestCase):
                 json=FIXTURE,
                 headers={"X-Pilot-Token": TOKEN},
             )
-        self.assertEqual(ready.status_code, 200)
+        # Offline fixture remains usable; live readiness has stricter gates.
+        self.assertEqual(ready.status_code, 503)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["api_requests_made"], 0)
         self.assertEqual(response.json()["writes_performed"], 0)

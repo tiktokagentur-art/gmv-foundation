@@ -130,3 +130,33 @@ jobs:
           else:
               sys.exit("ready succeeded without a database")
           PY
+
+  aline-pilot:
+    name: Aline pilot
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install worker test dependencies
+        run: |
+          python -m pip install -r prototypes/aline-openai-worker/requirements-api.txt
+          python -m pip install httpx==0.28.1 ruff==0.17.6
+
+      - name: Lint live adapter
+        run: >-
+          ruff check
+          prototypes/aline-openai-worker/api.py
+          prototypes/aline-openai-worker/live_runtime.py
+          prototypes/aline-openai-worker/tests/test_live_api.py
+
+      - name: Test worker and API without provider calls
+        run: python -m unittest discover -s prototypes/aline-openai-worker/tests -v
+
+      - name: Build Aline HTTP image
+        run: docker build -f prototypes/aline-openai-worker/Dockerfile.api -t aline-pilot:ci prototypes/aline-openai-worker
