@@ -41,18 +41,13 @@ def validate_identity(env: Mapping[str, str]) -> None:
         raise GateError("Denied: missing valid GITHUB_RUN_ID")
 
 
-def validate_first_dispatch(
-    env: Mapping[str, str],
-    token: str,
-    opener=urllib.request.urlopen,
-) -> None:
-    """Require that this workflow has exactly one dispatch run: the current run."""
-    if not token:
-        raise GateError("Denied: read-only GitHub Actions token missing")
-    url = (
-        f"https://api.github.com/repos/{REPO}/actions/workflows/{WORKFLOW}/runs"
-        "?event=workflow_dispatch&per_page=100"
-    )
+# GitHub confirmed this particular dispatch failed before any runner or step.
+# Only this precise failed attempt may be excluded when allowing a replacement run.
+PRE_RUN_FAILURE_ID = 44694430741
+PRE_RUN_FAILURE_SHA = "71557145872ca31862e1bd617bc6eeb01f7d5826"
+
+
+def _read_github_json(url: str, token: str, opener) -> dict:
     request = urllib.request.Request(
         url,
         headers={
@@ -66,17 +61,74 @@ def validate_first_dispatch(
             raw = response.read(MAX_HISTORY_BYTES + 1)
         if len(raw) > MAX_HISTORY_BYTES:
             raise GateError("Denied: oversized workflow-run history")
-        payload = json.loads(raw)
+        data = json.loads(raw)
     except (OSError, ValueError) as exc:
         raise GateError("Denied: GitHub workflow-run history unavailable") from exc
-    runs = payload.get("workflow_runs")
+    if not isinstance(data, dict):
+        raise GateError("Denied: unexpected GitHub response")
+    return data
+
+
+def _verify_prior_attempt_never_started(token: str, opener) -> None:
+    """Do not assume 'failure' means no API request: require no runner and zero steps."""
+    url = (
+        f"https://api.github.com/repos/{REPO}/actions/runs/"
+        f"{PRE_RUN_FAILURE_ID}/jobs?per_page=100"
+    )
+    payload = _read_github_json(url, token, opener)
+    jobs = payload.get("jobs")
+    if payload.get("total_count") != 1 or not isinstance(jobs, list) or len(jobs) != 1:
+        raise GateError("Denied: prior attempt job evidence is incomplete")
+    job = jobs[0]
     if (
-        payload.get("total_count") != 1
-        or not isinstance(runs, list)
-        or len(runs) != 1
-        or str(runs[0].get("id")) != env["GITHUB_RUN_ID"]
+        job.get("conclusion") != "failure"
+        or job.get("status") != "completed"
+        or job.get("runner_name") not in ("", None)
+        or job.get("steps") != []
     ):
-        raise GateError("Denied: this is not the only dispatch run")
+        raise GateError("Denied: prior attempt may have executed steps")
+
+
+def validate_first_dispatch(
+    env: Mapping[str, str],
+    token: str,
+    opener=urllib.request.urlopen,
+) -> None:
+    """Exactly one actual attempt; exclude only attested pre-run failure #44694430741."""
+    if not token:
+        raise GateError("Denied: read-only GitHub Actions token missing")
+    url = (
+        f"https://api.github.com/repos/{REPO}/actions/workflows/{WORKFLOW}/runs"
+        "?event=workflow_dispatch&per_page=100"
+    )
+    payload = _read_github_json(url, token, opener)
+    runs = payload.get("workflow_runs")
+    if not isinstance(runs, list):
+        raise GateError("Denied: malformed workflow-run history")
+    current_id = int(env["GITHUB_RUN_ID"])
+    if (
+        payload.get("total_count") == 1
+        and len(runs) == 1
+        and runs[0].get("id") == current_id
+    ):
+        return
+
+    if payload.get("total_count") != 2 or len(runs) != 2:
+        raise GateError("Denied: multiple workflow dispatches already recorded")
+    current = [run for run in runs if run.get("id") == current_id]
+    previous = [run for run in runs if run.get("id") == PRE_RUN_FAILURE_ID]
+    if len(current) != 1 or len(previous) != 1 or current_id == PRE_RUN_FAILURE_ID:
+        raise GateError("Denied: dispatches do not match approved one-shot recovery")
+    earlier = previous[0]
+    if (
+        earlier.get("conclusion") != "failure"
+        or earlier.get("status") != "completed"
+        or earlier.get("run_attempt") != 1
+        or earlier.get("head_sha") != PRE_RUN_FAILURE_SHA
+        or earlier.get("head_branch") != "main"
+    ):
+        raise GateError("Denied: original failed dispatch evidence changed")
+    _verify_prior_attempt_never_started(token, opener)
 
 
 async def ask_aline() -> str:
