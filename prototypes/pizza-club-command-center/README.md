@@ -19,7 +19,7 @@ python3 -m http.server 8080 --bind 127.0.0.1
 # Im eigenen Browser: http://127.0.0.1:8080/
 ```
 
-Alternativ `index.html` lokal oeffnen. Der Demo-Code laedt keine externen
+Statische Smoke-Checks (Node.js 20+):\n\n```bash\nnode prototypes/pizza-club-command-center/smoke.test.mjs\n```\n\nAlternativ `index.html` lokal oeffnen. Der Demo-Code laedt keine externen
 Ressourcen. Bei einem spaeteren Produktaufbau kann der HTML/CSS/JS-Prototyp
 in Next.js/React uebernommen werden. **Next.js ist hier absichtlich noch nicht
 eingefuehrt**, da die finale Authentisierung und der API-Integrationsvertrag
