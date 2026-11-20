@@ -160,3 +160,32 @@ jobs:
 
       - name: Build Aline HTTP image
         run: docker build -f prototypes/aline-openai-worker/Dockerfile.api -t aline-pilot:ci prototypes/aline-openai-worker
+
+      - name: Smoke Aline liveness and closed readiness
+        run: |
+          set -eu
+          docker run -d --name aline-pilot-smoke -p 18080:8000 aline-pilot:ci
+          trap 'docker rm -f aline-pilot-smoke >/dev/null' EXIT
+          python - <<'PY'
+          import json
+          import time
+          import urllib.error
+          import urllib.request
+
+          for _ in range(20):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:18080/health", timeout=2) as response:
+                      assert response.status == 200
+                      assert json.load(response)["status"] == "ok"
+                  break
+              except (OSError, AssertionError):
+                  time.sleep(1)
+          else:
+              raise SystemExit("Aline health failed")
+          try:
+              urllib.request.urlopen("http://127.0.0.1:18080/ready", timeout=2)
+          except urllib.error.HTTPError as exc:
+              assert exc.code == 503
+          else:
+              raise SystemExit("Aline activated without its required gates")
+          PY
