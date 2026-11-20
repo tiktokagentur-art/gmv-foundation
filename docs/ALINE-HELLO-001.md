@@ -47,3 +47,28 @@ Dieser humaninitiierte Einmaltest nutzt `aline-l1-staging` und verändert
 weder das permanente L1-Autotest-Environment noch `ALINE_L1_ACTIVATED`.
 Ein erfolgreicher „Wie geht's?“-Dialog ist kein Beleg für Autonomie,
 Bot-Identität, Zustandsrechte oder produktive Betriebsbereitschaft.
+
+
+## Fehlgeschlagener Erststart, 20.11.2026
+
+Der manuelle Run [44694430741](https://github.com/tiktokagentur-art/gmv-foundation/actions/runs/44694430741)
+endete `failure`, bevor ein Runner gestartet oder ein einziger Step ausgeführt
+wurde (GitHub API: `runner_name=""`, `steps=[]`). Damit ist kein API-Aufruf
+aus diesem Run erfolgt. Ursache ist vermutlich die vorhandene
+Environment-Branchregel, die laut CEO-Screenshot nur den Prototyp-Branch
+zulässt, während dieses Verfahren strikt `main` verlangt. Die exakte
+Annotationsmeldung war nicht abrufbar.
+
+Die ursprüngliche strenge Einmal-Sperre zählt auch den gescheiterten Start.
+Daher wird **nur dieser exakte vor Runnerbeginn gescheiterte Run** als
+Ausnahme zugelassen: Die GitHub-API muss bei jedem Preflight den historischen
+Lauf, Commit, Status und die fehlende Runner-/Step-Ausführung nachweisen.
+Das gestattet höchstens einen Ersatz-Dispatch. Der dritte Dispatch oder
+fehlende Evidenz sperrt dauerhaft. Keine erweiterte Schreibberechtigung,
+kein anderer Actor, keine automatischen Retries.
+
+VOR EINEM ERSATZVERSUCH: `main` explizit zu den zulässigen Deployment-Branches
+von `aline-l1-staging` aufnehmen, Reviewer-Gate prüfen, Secret-Zuordnung und
+OpenAI-Projektlimit verifizieren. Diese Korrektur muss als neuer PR mit grüner
+CI und separater Freigabe nach `main` gemergt werden. Bis dahin
+keinen weiteren Workflow-Dispatch auslösen.
