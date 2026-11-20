@@ -1,7 +1,7 @@
 """Offline-only negative tests for the ALINE-START-001 dispatch guard."""
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 guard_path = Path(__file__).resolve().parents[1] / "scripts" / "aline_start_001_guard.py"
 spec = importlib.util.spec_from_file_location("aline_start_001_guard", guard_path)
