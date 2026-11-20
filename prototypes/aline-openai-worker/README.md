@@ -34,6 +34,10 @@ lesende Prüfaufträge; **keine** Aufgabenvergabe, Ticketänderung oder Freigabe
 
 ## Tests / Probelauf
 
+Eine optionale, standardmäßig inaktive Supabase-Vault-Secret-Quelle und die
+noch nicht ausgeführten Rollen-/Railway-Schritte beschreibt
+[`SUPABASE_VAULT_PROPOSAL.md`](SUPABASE_VAULT_PROPOSAL.md).
+
 ```bash
 python -m pip install 'pydantic>=2.9,<3'
 python -m unittest discover -s prototypes/aline-openai-worker/tests -v
