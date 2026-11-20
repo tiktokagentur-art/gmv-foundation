@@ -46,7 +46,7 @@ python3 scripts/codex_dispatcher_a.py --list
 python3 scripts/codex_dispatcher_a.py --task SELLER-HEALTH-001
 python3 scripts/codex_dispatcher_a.py --task UI-FOUND-002
 python3 scripts/codex_dispatcher_a.py --task WEB-DEPLOY-001
-python3 -m unittest tests/test_codex_dispatcher_a.py
+python3 -m unittest discover -s tests -p 'test_codex_dispatcher_a.py'
 ~~~
 
 Ein einzelner Handoff wird auf stdout ausgegeben und kann vom autorisierten
