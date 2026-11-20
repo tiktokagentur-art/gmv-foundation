@@ -16,6 +16,7 @@ from aline_hello_once import (  # noqa: E402
     GateError,
     validate_bounded_dispatch,
     validate_identity,
+    safe_rate_limit_code,
 )
 
 FIRST = 44694430741
@@ -94,6 +95,24 @@ class BoundedGreetingTests(unittest.TestCase):
             good_env(run_id), "fake-token",
             with_history(payload, job_started=job_started),
         )
+
+    def test_safe_documented_rate_limit_code(self):
+        class MockRateLimit(Exception):
+            code = "credit_balance_exhausted"
+        self.assertEqual(safe_rate_limit_code(MockRateLimit()), "credit_balance_exhausted")
+
+    def test_safe_project_spend_limit_code_in_body(self):
+        class MockRateLimit(Exception):
+            body = {"code": "project_spend_limit_exceeded"}
+        self.assertEqual(safe_rate_limit_code(MockRateLimit()), "project_spend_limit_exceeded")
+
+    def test_unrecognized_provider_code_is_redacted(self):
+        class MockRateLimit(Exception):
+            code = "secret-sk-example"
+        self.assertEqual(safe_rate_limit_code(MockRateLimit()), "unclassified")
+
+    def test_no_error_detail_is_unclassified(self):
+        self.assertEqual(safe_rate_limit_code(Exception("sensitive data")), "unclassified")
 
     def test_valid_identity(self):
         validate_identity(good_env())
