@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
 import tempfile
 import unittest
@@ -10,7 +11,12 @@ from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 
-from scripts import codex_dispatcher_a as dispatcher
+SOURCE = Path(__file__).resolve().parents[1] / "scripts" / "codex_dispatcher_a.py"
+SPEC = importlib.util.spec_from_file_location("codex_dispatcher_a", SOURCE)
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError("Could not load Codex dispatcher source")
+dispatcher = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(dispatcher)
 
 
 class CodexDispatcherATests(unittest.TestCase):
