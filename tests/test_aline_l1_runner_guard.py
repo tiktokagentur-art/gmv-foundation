@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.aline_l1_runner_guard import (
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from aline_l1_runner_guard import (  # noqa: E402
     GuardError,
     conservative_estimate_usd,
     validate_environment,
