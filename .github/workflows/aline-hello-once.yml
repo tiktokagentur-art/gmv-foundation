@@ -1,0 +1,60 @@
+name: ALINE-HELLO-001 one-shot greeting
+
+# Separate from the autonomous ALINE-L1 runner; never runs on push, PR or cron.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: aline-l1-synthetic-api-global
+  cancel-in-progress: false
+
+jobs:
+  aline-hello:
+    name: Human-triggered Aline greeting, at most one API turn
+    if: ${{ github.actor == 'tiktokagentur-art' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: aline-l1-staging
+    steps:
+      - name: Checkout the exact workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Check CEO identity and reject every rerun or second dispatch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/aline_hello_once.py --preflight
+
+      - name: Checkout pinned Aline worker (instructions only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: worker-src
+          ref: 6dc875ecd4e7acb70b7f09023ab9af08d5c906ec
+
+      - name: Verify exact worker revision
+        run: |
+          test "$(git -C worker-src rev-parse HEAD)" = "6dc875ecd4e7acb70b7f09023ab9af08d5c906ec"
+
+      - name: Install existing pinned Aline SDK dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir \
+            -r worker-src/prototypes/aline-openai-worker/requirements.txt
+
+      - name: Send exactly one harmless greeting to Aline
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-6.1-terra
+        run: python scripts/aline_hello_once.py
