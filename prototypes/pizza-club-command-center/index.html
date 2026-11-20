@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Pizza Club Command Center – isolierter, nicht verbundener UI-Prototyp">
+  <title>Pizza Club · Command Center (Demo)</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <svg aria-hidden="true" class="icon-defs" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 11.5a8.3 8.3 0 0 1-8.5 8.5A9 9 0 0 1 8 19l-5 2 1.5-4.5A8.5 8.5 0 1 1 21 11.5Z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 2 8 4v6c0 5-3.4 8-8 10-4.6-2-8-5-8-10V6l8-4Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18M8 16v-4M13 16V8M18 16V5"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M18 15a5 5 0 0 1 3 5"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m12 2 2 2 3-.2 1 3 2.5 2-1 3 1 3-2.5 2-1 3-3-.2-2 2-2-2-3 .2-1-3-2.5-2 1-3-1-3 2.5-2 1-3 3 .2 2-2Z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2ZM19 17l.7 2.3L22 20l-2.3.7L19 23l-.7-2.3L16 20l2.3-.7L19 17Z"/></symbol>
+  </svg>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">P<span>✦</span></div>
+        <div class="brand-copy"><strong>pizza club</strong><span>WORKSPACE / 001</span></div>
+        <button class="icon-button sidebar-close" id="closeSidebar" aria-label="Menü schließen"><svg><use href="#i-close"/></svg></button>
+      </div>
+
+      <div class="section-label">WORKSPACE</div>
+      <nav class="sidebar-nav" aria-label="Hauptnavigation">
+        <button class="nav-item" data-view="ceo" type="button"><svg><use href="#i-grid"/></svg> CEO Cockpit</button>
+        <button class="nav-item active" data-view="aline" type="button" aria-current="page"><svg><use href="#i-message"/></svg> Aline Chat <span class="nav-dot"></span></button>
+        <button class="nav-item" data-view="tasks" type="button"><svg><use href="#i-list"/></svg> Aufträge <span class="nav-count" id="taskCount">3</span></button>
+        <button class="nav-item" data-view="approvals" type="button"><svg><use href="#i-shield"/></svg> Freigaben <span class="nav-count" id="approvalCount">2</span></button>
+        <button class="nav-item" data-view="costs" type="button"><svg><use href="#i-chart"/></svg> Kosten</button>
+      </nav>
+
+      <div class="section-label teams-label">ABTEILUNGEN</div>
+      <nav class="sidebar-nav" aria-label="Abteilungen">
+        <button class="nav-item" data-view="engineering" type="button"><span class="team-icon purple">D</span> Deniz · Engineering</button>
+        <button class="nav-item" data-view="operations" type="button"><span class="team-icon blue">S</span> Samira · Review</button>
+        <button class="nav-item" data-view="sales" type="button"><span class="team-icon amber">M</span> Malik · Sales</button>
+        <button class="nav-item" data-view="people" type="button"><span class="team-icon green">L</span> Lea · Workforce</button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="prototype-indicator"><span class="pulse-dot"></span> NICHT VERBUNDEN <small>Statische Beispieldaten</small></div>
+        <div class="profile"><div class="profile-avatar">PC</div><div><strong>CEO Ansicht</strong><span>Demo – kein Login</span></div><svg><use href="#i-settings"/></svg></div>
+      </div>
+    </aside>
+    <div class="mobile-overlay" id="mobileOverlay" hidden></div>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button menu-toggle" id="openSidebar" aria-label="Menü öffnen" aria-expanded="false"><svg><use href="#i-menu"/></svg></button>
+          <span class="breadcrumb-muted">Workspace</span><span class="breadcrumb-divider">/</span><strong id="currentSection">Aline Chat</strong>
+        </div>
+        <div class="topbar-right">
+          <span class="sandbox-pill"><span class="sandbox-dot"></span> DESIGN-DEMO</span>
+          <span class="topbar-avatar" aria-label="CEO-Demoansicht">PC</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <div class="page-intro">
+          <div>
+            <p class="eyebrow">PIZZA CLUB / COMMAND CENTER</p>
+            <h1 id="pageTitle">Guten Abend, CEO <span class="star">✳</span></h1>
+            <p class="subtitle" id="pageSubtitle">Dein zentraler Arbeitsraum mit Aline – Aufträge, Entscheidungen und Ergebnisse.</p>
+          </div>
+          <div class="header-actions">
+            <span class="readonly-chip">◌ Alle Werte sind Demo</span>
+            <button class="primary-button" id="newTaskButton" type="button"><svg><use href="#i-plus"/></svg> Neuer Auftragsentwurf</button>
+          </div>
+        </div>
+
+        <section class="metrics" aria-label="Beispielkennzahlen">
+          <article class="metric-card"><span class="metric-title">Aufträge <span>↗</span></span><div class="metric-value" id="metricTasks">03 <small>Demo</small></div><p>Nur in dieser Browser-Sitzung</p></article>
+          <article class="metric-card"><span class="metric-title">Wartende Freigaben <span>↗</span></span><div class="metric-value" id="metricApprovals">02 <small>Demo</small></div><p>Simulierte Entscheidungen</p></article>
+          <article class="metric-card"><span class="metric-title">API-Kosten <span>↗</span></span><div class="metric-value">€ 0,00 <small>live</small></div><p>Keine API-Aufrufe möglich</p></article>
+          <article class="metric-card"><span class="metric-title">Systemstatus <span>◌</span></span><div class="metric-status"><span class="status-outline"></span> Offline-Demo</div><p>Keine Worker-Verbindung</p></article>
+        </section>
+
+        <div class="workspace-grid">
+          <div class="workspace-primary">
+            <section class="panel conversation-panel" id="conversationPanel" aria-label="KI-Kommunikation">
+              <div class="panel-heading">
+                <div class="person-heading">
+                  <div class="aline-avatar" id="chatAvatar">A<span>✦</span></div>
+                  <div><h2 id="chatTitle">Aline <span class="secondary-title">/ Chief of Staff</span></h2><p><span class="small-dash"></span><span id="chatStatus">Entwurfsmodus · nicht mit KI verbunden</span></p></div>
+                </div>
+                <span class="panel-tag">LOCAL ONLY</span>
+              </div>
+
+              <div class="messages" id="chatMessages" role="log" aria-live="polite" aria-label="Chatnachrichten">
+                <div class="day-marker"><span>BEISPIELGESPRÄCH · NICHT ECHT</span></div>
+                <div class="message-row assistant">
+                  <div class="mini-avatar">A</div>
+                  <div class="message-content">
+                    <div class="message-byline"><strong>Aline</strong><span>Demo</span></div>
+                    <div class="bubble"><p>Willkommen im Pizza Club Command Center. Hier kannst du Aufträge formulieren, Ergebnisse ansehen und Freigaben vorbereiten.</p><p class="bubble-footnote">Dieser Prototyp sendet keine Nachrichten und führt keine Aufgaben aus.</p></div>
+                  </div>
+                </div>
+                <div class="message-row user">
+                  <div class="message-content"><div class="message-byline"><strong>CEO</strong><span>Beispiel</span></div><div class="bubble"><p>Bitte bereite einen Engineering-Statusbericht vor und stelle offene Entscheidungen zusammen.</p></div></div>
+                </div>
+                <div class="message-row assistant">
+                  <div class="mini-avatar">A</div>
+                  <div class="message-content"><div class="message-byline"><strong>Aline</strong><span>Demoantwort</span></div><div class="bubble"><p>Auftragsentwurf vorbereitet. Vor einer echten Ausführung wären Identitätsprüfung, Umfang, Budgetgrenze und gegebenenfalls eine CEO-Freigabe notwendig.</p><div class="inline-proposal"><div><span class="inline-proposal-label">ENTWURF · UI-001</span><strong>Engineering-Statusbericht</strong><small>Kein Worker-Start, keine Kosten</small></div><button class="outline-button" type="button" data-open-task="demo-1">Ansehen <svg><use href="#i-arrow"/></svg></button></div></div></div>
+                </div>
+              </div>
+
+              <div class="chat-bottom">
+                <div class="quick-label">SCHNELLSTART</div>
+                <div class="quick-actions"><button type="button" data-prompt="Erstelle einen Auftragsentwurf für einen Statusbericht der Engineering-Abteilung.">Engineering-Bericht</button><button type="button" data-prompt="Fasse alle offenen CEO-Freigaben zusammen.">Offene Freigaben</button><button type="button" data-prompt="Erstelle einen Budget- und Kostenprüfauftrag.">Budget prüfen</button></div>
+                <form id="chatForm" class="composer">
+                  <label class="sr-only" for="chatInput">Auftrag für den Demo-Chat</label>
+                  <textarea id="chatInput" rows="2" maxlength="1500" placeholder="Schreibe einen Auftrag an Aline …" required></textarea>
+                  <div class="composer-foot"><span><svg><use href="#i-shield"/></svg> Nur lokaler Entwurf · keine Übertragung</span><button type="submit" class="send-button" aria-label="Lokal als Entwurf speichern"><svg><use href="#i-arrow"/></svg></button></div>
+                </form>
+                <p class="composer-disclaimer">Demo ohne Anmeldung oder API-Anbindung. Keine vertraulichen Informationen eingeben.</p>
+              </div>
+            </section>
+
+            <section class="panel data-panel" id="dataPanel" hidden aria-live="polite"></section>
+          </div>
+
+          <aside class="right-rail" aria-label="Kontext und Entscheidungen">
+            <section class="rail-panel highlight-panel">
+              <div class="rail-kicker">KONTEXT <span>◌ DEMO</span></div>
+              <div class="rail-profile"><div class="rail-avatar">A<span>✦</span></div><div><h3>Aline</h3><p>Chief of Staff · Worker-Konzept</p></div></div>
+              <div class="status-bar"><span class="neutral-dot"></span> Keine Runtime-Verbindung</div>
+              <div class="mini-details"><div><span>Ausführungsmodus</span><strong>Deaktiviert</strong></div><div><span>Auftragskontrolle</span><strong>Nur Simulation</strong></div><div><span>Datenquelle</span><strong>Lokale Beispiele</strong></div></div>
+            </section>
+
+            <section class="rail-panel">
+              <div class="rail-heading"><h3>CEO-Freigaben</h3><span class="tiny-count" id="railApprovalCount">2</span></div>
+              <div id="railApprovals"></div>
+              <button type="button" class="rail-link" data-view="approvals">Freigaben ansehen <svg><use href="#i-arrow"/></svg></button>
+            </section>
+
+            <section class="rail-panel">
+              <div class="rail-heading"><h3>Budgetvorschau</h3><span class="muted-tiny">DEMO</span></div>
+              <div class="budget-head"><strong>€ 0,00</strong><span>von € 10,00 Beispiel-Limit</span></div>
+              <div class="budget-track"><span style="width:0%"></span></div>
+              <div class="budget-caption">Kein Kosten-Tracking verbunden. Das Limit ist nicht durchgesetzt.</div>
+              <button type="button" class="rail-link" data-view="costs">Kostenansicht öffnen <svg><use href="#i-arrow"/></svg></button>
+            </section>
+
+            <div class="security-note"><svg><use href="#i-shield"/></svg><p><strong>Governance by design</strong><span>Ein echtes System benötigt serverseitige Authentisierung, Autorisierung, Freigabeprüfung und Auditierung.</span></p></div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="taskDialog" aria-labelledby="dialogTitle" class="task-dialog">
+    <form method="dialog" class="dialog-close-row"><button class="icon-button" aria-label="Schließen"><svg><use href="#i-close"/></svg></button></form>
+    <p class="eyebrow">LOKALER AUFTRAGSENTWURF</p><h2 id="dialogTitle">Auftrag</h2>
+    <p id="dialogDescription"></p>
+    <div class="dialog-details"><div><span>Ausführung</span><strong>Nicht verfügbar</strong></div><div><span>Kosten</span><strong>€ 0,00 tatsächliche API-Kosten</strong></div><div><span>Status</span><strong id="dialogStatus">Entwurf</strong></div></div>
+    <p class="dialog-warning">Dieses Fenster enthält ausschließlich Demodaten. Es gibt keine Anbindung an die Control Plane.</p>
+    <form method="dialog"><button class="primary-button full-width">Verstanden</button></form>
+  </dialog>
+</body>
+</html>
