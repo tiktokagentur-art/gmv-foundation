@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from aline_hello_once import (  # noqa: E402
-    GateError,
     MAX_NEW_DISPATCHES,
+    GateError,
     validate_bounded_dispatch,
     validate_identity,
 )
