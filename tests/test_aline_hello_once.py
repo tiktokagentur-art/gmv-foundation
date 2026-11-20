@@ -58,6 +58,91 @@ class HelloOnceTests(unittest.TestCase):
             with_history({"total_count": 1, "workflow_runs": [{"id": 98765}]}),
         )
 
+    def test_recovery_only_from_verified_zero_step_failure(self):
+        old = {
+            "id": 44694430741,
+            "conclusion": "failure",
+            "status": "completed",
+            "run_attempt": 1,
+            "head_sha": "71557145872ca31862e1bd617bc6eeb01f7d5826",
+            "head_branch": "main",
+        }
+        current = {"id": 98765}
+        history = {"total_count": 2, "workflow_runs": [current, old]}
+        jobs = {
+            "total_count": 1,
+            "jobs": [{
+                "conclusion": "failure",
+                "status": "completed",
+                "runner_name": "",
+                "steps": [],
+            }],
+        }
+
+        def opener(request, timeout):
+            assert timeout == 12
+            if request.full_url.endswith("/jobs?per_page=100"):
+                return FakeResponse(jobs)
+            return FakeResponse(history)
+
+        validate_first_dispatch(good_env(), "mock-token", opener)
+
+    def test_recovery_denied_if_first_job_started(self):
+        old = {
+            "id": 44694430741,
+            "conclusion": "failure",
+            "status": "completed",
+            "run_attempt": 1,
+            "head_sha": "71557145872ca31862e1bd617bc6eeb01f7d5826",
+            "head_branch": "main",
+        }
+        history = {"total_count": 2, "workflow_runs": [{"id": 98765}, old]}
+        jobs = {
+            "total_count": 1,
+            "jobs": [{
+                "conclusion": "failure",
+                "status": "completed",
+                "runner_name": "GitHub Actions 1",
+                "steps": [{"name": "Execute", "conclusion": "failure"}],
+            }],
+        }
+
+        def opener(request, timeout):
+            return FakeResponse(jobs if "/jobs?" in request.full_url else history)
+
+        with self.assertRaises(GateError):
+            validate_first_dispatch(good_env(), "mock-token", opener)
+
+    def test_third_dispatch_denied(self):
+        history = {
+            "total_count": 3,
+            "workflow_runs": [
+                {"id": 98765},
+                {"id": 44694430741},
+                {"id": 222},
+            ],
+        }
+        with self.assertRaises(GateError):
+            validate_first_dispatch(good_env(), "mock-token", with_history(history))
+
+    def test_recovery_denied_if_job_metadata_missing(self):
+        old = {
+            "id": 44694430741,
+            "conclusion": "failure",
+            "status": "completed",
+            "run_attempt": 1,
+            "head_sha": "71557145872ca31862e1bd617bc6eeb01f7d5826",
+            "head_branch": "main",
+        }
+        history = {"total_count": 2, "workflow_runs": [{"id": 98765}, old]}
+
+        def opener(request, timeout):
+            return FakeResponse({"total_count": 0, "jobs": []}
+                                if "/jobs?" in request.full_url else history)
+
+        with self.assertRaises(GateError):
+            validate_first_dispatch(good_env(), "mock-token", opener)
+
     def test_missing_token_denied(self):
         with self.assertRaises(GateError):
             validate_first_dispatch(good_env(), "")
