@@ -170,6 +170,27 @@ def validate_bounded_dispatch(
     _verify_prior_attempt_never_started(token, opener)
 
 
+# Only these public, documented error.code values may appear in workflow logs.
+# In particular, never print provider response bodies, headers, messages, or keys.
+SAFE_RATE_LIMIT_CODES = frozenset({
+    "credit_balance_exhausted",
+    "organization_usage_limit_exceeded",
+    "organization_spend_limit_exceeded",
+    "project_spend_limit_exceeded",
+    "rate_limit_exceeded",
+    "insufficient_quota",
+})
+
+
+def safe_rate_limit_code(exc: Exception) -> str:
+    code = getattr(exc, "code", None)
+    if code is None:
+        body = getattr(exc, "body", None)
+        if isinstance(body, dict):
+            code = body.get("code")
+    return code if isinstance(code, str) and code in SAFE_RATE_LIMIT_CODES else "unclassified"
+
+
 async def ask_aline() -> str:
     """Reuse the reviewed Aline L1 instruction text with no tools or handoffs."""
     worker_dir = Path.cwd() / "worker-src" / "prototypes" / "aline-openai-worker"
@@ -232,8 +253,15 @@ def main() -> int:
     except GateError as exc:
         print(f"ALINE-HELLO-001 BLOCKED: {exc}", file=sys.stderr)
     except Exception as exc:
-        # Do not leak provider error bodies, credentials, headers or responses.
-        print(f"ALINE-HELLO-001 FAILED: {type(exc).__name__}", file=sys.stderr)
+        # Sanitized provider error codes only. No response bodies or messages.
+        if type(exc).__name__ == "RateLimitError":
+            print(
+                f"ALINE-HELLO-001 FAILED: RateLimitError/"
+                f"{safe_rate_limit_code(exc)}",
+                file=sys.stderr,
+            )
+        else:
+            print(f"ALINE-HELLO-001 FAILED: {type(exc).__name__}", file=sys.stderr)
     return 1
 
 
