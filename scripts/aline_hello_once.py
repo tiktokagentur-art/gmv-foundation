@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed, single-use Aline greeting. No credentials or side effects in preflight."""
+"""Fail-closed, bounded manual Aline greeting. No credentials or side effects in preflight."""
 
 from __future__ import annotations
 
@@ -89,12 +89,27 @@ def _verify_prior_attempt_never_started(token: str, opener) -> None:
         raise GateError("Denied: prior attempt may have executed steps")
 
 
-def validate_first_dispatch(
+# Audit baseline: the two failed prior dispatches and the third waiting dispatch.
+# A new policy does not change the code/SHA or result of those earlier runs.
+BASELINE_RUNS = {
+    44694430741: "71557145872ca31862e1bd617bc6eeb01f7d5826",
+    44697167267: "eb96d7c714e5557e5c4caeef2e1870faf44c95a7",
+    44705555401: "eb96d7c714e5557e5c4caeef2e1870faf44c95a7",
+}
+MAX_NEW_DISPATCHES = 5
+MAX_TOTAL_DISPATCHES = len(BASELINE_RUNS) + MAX_NEW_DISPATCHES
+
+
+def validate_bounded_dispatch(
     env: Mapping[str, str],
     token: str,
     opener=urllib.request.urlopen,
 ) -> None:
-    """Exactly one actual attempt; exclude only attested pre-run failure #44694430741."""
+    """Permit at most five *new* manual tests after three attested historical runs.
+
+    No reruns, no concurrent uncompleted predecessors, no unknown actors,
+    no missing history, and no automatic model retries.
+    """
     if not token:
         raise GateError("Denied: read-only GitHub Actions token missing")
     url = (
@@ -103,31 +118,55 @@ def validate_first_dispatch(
     )
     payload = _read_github_json(url, token, opener)
     runs = payload.get("workflow_runs")
-    if not isinstance(runs, list):
-        raise GateError("Denied: malformed workflow-run history")
-    current_id = int(env["GITHUB_RUN_ID"])
+    count = payload.get("total_count")
     if (
-        payload.get("total_count") == 1
-        and len(runs) == 1
-        and runs[0].get("id") == current_id
+        not isinstance(runs, list)
+        or type(count) is not int
+        or count != len(runs)
+        or count < len(BASELINE_RUNS) + 1
+        or count > MAX_TOTAL_DISPATCHES
     ):
-        return
+        raise GateError("Denied: manual test count out of approved range")
 
-    if payload.get("total_count") != 2 or len(runs) != 2:
-        raise GateError("Denied: multiple workflow dispatches already recorded")
-    current = [run for run in runs if run.get("id") == current_id]
-    previous = [run for run in runs if run.get("id") == PRE_RUN_FAILURE_ID]
-    if len(current) != 1 or len(previous) != 1 or current_id == PRE_RUN_FAILURE_ID:
-        raise GateError("Denied: dispatches do not match approved one-shot recovery")
-    earlier = previous[0]
-    if (
-        earlier.get("conclusion") != "failure"
-        or earlier.get("status") != "completed"
-        or earlier.get("run_attempt") != 1
-        or earlier.get("head_sha") != PRE_RUN_FAILURE_SHA
-        or earlier.get("head_branch") != "main"
-    ):
-        raise GateError("Denied: original failed dispatch evidence changed")
+    current_id = int(env["GITHUB_RUN_ID"])
+    seen = set()
+    found_current = False
+    for run in runs:
+        if not isinstance(run, dict):
+            raise GateError("Denied: malformed workflow history")
+        run_id = run.get("id")
+        actor = run.get("actor")
+        if (
+            type(run_id) is not int
+            or run_id in seen
+            or run.get("event") != "workflow_dispatch"
+            or run.get("head_branch") != "main"
+            or run.get("run_attempt") != 1
+            or not isinstance(actor, dict)
+            or actor.get("login") != ACTOR
+            or actor.get("id") != int(ACTOR_ID)
+        ):
+            raise GateError("Denied: untrusted workflow dispatch history")
+        seen.add(run_id)
+        if run_id in BASELINE_RUNS:
+            if run.get("head_sha") != BASELINE_RUNS[run_id]:
+                raise GateError("Denied: baseline commit changed")
+            if run.get("status") != "completed":
+                raise GateError("Denied: historic run still pending; cancel it first")
+            expected = {"failure"} if run_id != 44705555401 else {"cancelled", "failure"}
+            if run.get("conclusion") not in expected:
+                raise GateError("Denied: unexpected historic run conclusion")
+        else:
+            if run_id <= max(BASELINE_RUNS):
+                raise GateError("Denied: unknown historic workflow attempt")
+            if run_id == current_id:
+                found_current = True
+            elif run.get("status") != "completed":
+                raise GateError("Denied: earlier manual test still active")
+    if not BASELINE_RUNS.keys() <= seen:
+        raise GateError("Denied: missing original dispatch records")
+    if not found_current or current_id != max(seen):
+        raise GateError("Denied: this is not the latest approved manual dispatch")
     _verify_prior_attempt_never_started(token, opener)
 
 
@@ -147,7 +186,7 @@ async def ask_aline() -> str:
 
     instructions = (
         INSTRUCTIONS
-        + "\nSonderfall: ein einmaliger, harmloser Grußtest ohne Ticket-Snapshot. "
+        + "\nSonderfall: ein kontrollierter, harmloser Grußtest ohne Ticket-Snapshot. "
         "Beantworte ausschließlich die kurze Frage auf Deutsch in einem Satz. "
         "Keine Aussagen über echte Arbeit, Verfügbarkeit, Freigaben oder Systemzugriffe."
     )
@@ -176,9 +215,9 @@ async def ask_aline() -> str:
 def main() -> int:
     try:
         validate_identity(os.environ)
-        validate_first_dispatch(os.environ, os.getenv("GITHUB_TOKEN", ""))
+        validate_bounded_dispatch(os.environ, os.getenv("GITHUB_TOKEN", ""))
         if len(sys.argv) == 2 and sys.argv[1] == "--preflight":
-            print("ALINE-HELLO-001: identity and one-shot history PASS; 0 API calls")
+            print("ALINE-HELLO-001: identity and bounded manual history PASS; 0 API calls")
             return 0
         if len(sys.argv) != 1:
             raise GateError("Denied: unsupported arguments")
