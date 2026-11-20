@@ -22,6 +22,7 @@ const TITLES = {
   tasks:["Aufträge","Auftragsentwürfe und Beispielergebnisse – ohne Verbindung zur Control Plane."],
   approvals:["Freigaben","Simulierte Freigabeabläufe. Es werden keine echten Rechte oder Entscheidungen geändert."],
   costs:["Kosten","Transparente Darstellung von tatsächlicher Demo-Nutzung und unverbindlichen Budgets."],
+  access:["Mitarbeiterzugang","Persönliche Logins und Abteilungsrechte für reale Mitarbeiter – derzeit nur als Konzept."],
   engineering:["Engineering","Entwurfsarbeitsraum für Deniz und das Engineering-Team."],
   operations:["Review & Operations","Entwurfsarbeitsraum für Samira."],
   sales:["Sales & Partnerships","Entwurfsarbeitsraum für Malik und Vertrieb."],
@@ -253,11 +254,41 @@ function renderCeo(panel){
   panel.append(createCard("Organisationsstruktur","Aline koordiniert die geplanten Abteilungsarbeitsräume. Deniz (Engineering), Samira (Review), Malik (Sales) und Lea (Workforce) dienen als UI-Beispiele. Die endgültigen Rollen und Berechtigungen bleiben separat zu prüfen.","Kein Register oder Mandat geändert"));
 }
 
+function renderAccess(panel){
+  panel.append(dataHeader("Mitarbeiterzugang – Architekturvorschau","Später persönliche Anmeldung für reale Mitarbeiter mit separaten Rechten und Abteilungen."));
+  panel.append(node("p","warning-banner","Kein Login implementiert: Diese Seite erstellt keine Benutzerkonten, verschickt keine Einladungen und verändert keine Rechte. Die folgenden Profile sind reine Rollenbeispiele."));
+  const flow=node("div","flow-steps");
+  ["Persönliche Einladung","Identity Provider + MFA","Serverseitige Session","Team-/Rechteprüfung","Eigener Workspace"].forEach((label,index)=>{
+    if(index)flow.append(node("span","flow-arrow","→"));
+    flow.append(node("span","flow-step",label));
+  });
+  panel.append(flow);
+  const roles=[
+    ["CEO","Unternehmensüberblick, CEO-Freigaben, zugewiesene Administration","Keine automatische Secret-/IAM-Bypass-Berechtigung"],
+    ["Abteilungsleitung","Teamaufträge und Ergebnisse der eigenen Abteilung","Keine Einsicht in andere Abteilungen"],
+    ["Mitarbeiter","Eigene Aufgaben, eigene Ergebnisse und erlaubte Chats","Keine Rollen- oder Budgetfreigaben"],
+    ["Finance / Auditor","Explizit begrenzte Kosten- bzw. Auditrechte","Keine Ausführung allein durch Leserechte"]
+  ];
+  const tableElement=table(["Menschliche Rolle","Vorgesehener Bereich","Grenze"]);
+  const body=tableElement.querySelector("tbody");
+  roles.forEach(([role,scope,limit])=>{
+    const tr=node("tr");
+    tr.append(node("td","",""),node("td","",scope),node("td","",limit));
+    tr.cells[0].append(node("strong","",role));
+    body.append(tr);
+  });
+  panel.append(tableElement);
+  panel.append(createCard("Eigener Zugang statt gemeinsamer Account","Jede reale Person bekommt eine individuelle Human-Identity. Abteilungswechsel, Sperrung und Rollenänderungen müssen serverseitig überprüft und auditiert werden.","Keine Mitarbeiterdaten gespeichert · keine Einladungen"));
+  panel.append(createCard("Aline bleibt KI-Worker","Aline und die anderen KI-Mitarbeiter verwenden separate Worker-/Service-Identitäten, niemals die Anmeldedaten echter Mitarbeiter.","Ein Login berechtigt nicht automatisch zur Agentenausführung"));
+  panel.append(createCard("Implementierungs-Gate: ADR-0008","Login über einen noch zu entscheidenden OIDC-Anbieter mit MFA, Berechtigungen über die Control Plane und strikte Abteilungs-/Ressourcenfilter. Bis dahin keine echten Accounts.","Weiterführender Entwurf: HUMAN_ACCESS_DESIGN.md"));
+}
+
 function renderDataPanel(view){
   const panel=byId("dataPanel");panel.replaceChildren();
   if(view==="tasks")renderTasks(panel);
   else if(view==="approvals")renderApprovals(panel);
   else if(view==="costs")renderCosts(panel);
+  else if(view==="access")renderAccess(panel);
   else renderCeo(panel);
 }
 function showTask(id){
