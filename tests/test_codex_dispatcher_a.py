@@ -45,7 +45,7 @@ class CodexDispatcherATests(unittest.TestCase):
             "Kein Merge",
             "kein Deployment",
             "Keine separaten Modell-API-Aufrufe",
-            "keinen Codex-Lauf",
+            "weder einen Codex-Lauf",
         ):
             self.assertIn(expected, prompt)
 
