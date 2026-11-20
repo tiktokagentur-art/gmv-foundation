@@ -26,7 +26,10 @@ def valid_env() -> dict[str, str]:
         "GITHUB_REF": "refs/heads/main",
         "GITHUB_RUN_ATTEMPT": "1",
         "GITHUB_ACTOR": "dedicated-aline-bot",
+        "GITHUB_ACTOR_ID": "123456789",
+        "GITHUB_TRIGGERING_ACTOR": "dedicated-aline-bot",
         "ALINE_L1_ACTOR": "dedicated-aline-bot",
+        "ALINE_L1_ACTOR_ID": "123456789",
         "ALINE_L1_ACTIVATED": "true",
         "ALINE_L1_PROJECT_DEDICATED": "true",
         "ALINE_L1_HARD_LIMIT_ATTESTED": "true",
@@ -55,6 +58,30 @@ class L1GuardTests(unittest.TestCase):
     def test_unknown_actor(self):
         e = valid_env()
         e["GITHUB_ACTOR"] = "another-user"
+        with self.assertRaises(GuardError):
+            validate_environment(e)
+
+    def test_actor_id_mismatch(self):
+        e = valid_env()
+        e["ALINE_L1_ACTOR_ID"] = "999"
+        with self.assertRaises(GuardError):
+            validate_environment(e)
+
+    def test_actor_id_missing(self):
+        e = valid_env()
+        del e["GITHUB_ACTOR_ID"]
+        with self.assertRaises(GuardError):
+            validate_environment(e)
+
+    def test_known_admin_id_forbidden_even_if_name_differs(self):
+        e = valid_env()
+        e["GITHUB_ACTOR_ID"] = e["ALINE_L1_ACTOR_ID"] = "354272348"
+        with self.assertRaises(GuardError):
+            validate_environment(e)
+
+    def test_triggering_actor_mismatch(self):
+        e = valid_env()
+        e["GITHUB_TRIGGERING_ACTOR"] = "other"
         with self.assertRaises(GuardError):
             validate_environment(e)
 
