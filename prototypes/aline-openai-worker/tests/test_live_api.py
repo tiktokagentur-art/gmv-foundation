@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
@@ -21,6 +23,10 @@ import api  # noqa: E402
 
 TOKEN = "C" * 48
 GREETING = api.GREETING
+
+
+async def call_dialog(message, key=None):
+    return await live_runtime.dialog(message, key or uuid4().hex)
 
 
 def fake_response(text="Hallo, ich bin Aline.", input_tokens=42, output_tokens=17):
@@ -63,16 +69,42 @@ class HttpDialogueTests(unittest.TestCase):
             invalid = self.client.post(
                 "/v1/dialog",
                 json={"message": "Unbekannte Aufgabe", "synthetic": True},
-                headers={"X-CEO-Token": TOKEN},
+                headers={"X-CEO-Token": TOKEN, "Idempotency-Key": uuid4().hex},
             )
             nonsynthetic = self.client.post(
                 "/v1/dialog",
                 json={"message": GREETING, "synthetic": False},
-                headers={"X-CEO-Token": TOKEN},
+                headers={"X-CEO-Token": TOKEN, "Idempotency-Key": uuid4().hex},
             )
         self.assertEqual(invalid.status_code, 403)
         self.assertEqual(nonsynthetic.status_code, 422)
         invoke.assert_not_called()
+
+    def test_dialogue_requires_idempotency_header(self):
+        with (
+            patch.dict(os.environ, {"ALINE_CEO_TOKEN": TOKEN}, clear=True),
+            patch.object(api.live_runtime, "dialog", new_callable=AsyncMock) as invoke,
+        ):
+            denied = self.client.post(
+                "/v1/dialog",
+                json={"message": GREETING, "synthetic": True},
+                headers={"X-CEO-Token": TOKEN},
+            )
+        self.assertEqual(denied.status_code, 400)
+        invoke.assert_not_called()
+
+    def test_duplicate_key_maps_to_conflict(self):
+        with (
+            patch.dict(os.environ, {"ALINE_CEO_TOKEN": TOKEN}, clear=True),
+            patch.object(api.live_runtime, "dialog", new_callable=AsyncMock) as invoke,
+        ):
+            invoke.side_effect = live_runtime.RuntimeDuplicate("already used")
+            result = self.client.post(
+                "/v1/dialog",
+                json={"message": GREETING, "synthetic": True},
+                headers={"X-CEO-Token": TOKEN, "Idempotency-Key": uuid4().hex},
+            )
+        self.assertEqual(result.status_code, 409)
 
     def test_new_conversation_requires_no_code_change_or_restart(self):
         response = {
@@ -93,12 +125,12 @@ class HttpDialogueTests(unittest.TestCase):
             first = self.client.post(
                 "/v1/dialog",
                 json={"message": GREETING, "synthetic": True},
-                headers={"X-CEO-Token": TOKEN},
+                headers={"X-CEO-Token": TOKEN, "Idempotency-Key": uuid4().hex},
             )
             second = self.client.post(
                 "/v1/dialog",
                 json={"message": "Wie ist dein Status?", "synthetic": True},
-                headers={"X-CEO-Token": TOKEN},
+                headers={"X-CEO-Token": TOKEN, "Idempotency-Key": uuid4().hex},
             )
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
@@ -124,7 +156,7 @@ class HttpDialogueTests(unittest.TestCase):
             result = self.client.post(
                 "/v1/dialog",
                 json={"message": GREETING, "synthetic": True},
-                headers={"X-CEO-Token": TOKEN},
+                headers={"X-CEO-Token": TOKEN, "Idempotency-Key": uuid4().hex},
             )
         self.assertEqual(result.status_code, 502)
         self.assertNotIn("secret provider body", result.text)
@@ -147,7 +179,13 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
             "OPENAI_API_KEY": "test-key-never-sent",
             "ALINE_CEO_TOKEN": TOKEN,
             "ALINE_LEDGER_PATH": self.ledger,
+            "ALINE_LEDGER_ID": "L" * 40,
         }
+        with (
+            patch.dict(os.environ, dict(self.env, ALINE_LIVE_ENABLED="false"), clear=True),
+            patch.object(live_runtime, "_is_persistent_volume", return_value=True),
+        ):
+            live_runtime.provision_ledger()
 
     async def test_disabled_runtime_makes_no_model_call(self):
         env = dict(self.env, ALINE_LIVE_ENABLED="false")
@@ -157,8 +195,16 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
             patch.object(live_runtime, "_invoke_model", new_callable=AsyncMock) as invoke,
         ):
             with self.assertRaises(live_runtime.RuntimeBlocked):
-                await live_runtime.dialog(GREETING)
+                await call_dialog(GREETING)
         invoke.assert_not_called()
+
+    async def test_operator_cannot_provision_over_existing_ledger(self):
+        with (
+            patch.dict(os.environ, dict(self.env, ALINE_LIVE_ENABLED="false"), clear=True),
+            patch.object(live_runtime, "_is_persistent_volume", return_value=True),
+        ):
+            with self.assertRaises(live_runtime.RuntimeBlocked):
+                live_runtime.provision_ledger()
 
     async def test_missing_key_and_nonpersistent_ledger_fail_closed(self):
         env = dict(self.env)
@@ -186,7 +232,7 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
                     patch.object(live_runtime, "_invoke_model", new_callable=AsyncMock) as invoke,
                 ):
                     with self.assertRaises(live_runtime.RuntimeBlocked):
-                        await live_runtime.dialog(GREETING)
+                        await call_dialog(GREETING)
                     invoke.assert_not_called()
 
     async def test_prior_spend_exhausts_total_pilot_budget(self):
@@ -197,7 +243,32 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
             patch.object(live_runtime, "_invoke_model", new_callable=AsyncMock) as invoke,
         ):
             with self.assertRaises(live_runtime.RuntimeBlocked):
-                await live_runtime.dialog(GREETING)
+                await call_dialog(GREETING)
+        invoke.assert_not_called()
+
+    async def test_prior_spend_cannot_be_lowered_after_provision(self):
+        another_path = str(Path(self.tmp.name) / "prior.sqlite3")
+        env = dict(
+            self.env,
+            ALINE_LEDGER_PATH=another_path,
+            ALINE_LEDGER_ID="P" * 40,
+            ALINE_PRIOR_SPEND_USD="3",
+            ALINE_LIVE_ENABLED="false",
+        )
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch.object(live_runtime, "_is_persistent_volume", return_value=True),
+        ):
+            live_runtime.provision_ledger()
+        env["ALINE_LIVE_ENABLED"] = "true"
+        env["ALINE_PRIOR_SPEND_USD"] = "0"
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch.object(live_runtime, "_is_persistent_volume", return_value=True),
+            patch.object(live_runtime, "_invoke_model", new_callable=AsyncMock) as invoke,
+        ):
+            with self.assertRaises(live_runtime.RuntimeBlocked):
+                await call_dialog(GREETING)
         invoke.assert_not_called()
 
     async def test_success_records_usage_and_cost_without_real_api(self):
@@ -207,7 +278,7 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
             patch.object(live_runtime, "_invoke_model", new_callable=AsyncMock) as invoke,
         ):
             invoke.return_value = fake_response()
-            result = await live_runtime.dialog(GREETING)
+            result = await call_dialog(GREETING)
             status = live_runtime.get_status()
         self.assertEqual(invoke.await_count, 1)
         self.assertEqual(result["reply"], "Hallo, ich bin Aline.")
@@ -223,13 +294,60 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
         ):
             invoke.return_value = fake_response()
             for _ in range(5):
-                await live_runtime.dialog(GREETING)
+                await call_dialog(GREETING)
             with self.assertRaises(live_runtime.RuntimeBlocked):
-                await live_runtime.dialog(GREETING)
+                await call_dialog(GREETING)
             status = live_runtime.get_status()
         self.assertEqual(invoke.await_count, 5)
         self.assertEqual(status["reserved_usd"], "10")
         self.assertEqual(status["calls_reserved"], 5)
+
+    async def test_deleted_ledger_cannot_reset_budget_or_calls(self):
+        with (
+            patch.dict(os.environ, self.env, clear=True),
+            patch.object(live_runtime, "_is_persistent_volume", return_value=True),
+            patch.object(live_runtime, "_invoke_model", new_callable=AsyncMock) as invoke,
+        ):
+            invoke.return_value = fake_response()
+            await call_dialog(GREETING)
+            Path(self.ledger).unlink()
+            with self.assertRaises(live_runtime.RuntimeBlocked):
+                await call_dialog(GREETING)
+        self.assertEqual(invoke.await_count, 1)
+
+    async def test_reused_idempotency_key_does_not_repeat_model_call(self):
+        key = uuid4().hex
+        with (
+            patch.dict(os.environ, self.env, clear=True),
+            patch.object(live_runtime, "_is_persistent_volume", return_value=True),
+            patch.object(live_runtime, "_invoke_model", new_callable=AsyncMock) as invoke,
+        ):
+            invoke.return_value = fake_response()
+            await call_dialog(GREETING, key)
+            with self.assertRaises(live_runtime.RuntimeDuplicate):
+                await call_dialog(GREETING, key)
+        self.assertEqual(invoke.await_count, 1)
+
+    async def test_replaced_ledger_identity_is_rejected(self):
+        with (
+            patch.dict(os.environ, self.env, clear=True),
+            patch.object(live_runtime, "_is_persistent_volume", return_value=True),
+            patch.object(live_runtime, "_invoke_model", new_callable=AsyncMock) as invoke,
+        ):
+            invoke.return_value = fake_response()
+            await call_dialog(GREETING)
+            Path(self.ledger).unlink()
+            with sqlite3.connect(self.ledger) as connection:
+                connection.execute(
+                    "CREATE TABLE control (id INTEGER PRIMARY KEY, ledger_id TEXT)"
+                )
+                connection.execute(
+                    "INSERT INTO control (id, ledger_id) VALUES (1, ?)",
+                    ("wrong-ledger-id",),
+                )
+            with self.assertRaises(live_runtime.RuntimeBlocked):
+                await call_dialog(GREETING)
+        self.assertEqual(invoke.await_count, 1)
 
     async def test_concurrent_request_is_rejected_without_second_call(self):
         started = asyncio.Event()
@@ -245,11 +363,11 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
             patch.object(live_runtime, "_is_persistent_volume", return_value=True),
             patch.object(live_runtime, "_invoke_model", side_effect=slow_invoke) as invoke,
         ):
-            first = asyncio.create_task(live_runtime.dialog(GREETING))
+            first = asyncio.create_task(call_dialog(GREETING))
             await asyncio.wait_for(started.wait(), timeout=2)
             try:
                 with self.assertRaises((live_runtime.RuntimeBusy, live_runtime.RuntimeBlocked)):
-                    await live_runtime.dialog(GREETING)
+                    await call_dialog(GREETING)
             finally:
                 finish.set()
             await first
@@ -263,9 +381,9 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
         ):
             invoke.side_effect = TimeoutError("provider detail should not escape")
             with self.assertRaises(live_runtime.RuntimeUncertain):
-                await live_runtime.dialog(GREETING)
+                await call_dialog(GREETING)
             with self.assertRaises(live_runtime.RuntimeBlocked):
-                await live_runtime.dialog(GREETING)
+                await call_dialog(GREETING)
             status = live_runtime.get_status()
         self.assertEqual(invoke.await_count, 1)
         self.assertNotIn("provider detail", str(status))
@@ -278,9 +396,24 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
         ):
             invoke.return_value = SimpleNamespace(output_text="Hallo", usage=None)
             with self.assertRaises(live_runtime.RuntimeUncertain):
-                await live_runtime.dialog(GREETING)
+                await call_dialog(GREETING)
             okay, _ = live_runtime.readiness()
         self.assertFalse(okay)
+
+    async def test_inconsistent_total_usage_pauses_pilot(self):
+        response = fake_response()
+        response.usage.total_tokens += 1
+        with (
+            patch.dict(os.environ, self.env, clear=True),
+            patch.object(live_runtime, "_is_persistent_volume", return_value=True),
+            patch.object(live_runtime, "_invoke_model", new_callable=AsyncMock) as invoke,
+        ):
+            invoke.return_value = response
+            with self.assertRaises(live_runtime.RuntimeUncertain):
+                await call_dialog(GREETING)
+            with self.assertRaises(live_runtime.RuntimeBlocked):
+                await call_dialog(GREETING)
+        self.assertEqual(invoke.await_count, 1)
 
     async def test_stop_is_durable_across_calls(self):
         with (
@@ -291,7 +424,7 @@ class PersistentRuntimeTests(unittest.IsolatedAsyncioTestCase):
             live_runtime.stop()
             okay, _ = live_runtime.readiness()
             with self.assertRaises(live_runtime.RuntimeBlocked):
-                await live_runtime.dialog(GREETING)
+                await call_dialog(GREETING)
         self.assertFalse(okay)
         invoke.assert_not_called()
 

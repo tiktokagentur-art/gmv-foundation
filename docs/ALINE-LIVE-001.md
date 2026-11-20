@@ -16,6 +16,10 @@ es ist kein Live-Nachweis.
 `GET /health` prüft nur Prozessliveness; `GET /ready` prüft lokale Gates, **nicht**
 den Provider. `GET /v1/status`, `POST /v1/dialog` und `POST /v1/stop` benötigen
 `X-CEO-Token`; das alte `POST /v1/offline-analysis` behält `X-Pilot-Token`.
+Jeder Dialog benötigt zusätzlich einen vom CEO-Client erzeugten
+`Idempotency-Key` (32–128 URL-sichere Zeichen). Bei unklarer HTTP-Antwort
+denselben Key beibehalten: Eine Wiederholung wird ohne neuen Modellaufruf
+abgelehnt. Die Antwort wird aus Datenschutzgründen nicht im Ledger gespeichert.
 OpenAPI/Swagger und Access-Logs sind abgeschaltet. Ereignislogs enthalten nur
 Zeitpunkt, Ereignis, Worker-ID, Run-ID und Fehlerklasse, keine Inhalte oder Keys.
 Ein gültiges Token ist keine Personalidentitätsprüfung; es muss ausschließlich
@@ -37,7 +41,10 @@ dem CEO über den freigegebenen Secret-Prozess zugewiesen werden. Keine Domain
   5 USD/M Ausgabetokens geschätzt (Stand 2026-11-20). Bei unklarem Ausgang
   bleibt die Reservierung belegt und der Pilot hält an.
 - Die SQLite-Buchung muss auf einem vorhandenen persistenten Railway-Volume
-  liegen. Ein Neustart darf die Bilanz oder den Stop-Zustand nicht löschen.
+  liegen. Das Ledger wird einmalig bei deaktiviertem Pilot provisioniert und
+  an eine feste `ALINE_LEDGER_ID` gebunden. Ein fehlendes/ersetztes Volume
+  darf niemals automatisch ein leeres Register erzeugen. Ein Neustart darf
+  die Bilanz oder den Stop-Zustand nicht löschen.
   Nur **eine** Railway-Replik; bei Replikas >1 ist der Volumenspeicher kein
   ausreichend geprüfter globaler Ausführungslock.
 - Der lokale Zähler ersetzt weder den OpenAI-Projektausgaben-Readback noch ein
@@ -63,6 +70,7 @@ Alle Secret-Werte ausschließlich in Railway-Staging; niemals in Git/PR/Logs.
 | `ALINE_PROVIDER_READBACK_AT` | UTC-Zeitstempel der tatsächlichen Projekt-/Usage-Prüfung |
 | `ALINE_PRIOR_SPEND_USD` | verifizierter bisheriger Pilotverbrauch, auch frühere Tests |
 | `ALINE_LEDGER_PATH` | absoluter Pfad auf einem persistenten Volume, z. B. `/data/aline.sqlite3` |
+| `ALINE_LEDGER_ID` | zufällige, feste Identität (32–128 URL-sichere Zeichen) |
 | `ALINE_CEO_DIALOG_APPROVED` | `false`, bis ein erweiterter Dialogkorridor freigegeben ist |
 
 Die mit `ATTESTED` benannten Variablen sind **Behauptungen**, keine unabhängigen
@@ -89,11 +97,16 @@ Zugang nicht lesbar (403). Ein GitHub-Admin muss sie separat prüfen.
    Replik konfigurieren. Einmaligen Cron/Offline-Startbefehl entfernen,
    Restart-Policy für den Webdienst und HTTP-Healthcheck `/health` setzen.
    Diese produktive Railway-Konfigurationsänderung benötigt ein konkretes CEO-GO.
+   Auf dem gemounteten Volume bei `ALINE_LIVE_ENABLED=false` einmalig
+   `python live_runtime.py --provision-ledger` ausführen; danach Ledger-ID
+   und persistenten Pfad im Readback prüfen. Niemals ein verlorenes Ledger
+   automatisch ersetzen oder das Gesamtbudget zurücksetzen.
 4. Mit `ALINE_LIVE_ENABLED=false` deployen, Terminalstatus `SUCCESS`, `/health`
    200 und `/ready` 503 prüfen. Aktivierung erst nach unabhängiger Abnahme.
 5. Nach CEO-GO und technischer Abnahme `ALINE_LIVE_ENABLED=true` setzen und
    `/ready` 200 prüfen. Die lokale Readiness beweist noch keinen Modellzugriff.
-6. Exakt **einen** Dialog mit dem vorgegebenen Text senden. Run-/Deployment-ID,
+6. Exakt **einen** Dialog mit dem vorgegebenen Text und einem neuen
+   `Idempotency-Key` senden. Run-/Deployment-ID,
    UTC-Zeit, Modell, echte Antwort, Usage, Kostenschätzung und Provider-Usage
    gesondert erfassen. Bei 429/Timeout/fehlender Usage nicht erneut senden;
    Ursache prüfen und den Pilot gestoppt lassen.

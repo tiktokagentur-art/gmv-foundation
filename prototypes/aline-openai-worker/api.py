@@ -3,6 +3,7 @@ import hmac
 import json
 import logging
 import os
+import re
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -104,7 +105,7 @@ def ready() -> dict[str, str]:
     okay, reason = live_runtime.readiness()
     if not okay:
         raise HTTPException(status_code=503, detail=reason)
-    return {"status": "ready", "mode": "l1_live_pilot"}
+    return {"status": "ready", "mode": "ready_for_probe"}
 
 
 @app.get("/v1/status")
@@ -113,11 +114,22 @@ def status(_auth: None = Depends(require_ceo_token)) -> dict:
 
 
 @app.post("/v1/dialog")
-async def dialog(request: DialogRequest, _auth: None = Depends(require_ceo_token)) -> dict:
+async def dialog(
+    request: DialogRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    _auth: None = Depends(require_ceo_token),
+) -> dict:
+    if idempotency_key is None or not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", idempotency_key):
+        raise HTTPException(status_code=400, detail="valid Idempotency-Key required")
     if request.message != GREETING and os.environ.get("ALINE_CEO_DIALOG_APPROVED") != "true":
         raise HTTPException(status_code=403, detail="message outside approved synthetic corridor")
     try:
-        result = await live_runtime.dialog(request.message)
+        result = await live_runtime.dialog(request.message, idempotency_key)
+    except live_runtime.RuntimeDuplicate:
+        logger.warning("dialogue duplicate rejected", extra={"error_type": "RuntimeDuplicate"})
+        raise HTTPException(
+            status_code=409, detail="request key already used; inspect status"
+        ) from None
     except live_runtime.RuntimeBusy:
         logger.warning("dialogue rejected", extra={"error_type": "RuntimeBusy"})
         raise HTTPException(status_code=409, detail="another run is active") from None
