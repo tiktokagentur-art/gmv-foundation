@@ -48,7 +48,6 @@ weder das permanente L1-Autotest-Environment noch `ALINE_L1_ACTIVATED`.
 Ein erfolgreicher „Wie geht's?“-Dialog ist kein Beleg für Autonomie,
 Bot-Identität, Zustandsrechte oder produktive Betriebsbereitschaft.
 
-
 ## Fehlgeschlagener Erststart, 20.11.2026
 
 Der manuelle Run [44694430741](https://github.com/tiktokagentur-art/gmv-foundation/actions/runs/44694430741)
