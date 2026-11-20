@@ -56,8 +56,16 @@ def validate_environment(env: Mapping[str, str]) -> None:
     actor = env.get("ALINE_L1_ACTOR", "")
     if not actor or actor != env.get("GITHUB_ACTOR", ""):
         raise GuardError("L1 denied: actor not explicitly allowlisted")
-    if actor == "tiktokagentur-art":
+    # Bind to immutable GitHub actor ID, not only a renamable account name.
+    # Also require the triggering actor to match (defense in depth for re-runs).
+    actor_id = env.get("GITHUB_ACTOR_ID", "")
+    configured_id = env.get("ALINE_L1_ACTOR_ID", "")
+    if not actor_id.isdecimal() or int(actor_id) <= 0 or actor_id != configured_id:
+        raise GuardError("L1 denied: actor ID not attested")
+    if actor == "tiktokagentur-art" or actor_id == "354272348":
         raise GuardError("L1 denied: shared human/admin account cannot be L1 bot")
+    if env.get("GITHUB_TRIGGERING_ACTOR", "") != actor:
+        raise GuardError("L1 denied: triggering actor differs from approved bot")
 
     if conservative_estimate_usd() > MAX_CALCULATED_RUN_USD:
         raise GuardError("L1 denied: conservative preflight cost exceeds 2 USD")
