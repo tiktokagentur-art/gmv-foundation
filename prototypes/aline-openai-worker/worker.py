@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 WORKER_ID = "GMV-VE-001"
@@ -159,6 +160,44 @@ def require_api_approval(
         )
 
 
+def load_openai_api_key() -> str:
+    """Select one configured source; never fall back after a Vault failure."""
+    source = os.getenv("ALINE_SECRET_SOURCE", "env")
+    if source == "env":
+        key = os.getenv("OPENAI_API_KEY")
+        if not key:
+            raise RuntimeError("OPENAI_API_KEY is missing")
+        return key
+    if source != "supabase-vault":
+        raise RuntimeError("ALINE_SECRET_SOURCE is invalid")
+
+    conninfo = os.getenv("ALINE_VAULT_DATABASE_URL")
+    if not conninfo:
+        raise RuntimeError("Supabase Vault connection is not configured")
+
+    # Imported only in opt-in mode. The offline demo never loads this driver.
+    try:
+        import psycopg
+
+        with psycopg.connect(
+            conninfo,
+            sslmode="verify-full",
+            connect_timeout=3,
+            options="-c statement_timeout=3000 -c default_transaction_read_only=on",
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT aline_private.get_openai_api_key()")
+                row = cursor.fetchone()
+    except Exception:
+        # Driver errors can include a URL, username, or host. Suppress them,
+        # including the exception context that a CLI traceback would expose.
+        raise RuntimeError("Supabase Vault secret lookup failed") from None
+
+    if not row or not isinstance(row[0], str) or not row[0]:
+        raise RuntimeError("Supabase Vault secret is unavailable")
+    return row[0]
+
+
 async def run(
     snapshot: Snapshot, *, approved: bool = False, data_transfer_approved: bool = False
 ) -> Analysis:
@@ -166,13 +205,12 @@ async def run(
         snapshot, approved=approved, data_transfer_approved=data_transfer_approved
     )
     assert_pilot_fixture(snapshot)
-    if not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is missing")
     model = os.getenv("OPENAI_MODEL")
     if model != "gpt-6.1-terra":
         raise RuntimeError("OPENAI_MODEL must be the approved pilot model gpt-6.1-terra")
-    from openai import AsyncOpenAI
+    api_key = load_openai_api_key()
     from agents import Agent, ModelSettings, RunConfig, Runner, set_default_openai_client
+    from openai import AsyncOpenAI
     agent = Agent(
         name="Aline (L1 Pilot)",
         model=model,
@@ -182,7 +220,7 @@ async def run(
         handoffs=[],
         model_settings=ModelSettings(max_tokens=2000, store=False, timeout=45),
     )
-    async with AsyncOpenAI(max_retries=0) as client:
+    async with AsyncOpenAI(api_key=api_key, max_retries=0) as client:
         set_default_openai_client(client, use_for_tracing=False)
         response = await Runner.run(
             agent,

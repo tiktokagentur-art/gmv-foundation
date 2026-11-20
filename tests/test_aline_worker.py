@@ -1,14 +1,19 @@
 """Offline contract tests for the isolated Aline L1 worker prototype."""
 
 import asyncio
+import contextlib
 import importlib.util
+import io
 import json
 import os
+import socket
 import subprocess
 import sys
+import traceback
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 MODULE_PATH = (
     Path(__file__).resolve().parents[1] / "prototypes" / "aline-openai-worker" / "worker.py"
@@ -148,7 +153,8 @@ class TestAlineWorker(unittest.TestCase):
             asyncio.run(worker.run(self.snapshot, approved=True))
 
     def test_missing_key_blocks_model_call(self):
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "", "OPENAI_MODEL": "test"}, clear=False):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "", "OPENAI_MODEL": "gpt-6.1-terra",
+                                          "ALINE_SECRET_SOURCE": "env"}, clear=False):
             with self.assertRaisesRegex(RuntimeError, "OPENAI_API_KEY"):
                 asyncio.run(worker.run(self.snapshot, approved=True, data_transfer_approved=True))
 
@@ -156,6 +162,132 @@ class TestAlineWorker(unittest.TestCase):
         with patch.dict(os.environ, {"OPENAI_API_KEY": "placeholder", "OPENAI_MODEL": ""}):
             with self.assertRaisesRegex(RuntimeError, "OPENAI_MODEL"):
                 asyncio.run(worker.run(self.snapshot, approved=True, data_transfer_approved=True))
+
+
+class TestAlineVaultSource(unittest.TestCase):
+    def setUp(self):
+        self.synthetic_dsn = "synthetic-conninfo-private"
+        self.synthetic_key = "synthetic-openai-key"
+
+    def connector(self, row=None, error=None):
+        cursor = MagicMock()
+        cursor.fetchone.return_value = row
+        connection = MagicMock()
+        connection.__enter__.return_value = connection
+        connection.cursor.return_value.__enter__.return_value = cursor
+        connect = MagicMock(return_value=connection, side_effect=error)
+        return SimpleNamespace(connect=connect), connect, cursor
+
+    def vault_env(self):
+        return patch.dict(os.environ, {
+            "ALINE_SECRET_SOURCE": "supabase-vault",
+            "ALINE_VAULT_DATABASE_URL": self.synthetic_dsn,
+            "OPENAI_API_KEY": "synthetic-fallback-must-not-be-used",
+        })
+
+    def test_success_uses_fixed_function_and_tls(self):
+        module, connect, cursor = self.connector((self.synthetic_key,))
+        with self.vault_env(), patch.dict(sys.modules, {"psycopg": module}):
+            self.assertEqual(worker.load_openai_api_key(), self.synthetic_key)
+        connect.assert_called_once()
+        args, kwargs = connect.call_args
+        self.assertEqual(args, (self.synthetic_dsn,))
+        self.assertEqual(kwargs["sslmode"], "verify-full")
+        self.assertLessEqual(kwargs["connect_timeout"], 3)
+        self.assertIn("statement_timeout=3000", kwargs["options"])
+        cursor.execute.assert_called_once_with("SELECT aline_private.get_openai_api_key()")
+
+    def test_missing_secret_fails_without_environment_fallback(self):
+        module, _, _ = self.connector(None)
+        with self.vault_env(), patch.dict(sys.modules, {"psycopg": module}):
+            with self.assertRaisesRegex(RuntimeError, "secret is unavailable"):
+                worker.load_openai_api_key()
+
+    def test_invalid_mode_fails_closed(self):
+        with patch.dict(os.environ, {"ALINE_SECRET_SOURCE": "unexpected",
+                                   "OPENAI_API_KEY": self.synthetic_key}):
+            with self.assertRaisesRegex(RuntimeError, "ALINE_SECRET_SOURCE is invalid"):
+                worker.load_openai_api_key()
+
+    def test_connection_error_is_redacted(self):
+        self.assert_redacted_failure(ConnectionError)
+
+    def test_permission_error_is_redacted(self):
+        self.assert_redacted_failure(PermissionError)
+
+    def assert_redacted_failure(self, exception_type):
+        module, _, _ = self.connector(error=exception_type(
+            f"denied {self.synthetic_dsn} {self.synthetic_key}"
+        ))
+        with self.vault_env(), patch.dict(sys.modules, {"psycopg": module}):
+            with self.assertRaises(RuntimeError) as caught:
+                worker.load_openai_api_key()
+        rendered = "".join(traceback.format_exception(caught.exception))
+        self.assertIn("Supabase Vault secret lookup failed", rendered)
+        self.assertNotIn(self.synthetic_dsn, rendered)
+        self.assertNotIn(self.synthetic_key, rendered)
+
+    def test_offline_cli_never_connects_even_when_vault_selected(self):
+        module, connect, _ = self.connector((self.synthetic_key,))
+        snapshot_path = MODULE_PATH.parent / "examples" / "synthetic.json"
+        cli_args = ["worker.py", "--input", str(snapshot_path), "--offline-demo"]
+        with self.vault_env(), patch.dict(sys.modules, {"psycopg": module}), \
+                patch.object(socket.socket, "connect", side_effect=AssertionError("network")), \
+                patch.object(sys, "argv", cli_args), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            worker.main()
+        connect.assert_not_called()
+        self.assertEqual(json.loads(output.getvalue())["api_requests_made"], 0)
+
+    def test_approval_and_fixture_gates_precede_vault_lookup(self):
+        snapshot = worker.load_snapshot(MODULE_PATH.parent / "examples" / "synthetic.json")
+        with self.vault_env(), patch.object(worker, "load_openai_api_key",
+                                            side_effect=AssertionError("lookup")) as lookup:
+            with self.assertRaisesRegex(RuntimeError, "confirm-api-call"):
+                asyncio.run(worker.run(snapshot))
+            altered = snapshot.model_copy(deep=True)
+            altered.work_items[0].title = "unreviewed synthetic data"
+            with self.assertRaisesRegex(RuntimeError, "reviewed synthetic fixture"):
+                asyncio.run(worker.run(altered, approved=True, data_transfer_approved=True))
+        lookup.assert_not_called()
+
+    def test_model_gate_precedes_vault_connection(self):
+        snapshot = worker.load_snapshot(MODULE_PATH.parent / "examples" / "synthetic.json")
+        module, connect, _ = self.connector((self.synthetic_key,))
+        with self.vault_env(), patch.dict(os.environ, {"OPENAI_MODEL": "unapproved"}), \
+                patch.dict(sys.modules, {"psycopg": module}):
+            with self.assertRaisesRegex(RuntimeError, "OPENAI_MODEL"):
+                asyncio.run(worker.run(
+                    snapshot, approved=True, data_transfer_approved=True
+                ))
+        connect.assert_not_called()
+
+    def test_model_client_gets_vault_key_without_process_environment(self):
+        snapshot = worker.load_snapshot(MODULE_PATH.parent / "examples" / "synthetic.json")
+        analysis = worker.offline_demo(snapshot)
+        client_factory = MagicMock()
+        client = MagicMock()
+        client.__aenter__ = AsyncMock(return_value=client)
+        client.__aexit__ = AsyncMock(return_value=None)
+        client_factory.return_value = client
+        fake_agents = SimpleNamespace(
+            Agent=MagicMock(), ModelSettings=MagicMock(), RunConfig=MagicMock(),
+            Runner=SimpleNamespace(run=AsyncMock(
+                return_value=SimpleNamespace(final_output=analysis)
+            )),
+            set_default_openai_client=MagicMock(),
+        )
+        with patch.dict(os.environ, {"OPENAI_MODEL": "gpt-6.1-terra", "OPENAI_API_KEY": "",
+                                   "ALINE_SECRET_SOURCE": "supabase-vault"}), \
+                patch.object(worker, "load_openai_api_key", return_value=self.synthetic_key), \
+                patch.dict(sys.modules, {"openai": SimpleNamespace(AsyncOpenAI=client_factory),
+                                         "agents": fake_agents}):
+            result = asyncio.run(worker.run(
+                snapshot, approved=True, data_transfer_approved=True
+            ))
+            self.assertEqual(os.environ["OPENAI_API_KEY"], "")
+        self.assertEqual(result, analysis)
+        client_factory.assert_called_once_with(api_key=self.synthetic_key, max_retries=0)
 
 
 if __name__ == "__main__":
