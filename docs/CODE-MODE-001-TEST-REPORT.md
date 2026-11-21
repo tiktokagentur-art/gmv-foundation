@@ -20,9 +20,10 @@ Lokaler Lauf auf Linux mit Python 3.12, Node 24.22.3 und `bubblewrap`:
 | Isolierter Beispielauftrag | Erfolgreich: 2 offene Issues, Issue 101 als Blocker, CI `failure`, Railway-Service `degraded`, Deployment `dep-1` fehlgeschlagen; Audit mit Execution-ID. |
 | Neue Gateway-, Sandbox- und Benchmarktests | 20 bestanden. |
 | Gesamte lokale Pytest-Suite | 157 bestanden, 2 übersprungen; beide vorhandenen DB-Tests benötigen `DATABASE_URL`. In CI steht eine Wegwerf-Postgres-Instanz bereit. |
+| Draft PR #55, GitHub Actions, Lauf `44876283530` | Backend: 159 Tests bestanden, Ruff und OpenAPI grün; Image und Lint/Struktur grün. Keine produktive Bereitstellung. |
 | Ruff, Struktur, OpenAPI, Markdownlint, `git diff --check` | Bestanden. |
 | Python-Wheel | Lokal gebaut; `code_mode/runner.js` im Wheel enthalten. |
-| Bestehendes Docker-Image | Lokaler Build beim Abruf gelockter PyPI-Pakete durch `SSLCertVerificationError` der hiesigen Build-Umgebung blockiert. Kein Image veröffentlicht. CI-Image-Job bleibt als unabhängiger Check. |
+| Bestehendes Docker-Image | Lokaler Build beim Abruf gelockter PyPI-Pakete durch `SSLCertVerificationError` der hiesigen Build-Umgebung blockiert. Kein Image veröffentlicht. Der unabhängige CI-Image-Job bestand. |
 
 Die Tests decken autorisierte Leseläufe, unberechtigte Identität und WorkItem-
 Referenz, nicht erlaubte Tools und Schreibversuche, Secret-/Umgebungs- und
