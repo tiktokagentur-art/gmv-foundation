@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gmvgang.example/schemas/factory/v1/factory.schema.json",
+  "title": "factory",
+  "description": "Offline contract only; no production authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "factory_id",
+    "name",
+    "organizational_owner_ve_id",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "factory_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "organizational_owner_ve_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "technical_owner_ve_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "planned",
+        "disabled",
+        "active"
+      ]
+    },
+    "mandate_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policy_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "budget_policy_reference": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

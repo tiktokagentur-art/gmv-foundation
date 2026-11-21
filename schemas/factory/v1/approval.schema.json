@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gmvgang.example/schemas/factory/v1/approval.schema.json",
+  "title": "approval",
+  "description": "Offline contract only; no production authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "approval_id",
+    "workitem_id",
+    "requester_ve_id",
+    "executor_ve_id",
+    "reviewer_ve_id",
+    "decision"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "approval_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workitem_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requester_ve_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "executor_ve_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewer_ve_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ]
+    },
+    "risk_class": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "strategic"
+      ]
+    },
+    "evidence_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policy_version": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

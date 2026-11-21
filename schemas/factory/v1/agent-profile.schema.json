@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gmvgang.example/schemas/factory/v1/agent-profile.schema.json",
+  "title": "agent-profile",
+  "description": "Offline contract only; no production authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "display_name",
+    "position",
+    "factory_id",
+    "operating_status"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "ve_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "position": {
+      "type": "string",
+      "minLength": 1
+    },
+    "factory_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "manager_ve_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mandate_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "identity_subject": {
+      "type": "string",
+      "minLength": 1
+    },
+    "autonomy_level": {
+      "enum": [
+        "L0",
+        "L1",
+        "L2"
+      ]
+    },
+    "operating_status": {
+      "enum": [
+        "planned",
+        "disabled",
+        "active"
+      ]
+    },
+    "policy_version": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

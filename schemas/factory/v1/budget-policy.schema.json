@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gmvgang.example/schemas/factory/v1/budget-policy.schema.json",
+  "title": "budget-policy",
+  "description": "Offline contract only; no production authorization",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "currency",
+    "pilot_total_limit_cents",
+    "daily_limit_cents",
+    "workitem_limit_cents",
+    "reservation_required",
+    "hard_stop_enabled"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "currency": {
+      "const": "EUR"
+    },
+    "pilot_total_limit_cents": {
+      "const": 2500
+    },
+    "daily_limit_cents": {
+      "const": 1000
+    },
+    "workitem_limit_cents": {
+      "const": 500
+    },
+    "reservation_required": {
+      "const": true
+    },
+    "hard_stop_enabled": {
+      "const": true
+    }
+  }
+}
