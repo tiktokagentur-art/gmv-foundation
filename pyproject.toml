@@ -26,7 +26,10 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*", "code_mode*"]
+
+[tool.setuptools.package-data]
+code_mode = ["runner.js"]
 
 [tool.ruff]
 target-version = "py312"

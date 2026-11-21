@@ -13,6 +13,10 @@ Sie legen keine Infrastruktur an und enthalten keinen Anwendungscode.
 | [GOVERNANCE.md](GOVERNANCE.md) | Entscheidungen, Review, Änderung |
 | [github-moderator.md](github-moderator.md) | GitHub Moderator V1: Architektur, Modi, Berechtigungen |
 | [github-moderator-security-review.md](github-moderator-security-review.md) | Sicherheits- und Testnachweis für den Moderator |
+| [CODE-MODE-001-INVENTORY.md](CODE-MODE-001-INVENTORY.md) | Bestands- und Dublettenanalyse für den Offline-Pilot |
+| [CODE-MODE-001-ARCHITECTURE.md](CODE-MODE-001-ARCHITECTURE.md) | Pilotarchitektur, Bedrohungsmodell und Betrieb |
+| [CODE-MODE-001-BENCHMARK.md](CODE-MODE-001-BENCHMARK.md) | Lokale Messung und gekennzeichnete Simulation |
+| [CODE-MODE-001-TEST-REPORT.md](CODE-MODE-001-TEST-REPORT.md) | Testnachweis, Blocker und Empfehlung |
 | [adr/README.md](adr/README.md) | Index der ADRs, einschließlich offener Punkte |
 | [../SECURITY.md](../SECURITY.md) | Secrets, Rechte, Identität, Autorisierung, Audit |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Branch, Pull Request, unabhängige Review |
