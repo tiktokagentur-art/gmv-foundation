@@ -217,9 +217,10 @@ def local_e2e(runs: int = 10) -> dict[str, Any]:
 
 def benchmark(
     runs: int = 100,
-    settings: Settings = Settings(),
+    settings: Settings | None = None,
     local_e2e_runs: int = 0,
 ) -> dict[str, Any]:
+    settings = settings or Settings()
     if runs < 1:
         raise ValueError("runs must be positive")
     if min(

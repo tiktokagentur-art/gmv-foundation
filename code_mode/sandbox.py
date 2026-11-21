@@ -177,7 +177,7 @@ def _stop(process: subprocess.Popen[bytes]) -> None:
 def run_code(
     code: str,
     tool_handler: Callable[[str, dict], object],
-    limits: ExecutionLimits = ExecutionLimits(),
+    limits: ExecutionLimits | None = None,
     cancel_event: threading.Event | None = None,
 ) -> SandboxResult:
     """Execute JavaScript with server-mediated tool calls only.
@@ -186,6 +186,7 @@ def run_code(
     enforces tool-count and process/resource limits. Errors have stable codes
     and never return raw child stderr or arbitrary exception messages.
     """
+    limits = limits or ExecutionLimits()
     if not isinstance(code, str) or len(code.encode("utf-8")) > _MAX_CODE_BYTES:
         raise ValueError("code exceeds pilot limit")
     if (limits.timeout_seconds <= 0 or limits.memory_bytes < 64 * 1024 * 1024
