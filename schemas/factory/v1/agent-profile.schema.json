@@ -6,18 +6,19 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version",
     "display_name",
     "position",
-    "factory_id",
-    "operating_status"
+    "factory_id"
   ],
   "properties": {
     "schema_version": {
       "const": "1.0"
     },
     "ve_id": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "display_name": {
@@ -33,15 +34,24 @@
       "minLength": 1
     },
     "manager_ve_id": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "mandate_id": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "identity_subject": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "autonomy_level": {
@@ -59,7 +69,10 @@
       ]
     },
     "policy_version": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     }
   }

@@ -5,15 +5,7 @@
   "description": "Offline contract only; no production authorization",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "currency",
-    "pilot_total_limit_cents",
-    "daily_limit_cents",
-    "workitem_limit_cents",
-    "reservation_required",
-    "hard_stop_enabled"
-  ],
+  "required": [],
   "properties": {
     "schema_version": {
       "const": "1.0"

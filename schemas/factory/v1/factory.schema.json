@@ -6,11 +6,9 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version",
     "factory_id",
     "name",
-    "organizational_owner_ve_id",
-    "status"
+    "organizational_owner_ve_id"
   ],
   "properties": {
     "schema_version": {
@@ -29,7 +27,10 @@
       "minLength": 1
     },
     "technical_owner_ve_id": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "status": {
@@ -40,15 +41,24 @@
       ]
     },
     "mandate_reference": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "policy_reference": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "budget_policy_reference": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     }
   }

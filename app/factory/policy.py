@@ -4,7 +4,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 MOCK_ACTIONS = frozenset({"analyze_mock", "research_mock", "draft_mock", "test_mock"})
-BLOCKED_ACTIONS = frozenset({"deploy", "publish", "pay", "migrate", "change_permissions", "external_api", "activate_agent"})
+BLOCKED_ACTIONS = frozenset(
+    {
+        "deploy",
+        "publish",
+        "pay",
+        "migrate",
+        "change_permissions",
+        "external_api",
+        "activate_agent",
+    }
+)
 
 
 @dataclass(frozen=True)
