@@ -30,6 +30,14 @@ GMV-V3 laufen die Dienste `backend` und Postgres (Railway-Readback am
 Die Umsetzung der Authentisierung ist als GF-008 vorgesehen und liegt nicht in
 dieser Baseline.
 
+Ein getrennter, rein lokaler Code Mode Pilot arbeitet mit synthetischen
+GitHub- und Railway-Daten. Er ist nicht mit Aline oder dem Backend verbunden.
+Die [Bestandsanalyse](docs/CODE-MODE-001-INVENTORY.md),
+[Architektur](docs/CODE-MODE-001-ARCHITECTURE.md) und der
+[Benchmark](docs/CODE-MODE-001-BENCHMARK.md) dokumentieren Umfang und Grenzen.
+Der Reproduktionslauf ist `python scripts/code_mode_demo.py` auf Linux mit
+Node 24 und `bubblewrap`.
+
 ## Schichten
 
 | Schicht | Verantwortung |
