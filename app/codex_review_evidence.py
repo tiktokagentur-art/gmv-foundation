@@ -41,7 +41,10 @@ def _sha(value: Any) -> bool:
 def _review_url(value: Any, repo: str, number: int) -> bool:
     if not isinstance(value, str):
         return False
-    parsed = urlsplit(value)
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return False
     return (
         parsed.scheme == "https"
         and parsed.netloc == "github.com"
