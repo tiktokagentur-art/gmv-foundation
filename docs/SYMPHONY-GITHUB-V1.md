@@ -4,8 +4,8 @@
 - Stand: 2026-11-22
 - Basis: `main` @ `3c585c7cf167ade171282a495b7b211284c15778`
 - Scope: GitHub Issues als Eingang für OpenAI Symphony; kein Linear
-- Referenz: https://github.com/openai/symphony/blob/main/SPEC.md
-- Implementierung: https://github.com/openai/symphony/blob/main/elixir/README.md
+- Referenz: [Symphony SPEC](https://github.com/openai/symphony/blob/main/SPEC.md)
+- Implementierung: [Symphony Elixir](https://github.com/openai/symphony/blob/main/elixir/README.md)
 
 ## Ziel
 
@@ -105,7 +105,7 @@ GitHub-Labels reichen ausdrücklich **nicht** für Restart-Sicherheit.
 ### A – jetzt: Dokumentation und Offline-Vertrag
 
 - Diese Spezifikation und die nicht aktivierte
-  [Workflow-Vorlage](symphony/WORKFLOW.example.md) versionieren.
+  [Workflow-Vorlage](symphony/WORKFLOW.example.txt) versionieren.
 - GitHub-API-Read-Adapter, Issue-Normalisierung, Label-Filter und
   Prompt-Template anhand von Offline-Fixtures prüfen.
 - Kein dauerhaft laufender Dienst, keine echten Codex- oder GitHub-Schreibaktionen.
