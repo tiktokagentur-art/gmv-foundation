@@ -136,6 +136,31 @@ def test_exact_budget_and_final_attempt_are_still_candidates():
     assert outcome.remaining_attempts == 1
 
 
+def test_clean_review_can_finish_after_second_fix_and_budget_exhaustion():
+    outcome = decision(
+        findings=[],
+        fix_attempts=2,
+        spent_cents=100,
+        spend_limit_cents=100,
+        estimated_next_fix_cents=0,
+    )
+    assert outcome.next_action == "REQUEST_FINAL_REVIEW"
+    assert outcome.remaining_attempts == 0
+    assert not outcome.write_authorized
+    assert not outcome.merge_authorized
+
+
+def test_clean_review_without_new_fix_budget_is_not_blocked():
+    outcome = decision(
+        findings=[],
+        spend_limit_cents=0,
+        spent_cents=0,
+        estimated_next_fix_cents=0,
+    )
+    assert outcome.next_action == "REQUEST_FINAL_REVIEW"
+    assert not outcome.merge_authorized
+
+
 def test_r1_fixture_scope():
     outcome = decision(
         risk_class="R1",
