@@ -26,6 +26,7 @@ Prüfung des Vorschlags erlaubt, nimmt den Vorschlag nicht an.
 | [0013](0013-repository-visibility-public.md) | Repository-Sichtbarkeit: public | Accepted |
 | [0014](0014-github-moderator-trust-boundary.md) | GitHub Moderator V1, Betriebsmodi und Credential-Isolation | Accepted |
 | [0015](0015-aline-l1-testmandate.md) | Dauerhaftes L1-Testmandat für Aline | Accepted |
+| [0016](0016-risk-based-autonomy-mandate.md) | Risikobasiertes Autonomiemandat für die Software Factory | Accepted |
 
 ## Offene Entscheidungen
 
@@ -70,3 +71,7 @@ Das dauerhafte, widerrufbare Aline-L1-Testmandat ist
 [0015](0015-aline-l1-testmandate.md) (Accepted, CEO 20.11.2026).
 Es erlaubt Einzeltests ohne erneute CEO-Freigabe nur nach
 technischer Aktivierungsabnahme des isolierten Testkorridors.
+
+Das risikobasierte, derzeit technisch deaktivierte Autonomiemandat ist
+[0016](0016-risk-based-autonomy-mandate.md) (Accepted, CEO 22.11.2026).
+Production Release/Rollback bleibt durch ADR-0011 weiterhin Proposed.
