@@ -53,6 +53,25 @@ Freigabe- und Kill-Switch-Prüfungen müssen gegen die serverseitigen
 Istzustände laufen. Aktivierung nicht über PR-Beschreibung, Issue-Label,
 Agent-Selbstbewertung oder einen bloßen lokalen Policy-Schalter.
 
+## Live-Readback 22.11.2026 – P0-Abhängigkeit
+
+[Issue #70](https://github.com/tiktokagentur-art/gmv-foundation/issues/70)
+hält die notwendige Prüfung der Railway-/GitHub-Kopplung fest.
+In `GMV-V3/staging/backend` sowie `GMV Forge/production/gmv-foundation`
+ist dieselbe Quelle `tiktokagentur-art/gmv-foundation:main` konfiguriert.
+Beide Konfigurationen melden `checkSuites=false`. Die zuletzt
+beobachteten Deployments vom 20.11.2026 sind auf denselben main-SHA
+`3c585c7` bezogen: Staging erfolgreich, Production fehlgeschlagen;
+ein früherer Production-Deploy war erfolgreich.
+
+Das beweist noch nicht den aktuellen Live-Traffic oder den exakten
+GitHub-Push-Trigger. Die operative Entkopplung ist aber **nicht
+nachgewiesen** und muss als P0-Sperre vor Auto-Merge behandelt werden.
+Ein `production_deploy_enabled=false` in unserer inaktiven Policy
+blockiert **keine** extern konfigurierte Railway-Autodeploy-Verbindung.
+Nur überprüfte Plattform-Gates und dokumentierte Readbacks
+schließen diese Lücke.
+
 ## Vor der ersten Aktivierung
 
 - [ ] PR #62, #64, #65 unabhängig prüfen und konfliktfrei integrieren;
