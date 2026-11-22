@@ -44,6 +44,16 @@ def evaluate_readiness(
     if policy.get("allowed_actions") != list(_ACTIONS):
         reasons.append("policy_action_scope_mismatch")
 
+    # Only this specific repository and default branch are in the proposed mandate.
+    # Claims are untrusted: these checks limit offline candidacy, not execution.
+    if (
+        policy.get("repository_full_name") != "tiktokagentur-art/gmv-foundation"
+        or evidence.get("repository_full_name") != policy.get("repository_full_name")
+    ):
+        reasons.append("repository_scope_mismatch")
+    if policy.get("target_branch") != "main" or evidence.get("target_branch") != "main":
+        reasons.append("target_branch_mismatch")
+
     action = evidence.get("action")
     if action not in _ACTIONS:
         reasons.append("action_not_delegated")
@@ -95,6 +105,7 @@ def evaluate_readiness(
         "control_plane_lease_verified",
         "trusted_risk_classification",
         "deployment_separated",
+        "production_source_isolated",
         "hard_limits_verified",
         "audit_sink_ready",
         "kill_switch_ready",
