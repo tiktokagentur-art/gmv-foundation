@@ -2,7 +2,10 @@
   "schema_version": 1,
   "mandate_id": "GMV-AUTO-001",
   "enabled": false,
-  "allowed_actions": ["merge", "deploy_staging"],
+  "allowed_actions": [
+    "merge",
+    "deploy_staging"
+  ],
   "maximum_delegated_risk": "R1",
   "production_deploy_enabled": false,
   "permission_changes_enabled": false,
@@ -15,8 +18,11 @@
     "trusted Control Plane authorizations and lease/fencing",
     "risk policy APR-005A and trusted classification",
     "GitHub/Railway deployment separation",
+    "production source decoupled from main (Railway readback, P0 #70)",
     "hard budget and scope limits",
     "audit trail and operational kill switch",
     "independent security review and activation readback"
-  ]
+  ],
+  "repository_full_name": "tiktokagentur-art/gmv-foundation",
+  "target_branch": "main"
 }
