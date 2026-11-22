@@ -61,6 +61,7 @@ def test_well_formed_observation_is_still_not_a_merge_approval():
         ("review_state", "CHANGES_REQUESTED", "review_not_positive"),
         ("risk_class", "R4", "additional_security_review_required"),
         ("review_url", "https://github.com.evil.test/fake", "invalid_review_url"),
+        ("review_url", "https://[", "invalid_review_url"),
         ("source", "local_fixture", "unknown_source"),
         ("pr_number", 999, "pr_mismatch"),
     ],
