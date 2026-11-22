@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tiktokagentur-art/gmv-foundation/blob/main/config/code-review/review-evidence-v1.schema.json",
+  "title": "CRG-001A untrusted Codex review observation",
+  "description": "Offline shape contract only. Never an authentication, approval, or merge authorization.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source",
+    "repository",
+    "pr_number",
+    "head_sha",
+    "author_id",
+    "risk_class",
+    "reviewer_id",
+    "review_commit_sha",
+    "review_url",
+    "review_state",
+    "passed_checks",
+    "unresolved_findings",
+    "synthetic"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "source": {
+      "const": "github_api_snapshot"
+    },
+    "repository": {
+      "type": "string",
+      "const": "tiktokagentur-art/gmv-foundation"
+    },
+    "pr_number": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "head_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "author_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "risk_class": {
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ]
+    },
+    "reviewer_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_commit_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "review_url": {
+      "type": "string",
+      "pattern": "^https://github\\.com/tiktokagentur-art/gmv-foundation/pull/[1-9][0-9]*#pullrequestreview-[1-9][0-9]*$"
+    },
+    "review_state": {
+      "enum": [
+        "APPROVED",
+        "COMMENTED",
+        "CHANGES_REQUESTED",
+        "DISMISSED"
+      ]
+    },
+    "passed_checks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "unresolved_findings": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "synthetic": {
+      "type": "boolean"
+    }
+  }
+}
