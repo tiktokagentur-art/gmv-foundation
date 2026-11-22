@@ -17,6 +17,8 @@ def policy():
 
 def evidence():
     return {
+        "repository_full_name": "tiktokagentur-art/gmv-foundation",
+        "target_branch": "main",
         "action": "merge",
         "risk": "R0",
         "protected_change": False,
@@ -37,6 +39,7 @@ def evidence():
         "control_plane_lease_verified": True,
         "trusted_risk_classification": True,
         "deployment_separated": True,
+        "production_source_isolated": True,
         "hard_limits_verified": True,
         "audit_sink_ready": True,
         "kill_switch_ready": True,
@@ -64,6 +67,8 @@ def test_hypothetical_clean_evidence_is_only_offline_candidate():
 @pytest.mark.parametrize(
     ("field", "value", "reason"),
     [
+        ("repository_full_name", "other/repo", "repository_scope_mismatch"),
+        ("target_branch", "unprotected", "target_branch_mismatch"),
         ("action", "deploy_production", "action_not_delegated"),
         ("action", "change_permissions", "action_not_delegated"),
         ("risk", "R2", "risk_not_eligible"),
@@ -81,6 +86,7 @@ def test_hypothetical_clean_evidence_is_only_offline_candidate():
         ("control_plane_lease_verified", False, "control_plane_lease_verified_missing"),
         ("trusted_risk_classification", False, "trusted_risk_classification_missing"),
         ("deployment_separated", False, "deployment_separated_missing"),
+        ("production_source_isolated", False, "production_source_isolated_missing"),
         ("hard_limits_verified", False, "hard_limits_verified_missing"),
         ("kill_switch_ready", False, "kill_switch_ready_missing"),
     ],
@@ -127,3 +133,21 @@ def test_boolean_is_not_an_approval_count():
     candidate["ruleset_required_approvals"] = True
     result = evaluate_readiness(config, candidate)
     assert "ruleset_not_enforcing" in result.reasons
+
+
+def test_policy_scope_change_is_not_delegated():
+    config = policy()
+    config["enabled"] = True
+    config["repository_full_name"] = "attacker/other"
+    result = evaluate_readiness(config, evidence())
+    assert "repository_scope_mismatch" in result.reasons
+    assert not result.merge_authorized
+
+
+def test_policy_target_change_is_not_delegated():
+    config = policy()
+    config["enabled"] = True
+    config["target_branch"] = "other"
+    result = evaluate_readiness(config, evidence())
+    assert "target_branch_mismatch" in result.reasons
+    assert not result.merge_authorized
