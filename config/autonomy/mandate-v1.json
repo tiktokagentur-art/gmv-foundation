@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "mandate_id": "GMV-AUTO-001",
+  "enabled": false,
+  "allowed_actions": ["merge", "deploy_staging"],
+  "maximum_delegated_risk": "R1",
+  "production_deploy_enabled": false,
+  "permission_changes_enabled": false,
+  "infrastructure_changes_enabled": false,
+  "secret_changes_enabled": false,
+  "schema_migrations_enabled": false,
+  "activation_requires": [
+    "independent GitHub formal review enforcement",
+    "fresh required GitHub CI checks",
+    "trusted Control Plane authorizations and lease/fencing",
+    "risk policy APR-005A and trusted classification",
+    "GitHub/Railway deployment separation",
+    "hard budget and scope limits",
+    "audit trail and operational kill switch",
+    "independent security review and activation readback"
+  ]
+}
