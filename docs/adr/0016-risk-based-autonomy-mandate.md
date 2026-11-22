@@ -16,7 +16,16 @@ formalen GitHub-Review.
 
 ADR-0003 schützt die einzige Assignment Authority. ADR-0004 dokumentiert den
 aktuellen GitHub-Schutz; ADR-0011 bleibt für Production Release/Rollback
-Proposed. Der ungemergte PR #62 (APR-005A) enthält den Kandidatenklassifikator
+Proposed. Ein Live-Readback am 22.11.2026 zeigt zusätzlich eine als
+`production` benannte Railway-Umgebung in `GMV Forge`, deren Service
+`gmv-foundation` ebenso wie `GMV-V3/staging/backend` aus
+`tiktokagentur-art/gmv-foundation:main` konfiguriert ist. In beiden
+Source-Konfigurationen steht `checkSuites=false`. In der
+Production-Umgebung gab es bereits ein erfolgreiches Deployment am
+20.11.2026, während das neueste Deployment fehlgeschlagen ist.
+Damit ist eine echte operative Release-Trennung ausdrücklich **nicht**
+nachgewiesen; ein möglicher automatischer Deploy nach einem Merge
+muss vor Freigabe überprüft und entkoppelt werden (Issue #70). Der ungemergte PR #62 (APR-005A) enthält den Kandidatenklassifikator
 R0–R4, PR #64 den Codex-Review-Vertrag und PR #65 die Offline-Fix-Schleife.
 Diese Änderungen dürfen nicht als bereits aktive Infrastruktur gelten.
 
