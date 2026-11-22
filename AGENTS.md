@@ -70,3 +70,35 @@ die drei erforderlichen CI-Checks grün sind und eine unabhängige
 fachliche Prüfung dokumentiert ist. Das ist eine Pilot-Arbeitsweise;
 sie erhöht nicht die in ADR-0004 festgelegte GitHub-Approval-Zahl von 0.
 Merge oder Deployment sind nicht Teil der automatischen Abnahme.
+
+## Code Review Rules (CRG-001A)
+
+Diese drei Prüfschwerpunkte gelten für Codex Code Review. Findings sollen
+einen konkreten Pfad, die betroffene Änderung, das Risiko und eine sichere
+Korrekturmöglichkeit nennen. Ein Review-Kommentar ist keine GitHub-Approval.
+
+### Autoritativer Zustand und Zuweisungen
+
+Bei Änderungen an WorkItem-, Scheduler-, Claim-, Lease- oder
+Fencing-Verträgen prüfen, ob eine zweite Assignment Authority,
+ein zweiter Statusschreiber oder eine Selbstzuweisung eingeführt würde.
+Solche Änderungen verletzen ADR-0003; die bestehende eindeutige
+Autorität und Lebenszyklusgrenzen müssen erhalten bleiben.
+
+### Schnittstellen- und Datenvertrags-Kompatibilität
+
+Bei Änderungen an `api/openapi.yaml`, Authentisierung, Identitäts-,
+Lifecycle- oder versionierten Schemas auf inkompatible Feldänderungen,
+entfallene Fehlerfälle und stillschweigende Formatänderungen prüfen.
+Bestehende Verträge erhalten oder Migration und gesonderte
+Freigabe nachweisen; ein erfolgreicher Einzeltest allein genügt nicht.
+
+### Privilegien, Evidenz und Merge-Grenzen
+
+Bei GitHub Actions, Secrets, Berechtigungen, Produktiv-APIs und
+Release-Pfaden prüfen, ob neue Schreibrechte, Secret-Zugriffe,
+Bypasses oder ungeprüfte Deployment-Auslöser entstehen. Auf aktuelle
+Head-SHA, unabhängige Reviewer-Identität, echte CI-Nachweise und
+fehlende offene Befunde achten. Synthetische oder selbst gemeldete
+Reviews niemals als formelle Freigabe, Merge- oder Deploymentrecht
+interpretieren; siehe `docs/pr-review/CRG-001A-CODEX-REVIEW.md`.
