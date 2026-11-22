@@ -133,15 +133,18 @@ def evaluate(snapshot: LoopSnapshot) -> LoopDecision:
         reasons.append("finding_outside_change_scope")
     if any(f.priority in ("P0", "P1") for f in snapshot.findings):
         reasons.append("high_priority_finding_requires_manual_review")
-    if snapshot.fix_attempts >= MAX_FIX_ATTEMPTS:
-        reasons.append("fix_attempt_limit_reached")
-    if snapshot.spend_limit_cents == 0 or snapshot.estimated_next_fix_cents == 0:
-        reasons.append("hard_budget_not_configured")
-    if (
-        snapshot.spent_cents + snapshot.estimated_next_fix_cents
-        > snapshot.spend_limit_cents
-    ):
-        reasons.append("hard_budget_exceeded")
+    # A clean review must still reach formal approval after the final fix.
+    # Retry and projected-next-call budgets apply only to ANOTHER fix request.
+    if snapshot.findings:
+        if snapshot.fix_attempts >= MAX_FIX_ATTEMPTS:
+            reasons.append("fix_attempt_limit_reached")
+        if snapshot.spend_limit_cents == 0 or snapshot.estimated_next_fix_cents == 0:
+            reasons.append("hard_budget_not_configured")
+        if (
+            snapshot.spent_cents + snapshot.estimated_next_fix_cents
+            > snapshot.spend_limit_cents
+        ):
+            reasons.append("hard_budget_exceeded")
 
     action = "BLOCKED"
     if not reasons:
