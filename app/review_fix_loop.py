@@ -10,8 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from pathlib import PurePosixPath
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -23,7 +22,7 @@ MAX_CHANGED_FILES = 5
 
 
 class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 class ChangedFile(StrictModel):
@@ -41,25 +40,25 @@ class LoopSnapshot(StrictModel):
     repository: Literal["tiktokagentur-art/gmv-foundation"]
     pr_number: int = Field(gt=0)
     pr_state: Literal["open", "closed"]
-    draft: bool
+    draft: bool = Field(strict=True)
     head_sha: str
     review_head_sha: str
     checks_head_sha: str
     author_id: str = Field(min_length=1)
     reviewer_id: str = Field(min_length=1)
     review_source: Literal["codex_review"]
-    review_completed: bool
+    review_completed: bool = Field(strict=True)
     review_state: Literal["COMMENTED", "APPROVED", "CHANGES_REQUESTED", "DISMISSED"]
     risk_class: Literal["R0", "R1", "R2", "R3", "R4"]
     changed_files: tuple[ChangedFile, ...] = Field(min_length=1)
     findings: tuple[Finding, ...]
     passed_checks: frozenset[str]
     approved_paths: frozenset[str]
-    category_approved: bool
-    fix_attempts: int = Field(ge=0)
-    spend_limit_cents: int = Field(ge=0)
-    spent_cents: int = Field(ge=0)
-    estimated_next_fix_cents: int = Field(ge=0)
+    category_approved: bool = Field(strict=True)
+    fix_attempts: int = Field(ge=0, strict=True)
+    spend_limit_cents: int = Field(ge=0, strict=True)
+    spent_cents: int = Field(ge=0, strict=True)
+    estimated_next_fix_cents: int = Field(ge=0, strict=True)
 
 
 class LoopDecision(StrictModel):
