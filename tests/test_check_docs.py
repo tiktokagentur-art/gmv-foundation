@@ -1,8 +1,12 @@
 """Unit tests for handbook validation."""
 
 from pathlib import Path
+from runpy import run_path
 
-from scripts.check_docs import check_links, validate
+# The repository packages only app/, so load the standalone CLI by file path.
+module = run_path(str(Path(__file__).resolve().parents[1] / "scripts/check_docs.py"))
+check_links = module["check_links"]
+validate = module["validate"]
 
 
 def test_relative_link(tmp_path: Path) -> None:
