@@ -86,7 +86,10 @@ def test_schema_rejects_extra_field():
     import json
     from pathlib import Path
 
-    schema_path = Path(__file__).resolve().parents[1] / "config/code-review/review-evidence-v1.schema.json"
+    schema_path = (
+        Path(__file__).resolve().parents[1]
+        / "config/code-review/review-evidence-v1.schema.json"
+    )
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema)
