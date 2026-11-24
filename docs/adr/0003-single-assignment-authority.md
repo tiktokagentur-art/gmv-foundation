@@ -37,7 +37,7 @@ Zwei Eigentümer einer Domäne sind es nicht.
 - Jede angenommene Zustandsänderung ist serverseitig autorisiert und auditierbar ([../../SECURITY.md](../../SECURITY.md)).
 - Lease und Fencing bleiben Eigenschaften der Authority. Ein Worker kann sie nicht selbst verlängern oder ersetzen.
 - Failover ist nur zulässig, wenn dabei weiterhin genau eine Instanz schreibt. Wie das betrieblich aussieht, ist kein Freibrief für einen zweiten Primary und ist mit [ADR-0005](0005-railway-environments.md) offen.
-- Der konkrete Authentisierungsstandard bleibt [ADR-0008](0008-auth-standard.md). Die Regel, dass autorisiert wird, ist davon unabhängig schon gültig.
+- Der Authentisierungsstandard für Workloads steht in [ADR-0008](0008-auth-standard.md). Die Regel, dass autorisiert wird, ist davon unabhängig schon gültig.
 
 ## Alternativen
 

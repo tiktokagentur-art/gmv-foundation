@@ -7,11 +7,14 @@ Python / FastAPI ist beschlossen
 
 | Modul | Aufgabe |
 | --- | --- |
-| `main.py` | `GET /health`, `GET /ready` |
+| `main.py` | `GET /health`, `GET /ready`, `GET /v1/whoami` |
+| `auth.py` | FastAPI-Dependency für `Authorization: Bearer` |
+| `credentials.py` | Workload-Keys, SHA-256, CLI `python -m app.credentials` |
+| `errors.py` | V1-`ErrorBody` unter `/v1` |
 | `request_id.py` | `X-Request-ID` prüfen oder erzeugen, an Antwort und Logs hängen |
 | `config.py` | `DATABASE_URL` nur aus der Prozessumgebung, gehalten als `SecretStr` |
 | `db.py` | Verbindung und Infrastrukturtabelle `schema_meta` |
-| `logging_config.py` | JSON-Logs, Feld `request_id`, Secrets werden geschwärzt |
+| `logging_config.py` | JSON-Logs, Feld `request_id`, Secrets und Keys werden geschwärzt |
 
 `GET /health` öffnet keine Datenbank. `GET /ready` antwortet mit 503, wenn die
 Verbindung fehlt oder scheitert. Die Antwort enthält keine Verbindungsdaten.
@@ -34,14 +37,27 @@ Requests. Uvicorn setzt vor dem Import eigene Handler. `configure_logging`
 entfernt sie, damit diese Zeile denselben Formatter erreicht.
 
 `GET /health` und `GET /ready` behalten Statuscode und JSON-Körper. Nur der
-Header kommt hinzu. Eine unbehandelte Exception erzeugt genau eine
-JSON-Fehlerzeile mit `request_id`, `error_type`, `path` und `method`. `path`
-ist der URL-Pfad ohne Query. Pfad und Methode werden wie die Nachricht
-geschwärzt, bevor die Zeile geschrieben wird. Die Antwort ist der bisherige
-Text `Internal Server Error` und nennt die Ursache nicht. Einen Metrik- oder
-Fehler-Endpunkt gibt es nicht. V1-Fehlerkörper sind im Skelett nicht
-implementiert und gehören zu GF-008. `error.request_id` bleibt das optionale
-Feld in `api/openapi.yaml`.
+Header kommt hinzu. Sie verlangen keinen API-Key.
+
+Eine unbehandelte Exception erzeugt genau eine JSON-Fehlerzeile mit
+`request_id`, `error_type`, `path` und `method`. `path` ist der URL-Pfad ohne
+Query. Pfad und Methode werden wie die Nachricht geschwärzt, bevor die Zeile
+geschrieben wird. Unter `/v1` ist die Antwort ein `ErrorBody` mit Code
+`internal`. Außerhalb von `/v1`, also auch bei `/health` und `/ready`, bleibt
+der Text `Internal Server Error`. Die Ursache steht in beiden Fällen nicht in
+der Antwort.
+
+`GET /v1/whoami` verlangt einen Workload-API-Key. `401`, `403` und `404`
+unter `/v1` nutzen denselben `ErrorBody`, einschließlich `error.request_id`.
+Schlüssel werden über das CLI ausgegeben und widerrufen:
+
+```bash
+python -m app.credentials issue --kind worker
+python -m app.credentials revoke --credential-id <uuid>
+```
+
+Der Klartext erscheint einmal auf der Standardausgabe und wird nicht geloggt.
+Einen HTTP-Endpunkt zum Ausstellen gibt es nicht.
 
 Alembic liest dieselbe Variable. Ein Fehler auf der Konsole von `alembic` kann
 die URL trotzdem enthalten, weil das der Traceback des Werkzeugs ist. Die
