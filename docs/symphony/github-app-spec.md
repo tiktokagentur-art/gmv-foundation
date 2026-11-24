@@ -1,7 +1,9 @@
-# Symphony GitHub App – Spezifikation (nicht angelegt)
+# Symphony GitHub App – Spezifikation
 
-Status: **Entwurf zur Review durch Petrus.** Die App wird mit diesem PR
-**nicht** angelegt, nicht installiert und erhält keinen Private Key.
+Status: **App angelegt und installiert** (App-ID `5899252`, Installation
+`185263574`, beides keine Secrets). Dieser PR legt nichts an und enthält keinen
+Private Key. Seit 24.11.2026 bezieht Symphony sein Token nur noch über diese
+App; **das persönliche Admin-Token wird nicht mehr verwendet.**
 Bezug: Notion ENG-003, Issue #74, PR #66, Review-Befund 5
 (`github_api` lief im Pilot hostseitig mit den Rechten eines persönlichen
 Kontos).
@@ -66,6 +68,29 @@ Plane und braucht eine eigene Review.
 - Lebensdauer: GitHub-Standard (1 Stunde), kein Caching über den Lauf hinaus.
 - In der Workflow-Vorlage bleibt `token: "$GITHUB_TOKEN"` eine Env-Referenz.
 
+Umsetzung: `scripts/symphony_app_token.py` (Tests ohne echten Key:
+`tests/test_symphony_app_token.py`).
+
+- Pro Lauf ein JWT (RS256, `exp` 9 Minuten nach Ausstellung, `iat` 60 Sekunden
+  zurückdatiert, also unter 10 Minuten). Signiert wird per `openssl`; der Key
+  wird nicht in den Prozess geladen. Key-Datei muss `600` und dem Nutzer gehören.
+- Die Token-Antwort muss exakt `issues: read`, `metadata: read` und genau
+  `tiktokagentur-art/gmv-foundation` enthalten, sonst Widerruf und Abbruch.
+- `exec -- <befehl>` übergibt das Token nur als `GITHUB_TOKEN` in der
+  Prozessumgebung des Kindes. Geerbte `GITHUB_TOKEN`/`GH_TOKEN`, die
+  `gh`-Konfiguration (`GH_CONFIG_DIR` leer) und der globale
+  Git-Credential-Helper (`GIT_CONFIG_GLOBAL` leer) werden ausgeblendet.
+  Wichtig, weil Symphony bei fehlender Variable auf `GITHUB_TOKEN` zurückfällt
+  und der Host-Git-Helper sonst das Admin-Token liefert.
+- Nach Ende des Kindprozesses (auch bei Absturz) `DELETE /installation/token`
+  mit Wiederholung.
+- `selftest` erzeugt ein Token, prüft `GET /installation/repositories`,
+  widerruft und prüft danach `401`. Ausgegeben werden nur Länge, Ablaufzeit,
+  Rechte und Repository-Namen.
+
+Ein Symphony-Start auf dem Host läuft nur über einen Wrapper, der diesen
+Helfer aufruft und ohne ausdrückliche Startfreigabe abbricht.
+
 ## Private Key und Ablage
 
 - Private Key nur im Secret Store des Orchestrator-Hosts (ADR-0007 offen),
@@ -85,11 +110,15 @@ Feature-Branches, `main` bleibt durch Ruleset geschützt) und Pull requests
 Read and write. Das ist eine Rechteerweiterung und braucht eine eigene
 Freigabe.
 
-## Anlage-Checkliste für Petrus
+## Anlage-Checkliste
 
-- [ ] Rechteliste und Verzichte geprüft
-- [ ] App mit obigen Stammdaten angelegt, Webhook aus
-- [ ] Installation nur auf `gmv-foundation`
-- [ ] Private Key im Host-Secret-Store, nicht im Repo
+- [ ] Rechteliste und Verzichte geprüft (Petrus)
+- [x] App angelegt (App-ID `5899252`)
+- [x] Installation nur auf `gmv-foundation` (Selbsttest 24.11.2026,
+  `GET /installation/repositories` liefert genau dieses Repo)
+- [x] Token-Rechte exakt `issues: read`, `metadata: read` (Selbsttest 24.11.2026)
+- [x] Private Key in der Host-Secret-Ablage (Rechte `600`), nicht im Repo
+- [ ] Webhook aus und Stammdaten in den App-Einstellungen bestätigen (Petrus)
 - [ ] Moderator-Audit nach Installation: `bypass_actors` weiterhin `[]`
-- [ ] Persönliches Konto-Token aus dem Pilot widerrufen
+- [ ] Persönliches Admin-Token: wird nicht mehr referenziert, ist aber noch
+  gültig. Widerruf ist eine separate Entscheidung.

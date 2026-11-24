@@ -91,6 +91,15 @@ setzt `core.hooksPath` auf `/dev/null` und prüft einen sauberen Baum.
 python3 scripts/symphony_dispatch_gate.py validate-workflow docs/symphony/WORKFLOW.example.txt
 ```
 
+## Authentifizierung
+
+Symphony nutzt nur noch das Installation-Token der App `gmv-symphony-worker`
+(siehe [github-app-spec.md](github-app-spec.md)), erzeugt pro Lauf von
+`scripts/symphony_app_token.py exec`. **Das persönliche Admin-Token
+(`repo`, `admin:org`, `workflow`) wird nicht mehr verwendet.** Das Gate darf
+einen Dispatch nur in einem Prozess zulassen, dessen `GITHUB_TOKEN` von diesem
+Helfer stammt.
+
 ## Anbindung (Phase B, nicht aktiv)
 
 - `hooks.before_run` ruft das Gate auf (in der Vorlage auskommentiert).
