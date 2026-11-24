@@ -11,6 +11,7 @@ benötigt keinen zusätzlichen Dokumentationsgenerator oder Hostingdienst.
 - [Factory-Katalog](factories/README.md)
 - [Factory-, API- und Agenten-Vorlagen](templates/README.md)
 - [Automatische Dokumentationsprüfungen](automation.md)
+- [Railway-Kopplung an `main` (Audit #70)](railway-kopplung.md)
 
 ## Verbindliche Quellen
 
