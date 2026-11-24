@@ -4,6 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # pydantic pins an exact pydantic-core version, so let pydantic updates bring it along.
+    ignore:
+      - dependency-name: "pydantic-core"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
