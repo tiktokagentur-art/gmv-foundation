@@ -18,6 +18,9 @@ Sie legen keine Infrastruktur an und enthalten keinen Anwendungscode.
 | [symphony/github-app-spec.md](symphony/github-app-spec.md) | Symphony GitHub App: Rechteliste, nicht angelegt |
 | [symphony/dispatch-gate.md](symphony/dispatch-gate.md) | Symphony Dispatch-Gate: Entwurf, standardmäßig aus |
 | [symphony/sandbox.md](symphony/sandbox.md) | Symphony/Codex-Sandbox: was erzwungen ist, was nicht |
+| [symphony/operations.md](symphony/operations.md) | Symphony Operations Playbook: Ablauf, Stop-Gründe, Troubleshooting |
+| [symphony/codex-engineering.md](symphony/codex-engineering.md) | Codex Engineering Playbook: Ticket-Standard, Prompt-Regeln, Tokens |
+| [symphony/orchestration.md](symphony/orchestration.md) | Orchestrierung: Wellen, Gates, Rollen, Abteilungen (Konzept) |
 | [adr/README.md](adr/README.md) | Index der ADRs, einschließlich offener Punkte |
 | [../SECURITY.md](../SECURITY.md) | Secrets, Rechte, Identität, Autorisierung, Audit |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Branch, Pull Request, unabhängige Review |
