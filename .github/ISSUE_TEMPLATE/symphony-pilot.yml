@@ -1,0 +1,41 @@
+name: Symphony-Pilot-Auftrag
+description: Kleiner, klar begrenzter Auftrag für einen Symphony-Pilotlauf
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Das Pilot-Label `gmv-symphony-pilot` vergeben nur Aline oder Deniz, nie über diese Vorlage.
+        Der Issue-Text ist öffentlich: keine Secrets, keine echten Kunden-, Händler-, Creator- oder Preisdaten. **Nur fiktive Daten.**
+  - type: textarea
+    id: hintergrund
+    attributes:
+      label: Hintergrund
+      description: Warum wird die Änderung gebraucht?
+    validations:
+      required: true
+  - type: textarea
+    id: umfang
+    attributes:
+      label: Umfang (nur diese Dateien anlegen oder ändern)
+      placeholder: "1. `pfad/zur/datei`: was genau."
+    validations:
+      required: true
+  - type: textarea
+    id: worker
+    attributes:
+      label: Hinweise für den Worker
+      value: |
+        - Tests nicht selbst ausführen, nur Patch liefern.
+        - Keine Änderung an Workflows, Settings, Abhängigkeiten oder anderen Dateien.
+    validations:
+      required: true
+  - type: textarea
+    id: akzeptanz
+    attributes:
+      label: Akzeptanzkriterien
+      value: |
+        - [ ] Nur die oben genannten Dateien geändert.
+        - [ ] CI grün (`Lint and structure`, `Backend`, `Image`).
+        - [ ] Nur fiktive Daten, keine Secrets.
+    validations:
+      required: true
