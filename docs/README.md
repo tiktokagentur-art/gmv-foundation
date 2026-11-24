@@ -5,6 +5,7 @@ Sie legen keine Infrastruktur an und enthalten keinen Anwendungscode.
 
 | Dokument | Inhalt |
 | --- | --- |
+| [developer/README.md](developer/README.md) | Developer Handbook: Einstieg, Factories, Vorlagen und Checks |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Schichten, Zustandsregel, Begriffe |
 | [DATA_MODEL.md](DATA_MODEL.md) | Kernentitäten der V1 |
 | [WORKITEM_LIFECYCLE.md](WORKITEM_LIFECYCLE.md) | Zustände, Übergänge, Lease, Fencing |

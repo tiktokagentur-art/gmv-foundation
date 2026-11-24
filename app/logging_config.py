@@ -1,7 +1,8 @@
 """JSON logs. Secret-bearing values are redacted before they are written.
 
 While a request is active, each line also carries ``request_id``. Uvicorn's
-access line uses this same formatter and the same redaction.
+access line uses this same formatter and the same redaction. Workload API
+keys and digests bound for the request are redacted too.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ import json
 import logging
 import os
 import re
+import sys
 from datetime import UTC, datetime
 
 _USERINFO = re.compile(r"([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s:@]+:[^/\s@]+@")
@@ -25,6 +27,23 @@ request_id_context: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "request_id",
     default=None,
 )
+_redactions: contextvars.ContextVar[tuple[str, ...]] = contextvars.ContextVar(
+    "log_redactions",
+    default=(),
+)
+# Workload keys are recognizable and must not survive into a log line.
+_WORKLOAD_KEY = re.compile(r"gmv_wk_[A-Za-z0-9_-]{16,}")
+
+
+def bind_redactions(*values: str) -> contextvars.Token[tuple[str, ...]]:
+    """Hide these exact strings until :func:`reset_redactions` restores the parent."""
+    current = _redactions.get()
+    extra = tuple(value for value in values if isinstance(value, str) and len(value) >= 16)
+    return _redactions.set(current + extra)
+
+
+def reset_redactions(token: contextvars.Token[tuple[str, ...]]) -> None:
+    _redactions.reset(token)
 
 
 def configure_logging() -> None:
@@ -34,7 +53,7 @@ def configure_logging() -> None:
     Clearing those handlers and propagating makes the access line use this
     formatter, so it carries ``request_id`` and the same redaction.
     """
-    handler = logging.StreamHandler()
+    handler = _StderrHandler()
     handler.setFormatter(JsonFormatter())
     handler.addFilter(RequestIdFilter())
     root = logging.getLogger()
@@ -44,6 +63,26 @@ def configure_logging() -> None:
         named = logging.getLogger(name)
         named.handlers.clear()
         named.propagate = True
+
+
+class _StderrHandler(logging.StreamHandler):
+    """Write to the process stderr that is current at emit time.
+
+    Pytest replaces ``sys.stderr`` per test. A handler must not keep the
+    previous stream, or the next test logs into a closed capture.
+    """
+
+    def __init__(self) -> None:
+        logging.Handler.__init__(self)
+        self._placeholder = sys.stderr
+
+    @property
+    def stream(self) -> object:
+        return sys.stderr
+
+    @stream.setter
+    def stream(self, value: object) -> None:
+        self._placeholder = value
 
 
 class RequestIdFilter(logging.Filter):
@@ -95,8 +134,11 @@ def _request_id(record: logging.LogRecord) -> str | None:
 
 def redact(text: str) -> str:
     redacted = text
-    for value in _sensitive_env_values():
+    secrets = [*_sensitive_env_values(), *_redactions.get()]
+    secrets.sort(key=len, reverse=True)
+    for value in secrets:
         redacted = redacted.replace(value, _REDACTED)
+    redacted = _WORKLOAD_KEY.sub(_REDACTED, redacted)
     return _USERINFO.sub(rf"\1{_REDACTED}@", redacted)
 
 
