@@ -1,9 +1,11 @@
 # Identitätsmodell
 
 Vertrag für V1. Die Prüfung ist serverseitig. Der Client, der Worker und ein
-Proxy entscheiden keine Zustandsänderung. Die Umsetzung des Nachweises folgt in
-GF-008. Welches Protokoll die Identität nachweist, bleibt
-[ADR-0008](adr/0008-auth-standard.md) und wird hier nicht gewählt.
+Proxy entscheiden keine Zustandsänderung. Workloads weisen sich mit einem
+API-Key je Identität aus
+([ADR-0008](adr/0008-auth-standard.md), Accepted für Workloads). Menschen-Logins
+sind zurückgestellt. Die Autorisierung einer Zustandsänderung bleibt in der
+besitzenden Instanz.
 
 ## Arten
 
@@ -26,11 +28,11 @@ Felder der Identity:
 | status | string | `active` oder `disabled` |
 | roles | array of string | Menge der Rollen unten, keine Duplikate |
 
-`subject` ist der externe Bezug, sobald ADR-0008 einen Aussteller benennt.
-Bis dahin vergibt die Control Plane den Wert. Ein Aufruf ohne von der Control
-Plane anerkannte Identity endet mit `401`. Eine bekannte Identity ohne die
-nötige Rolle endet mit `403`. Ein `disabled` Subjekt wird wie fehlende
-Berechtigung behandelt.
+`subject` ist für Workloads der von der Control Plane vergebene `identity_id`.
+Einen externen Aussteller für Menschen gibt es nicht, solange kein IdP
+freigegeben ist. Ein Aufruf ohne von der Control Plane anerkannte Identity
+endet mit `401`. Eine bekannte Identity ohne die nötige Rolle endet mit `403`.
+Ein `disabled` Subjekt wird wie fehlende Berechtigung behandelt.
 
 ## Rollen
 
@@ -71,5 +73,7 @@ Operationen, die keinen WorkItem-Übergang sind:
 Eine deaktivierte Zuweisung entsteht nicht durch den Heartbeat. Läuft ein
 Lease ab, gilt der Lebenszyklus, auch wenn der Worker noch Heartbeats sendet.
 
-GF-008 implementiert diese Regeln. Dieser Vertrag legt sie fest und enthält
-keinen Code dafür.
+GF-008 setzt den Workload-Nachweis um: Präfix `gmv_wk_`, SHA-256-Hash,
+einzelner Widerruf und optionales Ablaufdatum. Die Rollenregeln dieses
+Vertrags bleiben die Autorisierung der besitzenden Instanz. Diesen Code
+enthält der Vertrag nicht.
