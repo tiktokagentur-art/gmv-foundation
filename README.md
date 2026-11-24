@@ -26,9 +26,10 @@ GMV-V3 laufen die Dienste `backend` und Postgres (Railway-Readback am
 | GF-005 | Daten- und API-Verträge, Identitätsmodell |
 | GF-006 | Skelett: FastAPI, Health, Readiness, Alembic, Image |
 | GF-007 | Request-ID, JSON-Logs mit Access-Zeile, Schwärzung, gitleaks in CI |
+| GF-008 | Workload-Authentisierung: API-Key je Identität |
 
-Die Umsetzung der Authentisierung ist als GF-008 vorgesehen und liegt nicht in
-dieser Baseline.
+Menschen-Authentisierung (OIDC-IdP mit MFA) ist zurückgestellt und braucht die
+Freigabe der CEO.
 
 ## Schichten
 
@@ -58,6 +59,7 @@ Gültig:
 - [ADR-0003](docs/adr/0003-single-assignment-authority.md) eine Assignment Authority, ein Zustandseigentümer je Domäne
 - [ADR-0004](docs/adr/0004-branch-protection-codeowners.md) Branch Protection für `main`, entschieden am 10.11.2026
 - [ADR-0005](docs/adr/0005-railway-environments.md) Railway-Projekt GMV-V3, Umgebung staging, entschieden am 10.11.2026
+- [ADR-0008](docs/adr/0008-auth-standard.md) Workload-Authentisierung mit API-Keys, entschieden am 10.11.2026
 - [ADR-0012](docs/adr/0012-hosting-region-usa.md) Hosting-Region USA, Railway `sfo`, entschieden am 09.11.2026
 - [ADR-0013](docs/adr/0013-repository-visibility-public.md) Repository-Sichtbarkeit public, entschieden am 10.11.2026
 - [ADR-0014](docs/adr/0014-github-moderator-trust-boundary.md) GitHub Moderator V1, Betriebsmodi und Credential-Isolation, entschieden am 10.11.2026
@@ -67,9 +69,9 @@ Offene Punkte stehen im [ADR-Index](docs/adr/README.md).
 ## Struktur
 
 ```text
-app/                         FastAPI-Skelett und Lebenszyklus-Vertrag, keine Endpunkte der V1
-api/openapi.yaml             OpenAPI 3.1, nicht implementiert
-migrations/                  Migrationen, erste Tabelle schema_meta
+app/                         FastAPI, Health, Readiness, Workload-Credentials
+api/openapi.yaml             OpenAPI 3.1, Nachweis als Workload-API-Key
+migrations/                  schema_meta und credentials
 tests/                       health, ready, Migration, Vertrag gegen den Lebenszyklus
 scripts/validate_structure.py
 docs/ARCHITECTURE.md

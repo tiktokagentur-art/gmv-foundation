@@ -1,9 +1,8 @@
 # ADR-0008: Authentisierungsstandard
 
-- Status: Proposed
-- Datum: 2026-11-09
-- Überarbeitet: 2026-11-10 (Vorschlag ergänzt, nicht entschieden)
-- Entscheider: offen
+- Status: Accepted
+- Datum: 2026-11-10
+- Entscheider: Head of Engineering (delegiert vom CEO, 10.11.2026)
 
 ## Kontext
 
@@ -15,92 +14,89 @@ legen fest, was von einem Standard unabhängig schon gilt:
 - jede Zustandsänderung wird von der besitzenden Instanz autorisiert
 - Anträge ohne passende Identität ändern nichts
 
-Offen ist der Standard, mit dem eine Identität nachgewiesen wird. Ein Standard
-wird nicht gewählt, indem ein Protokoll im ersten Dienst hart codiert wird.
+Offen war der Standard, mit dem eine Identität nachgewiesen wird.
 [ADR-0002](0002-python-fastapi.md) ist der beschlossene Stack und liefert keine
-Authentisierung mit.
-
-### Ist-Stand im Repository
-
-- [../IDENTITY_MODEL.md](../IDENTITY_MODEL.md) kennt die Identitätsarten human,
-  service und worker. Das Feld `subject` wird externer Bezug, sobald dieses ADR
-  einen Aussteller benennt.
-- [../../api/openapi.yaml](../../api/openapi.yaml) beschreibt `callerCredential`
-  als `type: http, scheme: bearer` mit dem Vermerk „Platzhalter, kein gewählter
-  Standard“. Das legt faktisch schon ein Übertragungsformat nahe und steht in
-  Spannung zur Konsequenz unten („kein Token-Format als Default“).
-- Die Anwendung hat heute keine Authentisierung. `pyproject.toml` enthält keine
-  Auth-Bibliothek.
+Authentisierung mit. Der Vorschlag vom 09.11.2026 ist am 10.11.2026 für
+Workloads entschieden worden. Die CEO hat technische Entscheidungen an den
+Head of Engineering delegiert.
 
 ### Fakten aus Primärquellen
 
 - NIST SP 800-63B-4 definiert AAL1 bis AAL3. Ab AAL2 muss eine
-  phishing-resistente Option angeboten werden. E-Mail ist kein zulässiger
-  Out-of-Band-Authenticator.
+  phishing-resistente Option angeboten werden.
   ([NIST SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html))
-- OWASP ASVS 5.0 verlangt ab Level 2 MFA (V6.3) und für Self-contained Tokens
-  die Prüfung von Signatur, Algorithmus-Allowlist, `exp`, Tokentyp und `aud` (V9).
+- OWASP ASVS 5.0 verlangt ab Level 2 MFA für Menschen.
   ([OWASP ASVS](https://asvs.owasp.org/))
 - RFC 9700 (OAuth 2.0 Security BCP): Der Resource Owner Password Credentials
   Grant darf nicht verwendet werden (§2.4). Für Client-Authentisierung wird
   asymmetrische Kryptografie empfohlen, z. B. `private_key_jwt` (§2.5).
+  Tokens von Menschen und von Maschinen müssen am Server unterscheidbar sein
+  (§4.15).
   ([RFC 9700](https://www.rfc-editor.org/rfc/rfc9700.html))
 - OWASP REST Security Cheat Sheet: Authentisierung zentral, Zugriffsentscheidung
-  lokal. API-Keys nicht als einzigen Schutz sensibler Ressourcen.
+  lokal.
   ([OWASP REST Security](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html))
-- OWASP Password Storage: Argon2id mit mindestens m=19 MiB, t=2, p=1.
+- OWASP Password Storage: Argon2id ist der Speicher für Passwörter. Ein
+  API-Key mit hoher Entropie ist kein Passwort. Dafür ist ein schnelles
+  Hashverfahren zulässig, hier SHA-256.
   ([OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html))
-- Datenregionen gehosteter IdPs laut Anbieter: Auth0 mit wählbarer Region
-  einschließlich US und EU
-  ([Auth0](https://auth0.com/docs/get-started/auth0-overview/create-tenants)),
-  Clerk ohne regionale Datenhaltung ([Clerk](https://clerk.com/security)),
-  Supabase mit wählbarer Primärregion
-  ([Supabase](https://supabase.com/docs/guides/platform/regions)).
-- Keycloak ist Open Source (Apache 2.0) und ein CNCF-Projekt.
-  ([CNCF Keycloak](https://www.cncf.io/projects/keycloak/))
-
-### Annahmen (getrennt von den Fakten)
-
-- A1: [ADR-0012](0012-hosting-region-usa.md) gilt nur für Railway-Dienste. Ein
-  gehosteter IdP ist frei wählbar. Übermittelt vom Head of Engineering, vom CEO
-  nicht bestätigt. NICHT VERIFIZIERT.
-- A2: Der Hauptverkehr ist Maschine-zu-Maschine. Menschliche Nutzer gibt es
-  anfangs wenige, keine Endkunden-Logins. NICHT VERIFIZIERT.
-- A3: Ziel ist ASVS Level 2, also MFA für Menschen. NICHT VERIFIZIERT.
-- A4: Worker laufen in kontrollierter Umgebung. Externe Fremd-Worker gibt es
-  vorerst nicht. NICHT VERIFIZIERT.
+- A1 ist bestätigt. CEO-Entscheidung vom 10.11.2026: [ADR-0012](0012-hosting-region-usa.md)
+  gilt nur für Railway. Ein späterer IdP ist dadurch nicht auf Railway `sfo`
+  festgelegt.
 
 ## Entscheidung
 
-Nicht entschieden. Der Authentisierungsstandard für Menschen und für Workloads ist offen.
+Entschieden. Workloads der Art service und worker weisen sich mit einem API-Key je Identität aus. Menschen-Authentisierung ist zurückgestellt.
 
-### Vorschlag zur Prüfung (keine Entscheidung)
+Die CEO hat technische Entscheidungen an den Head of Engineering delegiert.
+Dieser Entscheid gilt seit dem 10.11.2026.
 
-1. Workloads: pro Identität ausgestellte, gehasht gespeicherte und einzeln
-   widerrufbare API-Keys, von der Control Plane geprüft. Später OAuth 2.0
-   Client Credentials mit `private_key_jwt`, sobald externe Worker hinzukommen.
-2. Menschen: ein Standard-OIDC-IdP mit MFA statt Eigenbau. Bei A1 ist ein
-   gehosteter IdP zulässig. Gilt A1 nicht, bleibt Keycloak in Railway `sfo`.
-   Kein Password Grant.
-3. Tokens von Menschen und von Workloads sind am Server unterscheidbar
-   (RFC 9700 §4.15). Die Autorisierung bleibt in der besitzenden Instanz.
-4. Der Platzhalter in `openapi.yaml` wird mit dem Entscheid angepasst.
+### Workloads
 
-### Zu klären
+- Jede Identität der Art `service` oder `worker` erhält eigene API-Keys.
+  Worker teilen sich keinen Key.
+- Ein Key besteht aus dem erkennbaren Präfix `gmv_wk_` und mindestens 32 Byte
+  Zufall.
+- Gespeichert wird nur der SHA-256-Hash des Schlüssels. Klartext steht nicht
+  in der Datenbank und nicht im Log. Argon2id bleibt Passwörtern vorbehalten
+  und wird hier nicht verwendet.
+- Jeder Key ist einzeln widerrufbar und hat ein optionales Ablaufdatum.
+- Ausstellen und Widerrufen laufen nur über `python -m app.credentials`. Es
+  gibt keinen HTTP-Endpunkt dafür. Der Schlüssel wird einmal bei der Ausgabe
+  gezeigt.
+- Sobald externe Worker hinzukommen, folgt OAuth 2.0 Client Credentials mit
+  `private_key_jwt`. Das ist die vorgesehene Nachfolge und nicht Teil dieser
+  Umsetzung.
 
-- ob A1 gilt (CEO-Bestätigung) und welcher IdP, mit welchem Budget
-- welche Menschen sich anmelden, wie viele, und ob SAML nötig ist
-- Zielniveau (ASVS L2 bzw. AAL2 oder höher für bestimmte Rollen)
-- höchste Lebensdauer eines Maschinen-Credentials und wie schnell ein Widerruf wirken muss
-- was ein Worker vor der ersten Zuweisung vorzeigen muss
+### Menschen
+
+Ein OIDC-IdP mit MFA ist zurückgestellt. Ein IdP bedeutet Vertrag und Kosten
+und braucht die Freigabe der CEO. Bis dahin gibt es keine Menschen-Logins und
+keinen Password Grant.
+
+### Abgrenzung
+
+Workload- und Menschen-Credentials sind am Server unterscheidbar. Nur ein
+Schlüssel mit dem Präfix `gmv_wk_` ist ein Workload-Key. Andere Credentials
+werden nicht als Workload angenommen. Die Autorisierung bleibt in der
+besitzenden Instanz.
+
+[../../api/openapi.yaml](../../api/openapi.yaml) beschreibt `callerCredential`
+als diesen Workload-API-Key. Ein Platzhaltervermerk steht dort nicht mehr.
 
 ## Konsequenzen
 
-- Es wird kein Token-Format, kein Aussteller und keine Bibliothek als Default eingeführt.
-- Autorisierung bleibt serverseitig, auch nachdem ein Standard gewählt ist. Der Standard ersetzt die Assignment Authority nicht.
-- Worker teilen sich keinen Nachweis.
-- Wird der Vorschlag angenommen: Schlüssel und Client-Secrets folgen
-  [ADR-0007](0007-secret-management.md). Ein selbst betriebener IdP braucht
+- Die Control Plane prüft den Hash in konstanter Zeit und lehnt widerrufene
+  und abgelaufene Schlüssel ab. `/health` und `/ready` bleiben ohne Nachweis.
+- Autorisierung von Zustandsänderungen bleibt serverseitig in der besitzenden
+  Instanz. Dieser Standard ersetzt die Assignment Authority nicht.
+- Schlüssel und ihr Umgang folgen [ADR-0007](0007-secret-management.md), sobald
+  der Secret-Provider entschieden ist. Bis dahin liegt der Klartext nur beim
+  Empfänger der Ausgabe, der Hash nur in `credentials`.
+- Ein IdP wird nicht eingebaut und keine Auth-Bibliothek eines Anbieters
+  verwendet. Die Wahl des IdP, der Vertrag und die Kosten bleiben eine
+  CEO-Freigabe. A1 erlaubt dafür auch einen Dienst außerhalb von Railway.
+- Ein selbst betriebener IdP, falls die CEO ihn später freigibt, braucht
   Backup ([ADR-0006](0006-backup-retention-rpo-rto.md)) und Überwachung
   ([ADR-0010](0010-slo-alerting-incident.md)).
 
@@ -108,10 +104,12 @@ Nicht entschieden. Der Authentisierungsstandard für Menschen und für Workloads
 
 | Option | Vorteil | Nachteil |
 | --- | --- | --- |
-| Eigene Auth in FastAPI (Passwörter, JWT) | keine Abhängigkeit | volle Verantwortung für MFA, Passwortspeicher und Sitzungen; Tutorial-Muster nutzt den Password-Flow (RFC 9700 §2.4) |
-| Gehosteter IdP (Auth0, Clerk, Supabase Auth, WorkOS) | MFA und OIDC fertig, wenig Betrieb | Lock-in, Kosten (NICHT VERIFIZIERT), Region abhängig von A1 |
+| Eigene Auth in FastAPI (Passwörter, JWT) | keine Abhängigkeit | volle Verantwortung für MFA, Passwortspeicher und Sitzungen; der Password-Flow widerspricht RFC 9700 §2.4 |
+| Gehosteter IdP (Auth0, Clerk, Supabase Auth, WorkOS) | MFA und OIDC fertig, wenig Betrieb | Vertrag und Kosten, braucht die CEO-Freigabe |
 | Keycloak selbst betrieben auf Railway | Standard-OIDC, in `sfo` betreibbar | zweiter sicherheitskritischer Dienst mit eigener Datenbank |
-| API-Keys für Workloads | einfach, je Identität widerrufbar | kein Standardprotokoll; nicht allein für sensible Ressourcen |
+| API-Keys für Workloads | je Identität widerrufbar, ohne IdP-Vertrag | kein Standardprotokoll; für externe Worker folgt `private_key_jwt` |
+
+Für Workloads gilt die Zeile API-Keys. Ein IdP ist nicht gewählt.
 
 ## Bezug
 
@@ -123,3 +121,4 @@ Nicht entschieden. Der Authentisierungsstandard für Menschen und für Workloads
 - [ADR-0012](0012-hosting-region-usa.md)
 - [../IDENTITY_MODEL.md](../IDENTITY_MODEL.md)
 - [../../SECURITY.md](../../SECURITY.md)
+- [../../api/openapi.yaml](../../api/openapi.yaml)
