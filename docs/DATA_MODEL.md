@@ -1,8 +1,10 @@
 # Datenmodell
 
 Verbindliche Kernentitäten für V1. Das sind Verträge, keine Datenbankmigration.
-Ein Domänenschema in PostgreSQL bleibt unzulässig, bis
+Ein Domänenschema der Entitäten unten bleibt unzulässig, bis
 [ADR-0009](adr/0009-migration-compatibility.md) entschieden ist.
+Die Tabelle `credentials` aus [ADR-0008](adr/0008-auth-standard.md) ist der
+Workload-Nachweis und keine dieser Entitäten.
 Die Assignment Authority ist genau eine
 ([ADR-0003](adr/0003-single-assignment-authority.md)).
 

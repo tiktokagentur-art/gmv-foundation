@@ -2,14 +2,16 @@
 
 Verbindliche HTTP-API für V1. Die maschinenlesbare Fassung ist
 [../api/openapi.yaml](../api/openapi.yaml), OpenAPI 3.1. Bezeichner sind
-Englisch, Beschreibungen Deutsch. Die Endpunkte sind hier definiert und noch
-nicht implementiert. `/health` und `/ready` gehören zum Skelett und liegen
-nicht unter `/v1`.
+Englisch, Beschreibungen Deutsch. Implementiert ist `GET /v1/whoami`. Die
+übrigen Endpunkte sind spezifiziert und noch nicht implementiert. `/health`
+und `/ready` gehören zum Skelett, liegen nicht unter `/v1`, verlangen keinen
+Schlüssel und behalten ihre Körper.
 
-Der Nachweis der Identity ist nicht gewählt
+Der Nachweis einer Workload-Identity ist ein API-Key je Identität
 ([ADR-0008](adr/0008-auth-standard.md)). Jeder Endpunkt unter `/v1` verlangt
-trotzdem eine von der Control Plane anerkannte Identity. Fehlt sie, ist die
-Antwort `401`. Die Rollen stehen in [IDENTITY_MODEL.md](IDENTITY_MODEL.md).
+eine von der Control Plane anerkannte Identity. Fehlt sie, ist die Antwort
+`401` mit `ErrorBody`. Menschen-Logins gibt es nicht. Die Rollen stehen in
+[IDENTITY_MODEL.md](IDENTITY_MODEL.md).
 
 ## Versionierung
 
@@ -35,11 +37,13 @@ Verbindungsdaten enthalten.
 | 401 | unauthorized | keine anerkannte Identity |
 | 403 | forbidden | Identity ohne die nötige Rolle |
 | 404 | not_found | die Ressource gibt es nicht |
+| 405 | validation_error | die Methode ist für diesen Pfad nicht erlaubt |
 | 409 | version_conflict | `If-Match` ist nicht die aktuelle `resource_version` |
 | 409 | idempotency_conflict | derselbe Schlüssel, anderer Körper |
 | 409 | fencing_rejected | Token fehlt, ist alt oder gehört zu einer beendeten Zuweisung |
 | 409 | lease_expired | Lease ist abgelaufen |
 | 409 | invalid_state | der Antrag passt nicht zum aktuellen Status |
+| 500 | internal | unbehandelter Fehler unter `/v1` |
 
 ## Idempotenz und Fassung
 
@@ -56,6 +60,7 @@ Anführungszeichen, zum Beispiel `"3"`.
 
 | Methode und Pfad | Wirkung |
 | --- | --- |
+| GET `/v1/whoami` | gibt die anerkannte Workload-Identität zurück, ohne Schlüssel und ohne Hash |
 | POST `/v1/work-items` | legt ein WorkItem in `created` an |
 | GET `/v1/work-items` | Liste, optional nach `status`, Cursor `next_cursor` |
 | GET `/v1/work-items/{work_item_id}` | ein WorkItem |

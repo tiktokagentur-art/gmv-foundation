@@ -35,12 +35,16 @@ REQUIRED_FILES = (
     "app/db.py",
     "app/logging_config.py",
     "app/lifecycle.py",
+    "app/auth.py",
+    "app/credentials.py",
+    "app/errors.py",
     "tests/README.md",
     "tests/test_gitleaks_scan.py",
     "tests/test_health.py",
     "tests/test_ready.py",
     "tests/test_migration.py",
     "tests/test_lifecycle_contract.py",
+    "tests/test_credentials.py",
     "api/openapi.yaml",
     "scripts/gitleaks_scan.py",
     "scripts/validate_structure.py",
@@ -51,6 +55,7 @@ REQUIRED_FILES = (
     "alembic.ini",
     "migrations/env.py",
     "migrations/versions/0001_schema_meta.py",
+    "migrations/versions/0002_workload_credentials.py",
 )
 
 REQUIRED_DIRS = (
@@ -76,7 +81,7 @@ ADR_STATUS = {
     "docs/adr/0005-railway-environments.md": "Accepted",
     "docs/adr/0006-backup-retention-rpo-rto.md": "Proposed",
     "docs/adr/0007-secret-management.md": "Proposed",
-    "docs/adr/0008-auth-standard.md": "Proposed",
+    "docs/adr/0008-auth-standard.md": "Accepted",
     "docs/adr/0009-migration-compatibility.md": "Proposed",
     "docs/adr/0010-slo-alerting-incident.md": "Proposed",
     "docs/adr/0011-release-rollback-authority.md": "Proposed",
