@@ -3,9 +3,10 @@ info:
   title: GMV Foundation API
   version: 1.0.0
   description: |
-    V1-Vertrag der Control Plane. Die Endpunkte sind spezifiziert und noch
-    nicht implementiert. Der Identitätsnachweis ist ADR-0008 und hier nur
-    als Pflicht markiert, nicht als gewähltes Protokoll.
+    V1-Vertrag der Control Plane. Die fachlichen Endpunkte sind spezifiziert
+    und, außer GET /v1/whoami, noch nicht implementiert. Der Nachweis einer
+    Workload ist ein API-Key je Identität (ADR-0008). Menschen-Logins gibt
+    es nicht.
 servers:
   - url: /
 tags:
@@ -16,6 +17,25 @@ tags:
 security:
   - callerCredential: []
 paths:
+  /v1/whoami:
+    get:
+      operationId: whoami
+      summary: Aufgerufene Workload-Identität
+      description: |
+        Gibt die Identität zurück, deren API-Key der Aufruf vorgelegt hat.
+        Schlüssel und Hash stehen nicht in der Antwort. Eine Zustandsänderung
+        ist das nicht.
+      responses:
+        "200":
+          description: Anerkannte Workload-Identität
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkloadCaller"
+        "401":
+          $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/Error"
   /v1/work-items:
     post:
       tags: [WorkItems]
@@ -410,9 +430,14 @@ components:
     callerCredential:
       type: http
       scheme: bearer
+      bearerFormat: Workload API key
       description: |
-        Platzhalter, kein gewählter Standard. ADR-0008 ist offen.
-        Ohne von der Control Plane anerkannte Identity antwortet /v1 mit 401.
+        API-Key einer Workload-Identität (service oder worker) nach ADR-0008.
+        Der Schlüssel beginnt mit dem Präfix `gmv_wk_` und enthält mindestens
+        32 Byte Zufall. Die Control Plane speichert nur den SHA-256-Hash.
+        Jeder Schlüssel ist einzeln widerrufbar und kann ein Ablaufdatum haben.
+        Ohne anerkannten, nicht widerrufenen und nicht abgelaufenen Schlüssel
+        antwortet /v1 mit 401. Menschen-Credentials werden nicht angenommen.
   parameters:
     IdempotencyKey:
       name: Idempotency-Key
@@ -501,6 +526,7 @@ components:
         - fencing_rejected
         - lease_expired
         - invalid_state
+        - internal
     ErrorBody:
       type: object
       additionalProperties: false
@@ -518,6 +544,17 @@ components:
             request_id:
               type: string
               format: uuid
+    WorkloadCaller:
+      type: object
+      additionalProperties: false
+      required: [identity_id, kind]
+      properties:
+        identity_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [service, worker]
     WorkItem:
       type: object
       additionalProperties: false

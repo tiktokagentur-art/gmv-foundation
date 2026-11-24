@@ -24,8 +24,12 @@ die Kompatibilität.
 ### Ist-Stand
 
 - Das Skelett (GF-006) hat eine Alembic-Revision, die `schema_meta` anlegt.
+  GF-008 legt zusätzlich die Tabelle `credentials` an. Das Upgrade fügt nur
+  diese Tabelle hinzu und lässt `schema_meta` unverändert. Die
+  Kompatibilitätsstrategie dieses ADR bleibt davon unberührt.
   `migrations/env.py` setzt weder `lock_timeout` noch `statement_timeout`.
-  `tests/test_migration.py` prüft nur `upgrade head`, keinen Downgrade.
+  `tests/test_migration.py` prüft `upgrade head` und dass `credentials`
+  additiv ist und auf Revision `0001` zurückgenommen werden kann.
 - Migrationen laufen beim Start des Containers nicht (Dockerfile `CMD`).
 - [../API_SPECIFICATION.md](../API_SPECIFICATION.md): Pfadpräfix `/v1`, eine
   inkompatible Änderung heißt `/v2`. Innerhalb von `/v1` kommen nur optionale
