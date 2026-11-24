@@ -425,15 +425,13 @@ def validate_workflow(config: Mapping[str, Any]) -> list[str]:
     return errors
 
 
-ALLOWED_DOMAINS = frozenset(
-    {
-        "github.com",
-        "api.github.com",
-        "codeload.github.com",
-        "objects.githubusercontent.com",
-        "api.openai.com",
-    }
-)
+# Sandbox-Allowlist: nur GitHub und OpenAI. Download-Hosts (codeload,
+# objects.githubusercontent.com) sind nicht nötig, weil Klon und github_api
+# außerhalb der Codex-Sandbox laufen.
+ALLOWED_DOMAINS = frozenset({"github.com", "api.github.com", "api.openai.com"})
+EGRESS_PROXY_URL = "http://127.0.0.1:18443"
+# Nur der Modellverkehr des Codex-Prozesses (ChatGPT-Login) umgeht den Proxy.
+ALLOWED_NO_PROXY = frozenset({"chatgpt.com", ".chatgpt.com", "auth.openai.com"})
 # Symphony@be10a1b sendet diese Policy bei jedem Turn. Nur cwd ist beschreibbar.
 EXPECTED_TURN_POLICY = {
     "type": "workspaceWrite",
@@ -450,8 +448,6 @@ FORBIDDEN_CODEX_SNIPPETS = (
     "--yolo",
     "--full-auto",
     "bypass",
-    "allow_local_binding",
-    "allow_upstream_proxy",
     "sandbox_mode",
     '"*',
 )
@@ -489,6 +485,20 @@ def validate_sandbox(config: Mapping[str, Any]) -> list[str]:
         errors.append("codex network allowlist must be exactly GitHub and OpenAI")
     if "permissions.gmv_symphony.network={enabled=true" not in command:
         errors.append("codex network profile must be enabled explicitly")
+    # allow_local_binding nur zusammen mit dem lokalen Allowlist-Upstream.
+    if "allow_local_binding=true" in command:
+        for needed in (
+            f"HTTPS_PROXY={EGRESS_PROXY_URL}",
+            f"HTTP_PROXY={EGRESS_PROXY_URL}",
+            "allow_upstream_proxy=true",
+        ):
+            if needed not in command:
+                errors.append(f"allow_local_binding requires {needed}")
+    no_proxy = re.search(r"NO_PROXY=(\S+)", command)
+    if no_proxy and not set(no_proxy.group(1).split(",")) <= ALLOWED_NO_PROXY:
+        errors.append("NO_PROXY may only exempt the Codex model hosts")
+    if re.search(r"(?i)(?:https?|all)_proxy=(?!http://127\.0\.0\.1:18443\b)", command):
+        errors.append("proxy variables must point to the local egress proxy")
     return errors
 
 

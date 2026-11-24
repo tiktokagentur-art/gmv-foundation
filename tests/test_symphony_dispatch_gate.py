@@ -267,6 +267,11 @@ class WorkflowTemplateTests(unittest.TestCase):
         self.assertLessEqual(budget["reserve_per_turn"] * turns, budget["max_tokens_per_run"])
         self.assertEqual(main(["validate-workflow", str(WORKFLOW)]), 0)
 
+    def test_prompt_is_patch_and_report_only(self) -> None:
+        _, body = split_frontmatter(WORKFLOW.read_text(encoding="utf-8"))
+        self.assertIn("nur ein Patch und ein Bericht", body)
+        self.assertIn("Commit, Push und\n   Pull Request macht ein Mensch", body)
+
     def test_clone_hook_has_no_credentials(self) -> None:
         hook = self.load()["hooks"]["after_create"]
         self.assertIn("https://github.com/tiktokagentur-art/gmv-foundation.git .", hook)
@@ -316,6 +321,19 @@ class WorkflowTemplateTests(unittest.TestCase):
                 "command", c["codex"]["command"].replace(
                     "app-server", "--dangerously-bypass-approvals-and-sandbox app-server")),
             "workspace in tmp": lambda c: c["workspace"].__setitem__("root", "/tmp/ws"),
+            "local binding without upstream": lambda c: c["codex"].__setitem__(
+                "command", c["codex"]["command"].replace(
+                    "HTTPS_PROXY=http://127.0.0.1:18443 ", "")),
+            "no_proxy widened": lambda c: c["codex"].__setitem__(
+                "command", c["codex"]["command"].replace(
+                    "NO_PROXY=chatgpt.com", "NO_PROXY=pypi.org,chatgpt.com")),
+            "foreign proxy": lambda c: c["codex"].__setitem__(
+                "command", c["codex"]["command"].replace(
+                    "HTTP_PROXY=http://127.0.0.1:18443", "HTTP_PROXY=http://10.0.0.5:3128")),
+            "download host": lambda c: c["codex"].__setitem__(
+                "command", c["codex"]["command"].replace(
+                    '"api.openai.com"="allow"',
+                    '"api.openai.com"="allow","codeload.github.com"="allow"')),
             "reserve too high": lambda c: c["gmv"]["token_budget"].__setitem__(
                 "reserve_per_turn", 400_000),
             "literal token": lambda c: c["tracker"]["provider"].__setitem__("token", "abc"),
