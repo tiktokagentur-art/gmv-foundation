@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import uuid
 
-from starlette.responses import PlainTextResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.logging_config import REQUEST_ID_PATTERN, request_id_context
+from app.errors import is_v1_path, v1_error_response
+from app.logging_config import (
+    REQUEST_ID_PATTERN,
+    bind_redactions,
+    request_id_context,
+    reset_redactions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +54,7 @@ class RequestIdMiddleware:
 
         request_id = resolve_request_id(incoming_request_id(scope))
         token = request_id_context.set(request_id)
+        redaction = bind_redactions(*_authorization_secrets(scope))
         started = False
 
         async def send_with_request_id(message: Message) -> None:
@@ -75,9 +83,10 @@ class RequestIdMiddleware:
             if started:
                 raise
             _log_unhandled(exc, scope)
-            response = PlainTextResponse("Internal Server Error", status_code=500)
+            response = _server_error(scope, request_id)
             await response(scope, receive, send_with_request_id)
         finally:
+            reset_redactions(redaction)
             request_id_context.reset(token)
 
 
@@ -91,6 +100,35 @@ def _scope_with_request_id(scope: Scope, request_id: str) -> Scope:
     updated = dict(scope)
     updated["headers"] = headers
     return updated
+
+
+def _server_error(scope: Scope, request_id: str) -> JSONResponse | PlainTextResponse:
+    """Unhandled ``/v1`` failures use ErrorBody. Other paths keep the text body."""
+    path = scope.get("path")
+    if isinstance(path, str) and is_v1_path(path):
+        body = v1_error_response(500, request_id)
+        if body is not None:
+            return body
+    return PlainTextResponse("Internal Server Error", status_code=500)
+
+
+def _authorization_secrets(scope: Scope) -> tuple[str, ...]:
+    """Bearer material to redact for the whole request. The header is not logged."""
+    found: list[str] = []
+    for name, value in scope.get("headers") or ():
+        if name.lower() != b"authorization":
+            continue
+        raw = value.decode("latin-1", errors="replace")
+        found.append(raw)
+        scheme, separator, token = raw.partition(" ")
+        if separator != " " or scheme.lower() != "bearer":
+            continue
+        token = token.strip()
+        if not token:
+            continue
+        found.append(token)
+        found.append(hashlib.sha256(token.encode("utf-8")).hexdigest())
+    return tuple(found)
 
 
 def _log_unhandled(exc: Exception, scope: Scope) -> None:
