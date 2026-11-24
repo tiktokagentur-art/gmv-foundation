@@ -31,7 +31,7 @@ Entwurf ohne angebundene Authority `authority_unavailable`.
 2. Authority erreichbar, sonst `authority_unavailable`.
 3. Anfrage formal gültig: Repository auf Allowlist, Issue-Nummer, Worker-ID,
    Claim-ID, Fencing-Token positiv.
-4. Token-Budget konfiguriert und im Rahmen (1 bis 500.000), sonst
+4. Token-Budget konfiguriert und im Rahmen (1 bis 2.000.000), sonst
    `token_budget_missing_or_invalid` bzw. `token_budget_out_of_range`.
 5. Aktiver Claim der Control Plane passt zu Worker, Claim-ID und Fencing,
    Lease nicht abgelaufen.
@@ -64,20 +64,27 @@ begrenzt.
 
 `TokenBudget` ist ein hartes, kumulatives Limit für genau einen Lauf:
 
-- Vorlage: `gmv.token_budget.max_tokens_per_run: 500000`,
-  `reserve_per_turn: 80000` (6 Turns × 80.000 = 480.000).
-- Erreicht der kumulierte Verbrauch 500.000, bricht der Lauf hart ab.
+- Vorlage: `gmv.token_budget.max_tokens_per_run: 2000000`,
+  `reserve_per_turn: 300000` (6 Turns × 300.000 = 1.800.000).
+  Der Pilot brauchte ca. 160.000 Token je Turn, die Reserve hat also knapp
+  Faktor 2 Puffer. `validate-workflow` lehnt Reserve × Turns über dem Budget ab.
+- Erreicht der kumulierte Verbrauch 2.000.000, bricht der Lauf hart ab.
+  Zweck: Schutz gegen hängende oder sich wiederholende Läufe.
 - Vor jedem Turn: passt die Reserve nicht mehr, wird gestoppt.
 - Unbekannter, negativer oder nicht ganzzahliger Verbrauch zählt als erschöpft.
 - Überschritten bleibt überschritten (sticky); der Lauf endet, kein Retry
   im selben Lauf.
-- Konfigurationsobergrenze im Code: 500.000. Höhere Werte brauchen eine
+- Konfigurationsobergrenze im Code: 2.000.000. Höhere Werte brauchen eine
   Code-Änderung mit Review.
 
 Annahme, vor Phase B gegen `openai/symphony@be10a1b` zu prüfen: Symphony
 selbst kennt nur `agent.max_turns`, kein Token-Limit. Der Verbrauch muss aus
 den Codex-Nutzungsereignissen an das Gate gemeldet werden; fehlt diese
 Meldung, greift `token_usage_unknown`.
+
+## Sandbox
+
+Schreib- und Netzwerkgrenzen der Codex-Turns: [sandbox.md](sandbox.md).
 
 ## Repo-Klon-Hook
 
@@ -111,7 +118,8 @@ Helfer stammt.
 
 ## Entscheidungen und offene Punkte
 
-- Budget: 500.000 Token pro Lauf, harter Abbruch bei Erreichen
-  (Pilotwert ca. 480.000 für einen README-Absatz).
+- Budget: 2.000.000 Token pro Lauf, harter Abbruch bei Erreichen
+  (Pilotwert ca. 480.000 für einen README-Absatz; ein hängender Lauf
+  verbrauchte ohne Gate über 7,5 Mio.).
 - Sperre: vorerst auf dem Host; Control-Plane-Verlagerung als eigenes Ticket.
 - Offen: Aktivierung des Flags nur mit separatem CEO-Go.

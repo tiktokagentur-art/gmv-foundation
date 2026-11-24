@@ -217,14 +217,14 @@ class TokenBudgetTests(unittest.TestCase):
         with self.assertRaises(BudgetExceeded):
             b.ensure_can_start_turn(1)
 
-    def test_approved_budget_is_500k_and_hard_stops_on_reaching(self) -> None:
-        self.assertEqual(DEFAULT_MAX_TOKENS_PER_RUN, 500_000)
-        self.assertEqual(MAX_TOKENS_PER_RUN_CEILING, 500_000)
+    def test_approved_budget_is_2m_and_hard_stops_on_reaching(self) -> None:
+        self.assertEqual(DEFAULT_MAX_TOKENS_PER_RUN, 2_000_000)
+        self.assertEqual(MAX_TOKENS_PER_RUN_CEILING, 2_000_000)
         b = TokenBudget(DEFAULT_MAX_TOKENS_PER_RUN)
-        b.record(499_999)
+        b.record(1_999_999)
         self.assertFalse(b.exhausted)
         with self.assertRaises(BudgetExceeded):
-            b.record(1)  # genau 500.000 erreicht
+            b.record(1)  # genau 2.000.000 erreicht
         self.assertTrue(b.exhausted)
         self.assertEqual(b.remaining, 0)
         with self.assertRaises(BudgetExceeded):
@@ -295,8 +295,29 @@ class WorkflowTemplateTests(unittest.TestCase):
             "budget continue": lambda c: c["gmv"]["token_budget"].__setitem__(
                 "on_exceeded", "warn"),
             "two agents": lambda c: c["agent"].__setitem__("max_concurrent_agents", 2),
-            "write sandbox": lambda c: c["codex"].__setitem__(
-                "thread_sandbox", "workspace-write"),
+            "danger sandbox": lambda c: c["codex"].__setitem__(
+                "thread_sandbox", "danger-full-access"),
+            "no turn policy": lambda c: c["codex"].pop("turn_sandbox_policy"),
+            "network on": lambda c: c["codex"]["turn_sandbox_policy"].__setitem__(
+                "networkAccess", True),
+            "tmp writable": lambda c: c["codex"]["turn_sandbox_policy"].__setitem__(
+                "excludeSlashTmp", False),
+            "extra root": lambda c: c["codex"]["turn_sandbox_policy"].__setitem__(
+                "writableRoots", ["/workspace"]),
+            "auto approve": lambda c: c["codex"].__setitem__("approval_policy", "never"),
+            "no proxy": lambda c: c["codex"].__setitem__(
+                "command", c["codex"]["command"].replace("features.network_proxy=true", "")),
+            "extra domain": lambda c: c["codex"].__setitem__(
+                "command", c["codex"]["command"].replace(
+                    '"api.openai.com"="allow"', '"api.openai.com"="allow","pypi.org"="allow"')),
+            "wildcard": lambda c: c["codex"].__setitem__(
+                "command", c["codex"]["command"].replace('"github.com"', '"*.github.com"')),
+            "danger flag": lambda c: c["codex"].__setitem__(
+                "command", c["codex"]["command"].replace(
+                    "app-server", "--dangerously-bypass-approvals-and-sandbox app-server")),
+            "workspace in tmp": lambda c: c["workspace"].__setitem__("root", "/tmp/ws"),
+            "reserve too high": lambda c: c["gmv"]["token_budget"].__setitem__(
+                "reserve_per_turn", 400_000),
             "literal token": lambda c: c["tracker"]["provider"].__setitem__("token", "abc"),
         }
         for name, mutate in mutations.items():

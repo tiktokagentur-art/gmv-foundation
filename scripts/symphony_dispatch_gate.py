@@ -39,9 +39,10 @@ CLONE_URL = f"https://github.com/{REPOSITORY}.git"
 GATE_FLAG = "GMV_SYMPHONY_DISPATCH_GATE"
 GATE_FLAG_ON = "enabled"
 # Harte Obergrenze, die keine Konfiguration überschreiten darf.
-MAX_TOKENS_PER_RUN_CEILING = 500_000
-# Freigegebener Wert pro Lauf (Folgeauftrag 24.11.2026). Erreichen = harter Abbruch.
-DEFAULT_MAX_TOKENS_PER_RUN = 500_000
+MAX_TOKENS_PER_RUN_CEILING = 2_000_000
+# Freigegebener Wert pro Lauf (24.11.2026, Schutz gegen hängende Läufe).
+# Erreichen = harter Abbruch.
+DEFAULT_MAX_TOKENS_PER_RUN = 2_000_000
 WORKER_ID = re.compile(r"^[a-z0-9][a-z0-9-]{2,62}$")
 CLAIM_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{2,127}$")
 
@@ -394,9 +395,7 @@ def validate_workflow(config: Mapping[str, Any]) -> list[str]:
     agent = config.get("agent") or {}
     if agent.get("max_concurrent_agents") != 1:
         errors.append("agent.max_concurrent_agents must be 1")
-    codex = config.get("codex") or {}
-    if codex.get("thread_sandbox") != "read-only":
-        errors.append("codex.thread_sandbox must stay read-only in the pilot")
+    errors.extend(validate_sandbox(config))
 
     gmv = config.get("gmv") or {}
     gate = gmv.get("dispatch_gate") or {}
@@ -409,8 +408,87 @@ def validate_workflow(config: Mapping[str, Any]) -> list[str]:
         parse_token_budget(budget.get("max_tokens_per_run"))
     except GateDenied as exc:
         errors.append(f"gmv.token_budget.max_tokens_per_run: {exc.reason}")
+    reserve = budget.get("reserve_per_turn")
+    turns = agent.get("max_turns")
+    max_tokens = budget.get("max_tokens_per_run")
+    if (
+        not isinstance(reserve, int)
+        or isinstance(reserve, bool)
+        or reserve <= 0
+        or not isinstance(turns, int)
+        or not isinstance(max_tokens, int)
+        or reserve * turns > max_tokens
+    ):
+        errors.append("gmv.token_budget.reserve_per_turn * agent.max_turns must fit the budget")
     if budget.get("on_exceeded") != "stop" or budget.get("on_unknown_usage") != "stop":
         errors.append("gmv.token_budget must stop on exceeded and unknown usage")
+    return errors
+
+
+ALLOWED_DOMAINS = frozenset(
+    {
+        "github.com",
+        "api.github.com",
+        "codeload.github.com",
+        "objects.githubusercontent.com",
+        "api.openai.com",
+    }
+)
+# Symphony@be10a1b sendet diese Policy bei jedem Turn. Nur cwd ist beschreibbar.
+EXPECTED_TURN_POLICY = {
+    "type": "workspaceWrite",
+    "writableRoots": [],
+    "networkAccess": False,
+    "excludeTmpdirEnvVar": True,
+    "excludeSlashTmp": True,
+}
+# Symphony nimmt bei "never" alle Anfragen automatisch an; bei "on-request"
+# endet der Turn mit approval_required (fail-closed).
+EXPECTED_APPROVAL_POLICY = "on-request"
+FORBIDDEN_CODEX_SNIPPETS = (
+    "danger",
+    "--yolo",
+    "--full-auto",
+    "bypass",
+    "allow_local_binding",
+    "allow_upstream_proxy",
+    "sandbox_mode",
+    '"*',
+)
+DOMAIN_RULE = re.compile(r'"([^"]+)"\s*=\s*"(allow|deny)"')
+
+
+def validate_sandbox(config: Mapping[str, Any]) -> list[str]:
+    """Sandbox rules for the Codex app-server as launched by Symphony@be10a1b."""
+    errors: list[str] = []
+    workspace_root = str((config.get("workspace") or {}).get("root") or "")
+    if not workspace_root or workspace_root.startswith(("/tmp", "/var/tmp")):
+        errors.append("workspace.root must be set and outside /tmp")
+    codex = config.get("codex") or {}
+    if codex.get("thread_sandbox") not in ("read-only", "workspace-write"):
+        errors.append("codex.thread_sandbox must be read-only or workspace-write")
+    if codex.get("turn_sandbox_policy") != EXPECTED_TURN_POLICY:
+        errors.append("codex.turn_sandbox_policy must restrict writes to the issue workspace")
+    if codex.get("approval_policy") != EXPECTED_APPROVAL_POLICY:
+        errors.append("codex.approval_policy must reject escalations (never auto-approve)")
+    command = codex.get("command")
+    if not isinstance(command, str):
+        errors.append("codex.command must be set")
+        return errors
+    for snippet in FORBIDDEN_CODEX_SNIPPETS:
+        if snippet in command:
+            errors.append(f"codex.command must not contain {snippet!r}")
+    for needed in ("features.network_proxy=true", 'default_permissions="gmv_symphony"'):
+        if needed not in command:
+            errors.append(f"codex.command must set {needed}")
+    if not command.rstrip().endswith("app-server"):
+        errors.append("codex.command must end with app-server")
+    rules = DOMAIN_RULE.findall(command)
+    allowed = {host for host, verdict in rules if verdict == "allow"}
+    if allowed != ALLOWED_DOMAINS:
+        errors.append("codex network allowlist must be exactly GitHub and OpenAI")
+    if "permissions.gmv_symphony.network={enabled=true" not in command:
+        errors.append("codex network profile must be enabled explicitly")
     return errors
 
 
