@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -58,11 +59,58 @@ class BwrapArgsTests(unittest.TestCase):
         self.assertEqual(self.args[i - 2 : i], ["--ro-bind", "/dev/null"])
         self.assertNotIn(str(self.home / ".git-credentials"), self.args)  # existiert nicht
 
-    def test_only_auth_json_and_pilot_dir_are_rebound(self) -> None:
-        binds = self.pairs("--bind")
-        self.assertEqual(binds, [str(self.pilot), str(self.home / ".codex" / "auth.json")])
-        self.assertLess(self.args.index(str(self.home / ".codex")),
-                        self.args.index("--bind", self.args.index(str(self.home / ".codex"))))
+    def test_only_pilot_dir_is_rebound_writable(self) -> None:
+        self.assertEqual(self.pairs("--bind"), [str(self.pilot)])
+
+    def test_auth_json_is_rebound_read_only_after_codex_mask(self) -> None:
+        auth = str(self.home / ".codex" / "auth.json")
+        self.assertIn(auth, self.pairs("--ro-bind"))
+        self.assertNotIn(auth, self.pairs("--bind"))
+        self.assertLess(self.args.index(str(self.home / ".codex")), self.args.index(auth))
+
+
+def _bwrap_usable() -> bool:
+    # bwrap-env.sh legt ein tmpfs auf /workspace; ohne dieses Verzeichnis (z. B. auf
+    # GitHub-Runnern) kann bwrap den Mountpunkt nicht anlegen. Läuft auf dem Pilot-Host.
+    if not shutil.which("bwrap") or not Path("/workspace").is_dir():
+        return False
+    probe = subprocess.run(["bwrap", "--dev-bind", "/", "/", "--", "true"],
+                           capture_output=True, check=False)
+    return probe.returncode == 0
+
+
+@unittest.skipUnless(_bwrap_usable(), "bwrap with unprivileged user namespaces not available")
+class BwrapLiveTests(unittest.TestCase):
+    """Runs the real bwrap arguments against a temporary home (no secrets involved)."""
+
+    def test_auth_json_readable_but_not_writable_inside(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home, pilot = Path(tmp) / "home", Path(tmp) / "pilot"
+            (home / ".codex").mkdir(parents=True)
+            (home / ".codex" / "sessions").mkdir()
+            auth = home / ".codex" / "auth.json"
+            auth.write_text('{"dummy": true}', encoding="utf-8")
+            (home / "secrets").mkdir()
+            (home / "secrets" / "key.pem").write_text("dummy", encoding="utf-8")
+            pilot.mkdir()
+            args = bwrap_args(home, pilot)
+            script = (
+                f'cat "{auth}" >/dev/null && echo READ_OK; '
+                f'(echo x >> "{auth}") 2>/dev/null && echo WRITE_OK || echo WRITE_DENIED; '
+                f'(rm -f "{auth}") 2>/dev/null; test -e "{auth}" && echo STILL_THERE; '
+                f'test -e "{home}/.codex/sessions" && echo SESSIONS_VISIBLE '
+                f'|| echo SESSIONS_HIDDEN; '
+                f'test -e "{home}/secrets/key.pem" && echo KEY_VISIBLE || echo KEY_HIDDEN; '
+                f'touch "{pilot}/probe" && echo PILOT_WRITE_OK'
+            )
+            proc = subprocess.run(["bwrap", *args, "--", "bash", "-c", script],
+                                  capture_output=True, text=True, check=False)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            out = proc.stdout.split()
+            for want in ("READ_OK", "WRITE_DENIED", "STILL_THERE", "SESSIONS_HIDDEN",
+                         "KEY_HIDDEN", "PILOT_WRITE_OK"):
+                self.assertIn(want, out)
+            self.assertEqual(auth.read_text(encoding="utf-8"), '{"dummy": true}')
 
 
 class WrapperTests(unittest.TestCase):
@@ -75,12 +123,45 @@ class WrapperTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 2)
         self.assertIn("BLOCKED", proc.stderr)
 
-    def test_wrapper_has_no_guardrail_bypass_flag(self) -> None:
+    @staticmethod
+    def _code() -> list[str]:
         text = (HOST / "run-symphony.sh").read_text(encoding="utf-8")
-        code = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
-        self.assertNotIn("--i-understand", code)
-        self.assertIn("symphony_app_token.py", code)
-        self.assertIn('bwrap "${BW[@]}"', code)
+        return [ln for ln in text.splitlines() if not ln.lstrip().startswith("#")]
+
+    def test_guardrail_flag_only_behind_per_call_opt_in(self) -> None:
+        code = self._code()
+        hits = [i for i, ln in enumerate(code) if "--i-understand" in ln]
+        self.assertEqual(len(hits), 1)
+        guard = code[hits[0] - 1]
+        self.assertIn('"${GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED:-}" = "yes"', guard)
+        joined = "\n".join(code)
+        self.assertIn("unset GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED GMV_SYMPHONY_START_APPROVED",
+                      joined)
+        self.assertLess(joined.index("unset GMV_SYMPHONY_GUARDRAIL"), joined.index("exec python3"))
+
+    def test_wrapper_chain_token_watchdog_bwrap(self) -> None:
+        joined = "\n".join(self._code())
+        tok = joined.index('exec python3 "$TOKEN_PY" exec')
+        wd = joined.index('python3 "$WATCHDOG"')
+        bw = joined.index('bwrap "${BW[@]}"')
+        self.assertLess(tok, wd)
+        self.assertLess(wd, bw)
+        self.assertIn("--budget 2000000 --reserve 300000", joined)
+
+    def test_run_symphony_refuses_second_run(self) -> None:
+        env = {**os.environ, "GMV_SYMPHONY_START_APPROVED": "yes",
+               "GMV_SYMPHONY_APP_KEY_PATH": "/nonexistent/key.pem"}
+        with tempfile.TemporaryDirectory() as tmp:
+            env["PILOT_DIR"] = tmp
+            (Path(tmp) / "log").mkdir()
+            (Path(tmp) / "log" / "pilot-run.once").write_text("used\n", encoding="utf-8")
+            proc = subprocess.run(["bash", str(HOST / "run-symphony.sh")], env=env,
+                                  capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("kein zweiter Lauf", proc.stderr)
+
+    def test_watchdog_present_next_to_wrapper(self) -> None:
+        self.assertTrue((HOST / "symphony_watchdog.py").is_file())
 
 
 if __name__ == "__main__":
