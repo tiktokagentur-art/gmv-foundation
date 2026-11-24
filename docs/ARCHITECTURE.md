@@ -111,17 +111,19 @@ Zuteilung zurücknimmt. Es gibt sie einmal im System, nicht einmal pro Worker.
 
 ## Identität
 
-Festgelegt, auch solange der technische Standard offen ist
+Für Workloads entschieden
 ([ADR-0008](adr/0008-auth-standard.md), [../SECURITY.md](../SECURITY.md)):
 
-- Jeder Dienst und jeder Worker hat eine eigene Identität.
-- Menschen und Workloads sind verschiedene Subjekte.
+- Jeder Dienst und jeder Worker hat eine eigene Identität und eigene API-Keys.
+- Menschen und Workloads sind verschiedene Subjekte. Menschen-Logins sind zurückgestellt.
 - Jede Zustandsänderung wird von der besitzenden Instanz autorisiert.
 - Ein Antrag ohne passende Identität, ohne gültigen Lease oder ohne gültiges
   Fencing ändert nichts.
 
-Nicht festgelegt: Protokoll, Aussteller der Nachweise, Lebensdauer, Rotation.
-Dafür wird kein Platzhalter im Code erfunden.
+Der Nachweis eines Workloads ist ein API-Key mit dem Präfix `gmv_wk_`. Die
+Control Plane speichert nur den SHA-256-Hash. OAuth Client Credentials mit
+`private_key_jwt` folgt, sobald externe Worker hinzukommen. Ein IdP für
+Menschen braucht die Freigabe der CEO.
 
 ## Verträge
 
@@ -159,7 +161,7 @@ des Lease nicht mehr schreiben kann.
 
 Nicht enthalten und nicht nebenbei angelegt:
 
-- Domänenmodell, fachliche API, produktives Schema über `schema_meta` hinaus
+- Domänenmodell und fachliche API außer dem Workload-Nachweis `GET /v1/whoami`; Tabellen für WorkItem, Worker, Claim, Assignment und AuditEvent (die Tabelle `credentials` ist der Nachweis aus ADR-0008)
 - Dienstlimits und eine Umgebung production (`staging` in GMV-V3 existiert, siehe [adr/0005-railway-environments.md](adr/0005-railway-environments.md); Region siehe [adr/0012-hosting-region-usa.md](adr/0012-hosting-region-usa.md))
 - Backup-Lauf, konkrete RPO- oder RTO-Zahlen
 - festgelegter Secret-Provider, Rotation, Break-glass-Verfahren
