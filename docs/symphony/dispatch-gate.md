@@ -31,7 +31,7 @@ Entwurf ohne angebundene Authority `authority_unavailable`.
 2. Authority erreichbar, sonst `authority_unavailable`.
 3. Anfrage formal gültig: Repository auf Allowlist, Issue-Nummer, Worker-ID,
    Claim-ID, Fencing-Token positiv.
-4. Token-Budget konfiguriert und im Rahmen (1 bis 200.000), sonst
+4. Token-Budget konfiguriert und im Rahmen (1 bis 500.000), sonst
    `token_budget_missing_or_invalid` bzw. `token_budget_out_of_range`.
 5. Aktiver Claim der Control Plane passt zu Worker, Claim-ID und Fencing,
    Lease nicht abgelaufen.
@@ -53,21 +53,25 @@ exklusiven `flock` auf dem Host:
 
 Die Sperre ergänzt die Authority. Selbst wenn sie fälschlich zwei Claims
 ausstellt oder zwei Orchestrator-Prozesse laufen, startet nur einer.
-Für mehrere Hosts muss die Sperre in die Control Plane wandern
-(z. B. Unique-Constraint auf aktive Dispatches je WorkItem in PostgreSQL);
-das gehört in den CP-002-Vertrag (PR #63) und ist hier nicht entschieden.
+
+Entschieden (24.11.2026): Die Sperre bleibt vorerst auf dem Host.
+Die Verlagerung in die Control Plane (z. B. Unique-Constraint auf aktive
+Dispatches je WorkItem in PostgreSQL, Bezug CP-002 / PR #63) kommt später
+als eigenes Ticket. Bis dahin ist der Betrieb auf einen Orchestrator-Host
+begrenzt.
 
 ## Token-Budget pro Lauf
 
 `TokenBudget` ist ein hartes, kumulatives Limit für genau einen Lauf:
 
-- Vorlage: `gmv.token_budget.max_tokens_per_run: 150000`,
-  `reserve_per_turn: 25000` (6 Turns × 25.000).
+- Vorlage: `gmv.token_budget.max_tokens_per_run: 500000`,
+  `reserve_per_turn: 80000` (6 Turns × 80.000 = 480.000).
+- Erreicht der kumulierte Verbrauch 500.000, bricht der Lauf hart ab.
 - Vor jedem Turn: passt die Reserve nicht mehr, wird gestoppt.
 - Unbekannter, negativer oder nicht ganzzahliger Verbrauch zählt als erschöpft.
 - Überschritten bleibt überschritten (sticky); der Lauf endet, kein Retry
   im selben Lauf.
-- Konfigurationsobergrenze im Code: 200.000. Höhere Werte brauchen eine
+- Konfigurationsobergrenze im Code: 500.000. Höhere Werte brauchen eine
   Code-Änderung mit Review.
 
 Annahme, vor Phase B gegen `openai/symphony@be10a1b` zu prüfen: Symphony
@@ -96,9 +100,9 @@ python3 scripts/symphony_dispatch_gate.py validate-workflow docs/symphony/WORKFL
 - Stopp ohne Statusübergang: Gate-Flag entfernen. Ab dem nächsten Dispatch
   startet nichts mehr.
 
-## Offene Entscheidungen
+## Entscheidungen und offene Punkte
 
-- Budgetwert: Der Pilot brauchte ca. 480.000 Token für einen README-Absatz.
-  Mit 150.000 wäre er gestoppt worden. Wert und Obergrenze freigeben.
-- Ort der dauerhaften Sperre (Host vs. Control Plane).
-- Aktivierung des Flags nur mit separatem CEO-Go.
+- Budget: 500.000 Token pro Lauf, harter Abbruch bei Erreichen
+  (Pilotwert ca. 480.000 für einen README-Absatz).
+- Sperre: vorerst auf dem Host; Control-Plane-Verlagerung als eigenes Ticket.
+- Offen: Aktivierung des Flags nur mit separatem CEO-Go.

@@ -39,7 +39,9 @@ CLONE_URL = f"https://github.com/{REPOSITORY}.git"
 GATE_FLAG = "GMV_SYMPHONY_DISPATCH_GATE"
 GATE_FLAG_ON = "enabled"
 # Harte Obergrenze, die keine Konfiguration überschreiten darf.
-MAX_TOKENS_PER_RUN_CEILING = 200_000
+MAX_TOKENS_PER_RUN_CEILING = 500_000
+# Freigegebener Wert pro Lauf (Folgeauftrag 24.11.2026). Erreichen = harter Abbruch.
+DEFAULT_MAX_TOKENS_PER_RUN = 500_000
 WORKER_ID = re.compile(r"^[a-z0-9][a-z0-9-]{2,62}$")
 CLAIM_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{2,127}$")
 

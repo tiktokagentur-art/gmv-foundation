@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from symphony_dispatch_gate import (  # noqa: E402
+    DEFAULT_MAX_TOKENS_PER_RUN,
     GATE_FLAG,
     MAX_TOKENS_PER_RUN_CEILING,
     REPOSITORY,
@@ -216,6 +217,19 @@ class TokenBudgetTests(unittest.TestCase):
         with self.assertRaises(BudgetExceeded):
             b.ensure_can_start_turn(1)
 
+    def test_approved_budget_is_500k_and_hard_stops_on_reaching(self) -> None:
+        self.assertEqual(DEFAULT_MAX_TOKENS_PER_RUN, 500_000)
+        self.assertEqual(MAX_TOKENS_PER_RUN_CEILING, 500_000)
+        b = TokenBudget(DEFAULT_MAX_TOKENS_PER_RUN)
+        b.record(499_999)
+        self.assertFalse(b.exhausted)
+        with self.assertRaises(BudgetExceeded):
+            b.record(1)  # genau 500.000 erreicht
+        self.assertTrue(b.exhausted)
+        self.assertEqual(b.remaining, 0)
+        with self.assertRaises(BudgetExceeded):
+            b.ensure_can_start_turn(1)
+
     def test_overrun_stops(self) -> None:
         b = TokenBudget(1_000)
         with self.assertRaises(BudgetExceeded):
@@ -245,7 +259,12 @@ class WorkflowTemplateTests(unittest.TestCase):
         return yaml.safe_load(front)
 
     def test_template_is_valid(self) -> None:
-        self.assertEqual(validate_workflow(self.load()), [])
+        cfg = self.load()
+        self.assertEqual(validate_workflow(cfg), [])
+        budget = cfg["gmv"]["token_budget"]
+        self.assertEqual(budget["max_tokens_per_run"], DEFAULT_MAX_TOKENS_PER_RUN)
+        turns = cfg["agent"]["max_turns"]
+        self.assertLessEqual(budget["reserve_per_turn"] * turns, budget["max_tokens_per_run"])
         self.assertEqual(main(["validate-workflow", str(WORKFLOW)]), 0)
 
     def test_clone_hook_has_no_credentials(self) -> None:
