@@ -1,0 +1,22 @@
+[
+  {
+    "id": "BEISPIEL-KPI-A",
+    "name": "Beispielkennzahl A",
+    "definition": "Anzahl fiktiver Testeinträge mit Prüfvermerk.",
+    "ist_baseline": null,
+    "messmethode": "Fiktive Testeinträge mit Prüfvermerk zählen.",
+    "zielwert": null,
+    "status": "kandidat",
+    "quelle": null
+  },
+  {
+    "id": "BEISPIEL-KPI-B",
+    "name": "Beispielkennzahl B",
+    "definition": "Durchschnittliche Anzahl fiktiver Prüfschritte je Testeintrag.",
+    "ist_baseline": 0,
+    "messmethode": "Fiktive Prüfschritte zählen und durch die Zahl der Testeinträge teilen.",
+    "zielwert": 2.5,
+    "status": "bestaetigt",
+    "quelle": "Fiktive Quelle"
+  }
+]
