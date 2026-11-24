@@ -102,6 +102,7 @@ def test_openapi_v1_errors_statuses_and_paths_match() -> None:
         "/v1/assignments/{assignment_id}/release",
         "/v1/assignments/{assignment_id}/result",
         "/v1/audit-events",
+        "/v1/whoami",
     }
     for path_item in spec["paths"].values():
         for method, operation in path_item.items():

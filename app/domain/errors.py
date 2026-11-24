@@ -20,6 +20,7 @@ class ErrorCode(StrEnum):
     FENCING_REJECTED = "fencing_rejected"
     LEASE_EXPIRED = "lease_expired"
     INVALID_STATE = "invalid_state"
+    INTERNAL = "internal"
 
 
 HTTP_STATUS_BY_CODE = MappingProxyType(
@@ -33,6 +34,7 @@ HTTP_STATUS_BY_CODE = MappingProxyType(
         ErrorCode.FENCING_REJECTED: 409,
         ErrorCode.LEASE_EXPIRED: 409,
         ErrorCode.INVALID_STATE: 409,
+        ErrorCode.INTERNAL: 500,
     }
 )
 
