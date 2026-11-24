@@ -39,13 +39,21 @@ codex:
   #   .git ist von Codex schreibgeschützt (keine Commits im Workspace).
   # - Netz: networkAccess false; erreichbar ist nur, was der Codex-Netzwerk-Proxy
   #   (features.network_proxy, Profil gmv_symphony) per Allowlist durchlässt.
-  # - Lesen: wird durch die Turn-Policy NICHT eingeschränkt (siehe
-  #   docs/symphony/sandbox.md, Host-Lösung).
+  #   Upstream ist der lokale Allowlist-Egress-Proxy (127.0.0.1:18443,
+  #   scripts/symphony_egress_proxy.py), der dieselben drei Hosts erneut prüft.
+  #   allow_local_binding ist nötig, weil der Pilot-Host GitHub/OpenAI auf
+  #   198.18.0.1 (Egress-Tunnel) auflöst; die Allowlist bleibt exakt.
+  #   NO_PROXY betrifft nur den Modellverkehr des Codex-Prozesses selbst
+  #   (ChatGPT-Login), nicht die Sandbox.
+  # - Lesen: Secrets blendet der Host-Wrapper per bwrap aus
+  #   (scripts/symphony_host/, docs/symphony/sandbox.md).
   command: >-
+    env HTTPS_PROXY=http://127.0.0.1:18443 HTTP_PROXY=http://127.0.0.1:18443
+    NO_PROXY=chatgpt.com,.chatgpt.com,auth.openai.com
     codex
     -c 'default_permissions="gmv_symphony"'
     -c features.network_proxy=true
-    -c 'permissions.gmv_symphony.network={enabled=true,domains={"github.com"="allow","api.github.com"="allow","codeload.github.com"="allow","objects.githubusercontent.com"="allow","api.openai.com"="allow"}}'
+    -c 'permissions.gmv_symphony.network={enabled=true,allow_local_binding=true,allow_upstream_proxy=true,domains={"github.com"="allow","api.github.com"="allow","api.openai.com"="allow"}}'
     -c 'permissions.gmv_symphony.filesystem={":root"="read",":workspace_roots"={"."="write"}}'
     app-server
   # Nicht `never`: Symphony nimmt dann jede Freigabeanfrage automatisch an.
@@ -115,8 +123,10 @@ freigegeben und stellt keine Sicherheitsgarantie dar.
 4. Keine GitHub-API-Schreibaktionen, Commits, Pushes, Branch-Erstellung,
    Issue-Transitions, PR-Erstellung, Merges, Deployments, Migrationen,
    IAM- oder Secret-Änderungen ausführen.
-5. Den vorgesehenen Test- und Reviewplan anhand synthetischer Daten
-   erstellen und an die autoritative Instanz zurückmelden.
+5. Ergebnis ist **nur ein Patch und ein Bericht**: Änderungen im Workspace
+   lassen, `git diff` als Patch und einen kurzen Bericht (geänderte Dateien,
+   Tests, offene Punkte) als Abschlussnachricht ausgeben. Commit, Push und
+   Pull Request macht ein Mensch.
 6. Beim Verlust des Lease, nach Widerruf oder bei widersprüchlichen
    Statusdaten sofort stoppen; GitHub-Tickets nicht eigenmächtig schließen.
 
