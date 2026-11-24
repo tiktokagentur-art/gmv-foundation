@@ -22,7 +22,7 @@ an. Dieses ADR ändert keine Repository-Einstellungen; es dokumentiert sie.
 
 Entschieden. Der Default-Branch `main` wird durch das aktive Repository-Ruleset `main` (ID 26896505) geschützt.
 
-Gültig ist der folgende Ist-Stand, gelesen am 10.11.2026:
+Historischer Ist-Snapshot vom 10.11.2026 (heute nicht mehr aktuell):
 
 - Löschen des Branches und Non-Fast-Forward (Force-Push) sind untersagt.
 - Änderungen an `main` nur über Pull Request. Die Zahl der erforderlichen
@@ -50,9 +50,11 @@ Repository-Secret `GMV_MODERATOR_APPLY_GATE` sind nicht vorhanden.
 
 - Direkter Push und Force-Push auf `main` werden technisch blockiert.
 - Ein Merge ohne die drei erforderlichen, aktuellen Checks ist unzulässig.
-- [../../CONTRIBUTING.md](../../CONTRIBUTING.md) und das Ruleset verlangen
-  0 Approvals. Merge-Voraussetzung bleiben die drei erforderlichen, aktuellen
-  Checks. Quelle: CEO-Auswahl im Chat des Head of Engineering, 10.11.2026 05:49 MEZ.
+- Zum Snapshot vom 10.11.2026 verlangten [../../CONTRIBUTING.md](../../CONTRIBUTING.md)
+  und das Ruleset 0 Approvals; der Live-Readback vom 24.11.2026 weicht davon ab
+  und ist unten dokumentiert. Die drei erforderlichen, aktuellen Checks bleiben
+  Merge-Voraussetzung. Quelle des historischen Beschlusses: CEO-Auswahl im Chat
+  des Head of Engineering, 10.11.2026 05:49 MEZ.
 - Aktive CODEOWNERS-Regeln bleiben aus, bis ein späterer Entscheid reale Teams
   einträgt und dieses ADR anpasst.
 - Eine numerische GitHub-App-ID und ein öffentlicher App-Slug sind hier nicht
