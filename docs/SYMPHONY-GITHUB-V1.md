@@ -116,6 +116,9 @@ Erkenntnisse aus dem Pilot (Issue #87, Draft-PR #88):
 - Der Start verlangt das Flag
   `--i-understand-that-this-will-be-running-without-the-usual-guardrails`.
 - Die Vorlage braucht `hooks.after_create` (Repo-Klon), sonst ist der Workspace leer.
+  Ergänzt in `docs/symphony/WORKFLOW.example.txt`; Prüfung und Gate-Entwurf:
+  [symphony/dispatch-gate.md](symphony/dispatch-gate.md), App-Rechte:
+  [symphony/github-app-spec.md](symphony/github-app-spec.md).
 - Solange das Issue `open` ist, dispatcht Symphony erneut. Ohne
   Control-Plane-Statusübergang muss der Lauf manuell gestoppt werden.
 - Das Host-Token für `github_api` hatte im Pilot die Rechte des persönlichen
