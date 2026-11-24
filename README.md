@@ -11,6 +11,12 @@ Das Repository ist öffentlich (CEO-Entscheidung vom 10.11.2026,
 [ADR-0013](docs/adr/0013-repository-visibility-public.md)). Keine Secrets, keine
 Verbindungsdaten, keine internen Betriebsdetails. Regeln: [SECURITY.md](SECURITY.md).
 
+## Developer Handbook
+
+[GMVGANG Developer Handbook](docs/developer/README.md): zentraler Einstieg,
+Factory-Katalog, technische Vorlagen und dokumentierte PR-Prüfungen.
+Die Inhalte bleiben als Markdown im Repository; keine separate Website.
+
 ## Stand
 
 Diese Baseline enthält Architektur, Governance, Sicherheitsregeln, versionierte
