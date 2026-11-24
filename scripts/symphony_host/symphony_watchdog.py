@@ -5,7 +5,7 @@ Starts the given command (Symphony inside bwrap) as a child, tees its stdout
 (status dashboard) to a file, tails the Symphony log, and stops the whole
 process tree with SIGTERM (SIGKILL after a grace period) as soon as
 
-- cumulative tokens >= budget - reserve        (default 2_000_000 - 300_000),
+- cumulative tokens >= budget - reserve        (default 5_000_000 - 300_000),
 - a second dispatch starts (same or other issue), a retry cycle is scheduled,
   or a second issue appears,
 - the first agent run has finished (job done, no further cycle),
@@ -30,6 +30,10 @@ import threading
 import time
 from pathlib import Path
 
+# Muss mit MAX_TOKENS_PER_RUN_CEILING (scripts/symphony_dispatch_gate.py) und
+# --budget in run-symphony.sh übereinstimmen (Petrus 24.11.2026 23:20: 5M).
+DEFAULT_BUDGET = 5_000_000
+DEFAULT_RESERVE = 300_000
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 TOKENS = re.compile(r"Tokens:\s*in\s*([\d,]+)\s*\|\s*out\s*([\d,]+)\s*\|\s*total\s*([\d,]+)")
 DISPATCH = re.compile(r"Dispatching issue to agent: issue_id=(\S+)")
@@ -182,8 +186,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--log", type=Path, required=True,
                     help="Symphony log file or log directory (all symphony.log.N)")
     ap.add_argument("--stdout-file", type=Path, required=True)
-    ap.add_argument("--budget", type=int, default=2_000_000)
-    ap.add_argument("--reserve", type=int, default=300_000)
+    ap.add_argument("--budget", type=int, default=DEFAULT_BUDGET)
+    ap.add_argument("--reserve", type=int, default=DEFAULT_RESERVE)
     ap.add_argument("--max-sessions", type=int, default=3, help="agent.max_turns")
     ap.add_argument("--max-runtime", type=float, default=3600.0)
     ap.add_argument("--no-token-readout", type=float, default=300.0,

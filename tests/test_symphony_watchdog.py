@@ -99,11 +99,11 @@ def test_first_run_finished_is_success(tmp_path: Path) -> None:
 
 def test_token_budget_stop(tmp_path: Path) -> None:
     dash = [f"│ Tokens: in {n:,} | out 10 | total {n + 10:,}" for n in
-            (100_000, 900_000, 1_699_995, 1_800_000, 2_500_000)]
+            (100_000, 900_000, 4_699_995, 4_800_000, 5_500_000)]
     rc, stop, term, gc_alive, _ = run_watchdog(
         tmp_path, "budget", None, stdout_lines=dash, delay=0.05)
     assert stop["reason"].startswith("token_budget_reached")
-    assert stop["tokens"] >= 1_700_000
+    assert stop["tokens"] >= 4_700_000  # Standard: 5_000_000 - 300_000
     assert (rc, term["clean"], gc_alive) == (1, True, False)
 
 
