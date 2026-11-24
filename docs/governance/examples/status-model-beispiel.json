@@ -1,0 +1,59 @@
+{
+  "modell": {
+    "stufen": ["idee", "entwurf", "geprueft", "freigegeben", "verworfen", "zurueckgestellt"],
+    "start": "idee",
+    "endstufen": {
+      "verworfen": {"grund": true, "wiedervorlage": false},
+      "zurueckgestellt": {"grund": true, "wiedervorlage": true}
+    },
+    "uebergaenge": {
+      "idee": ["entwurf", "verworfen"],
+      "entwurf": ["geprueft", "zurueckgestellt"],
+      "geprueft": ["freigegeben", "verworfen"]
+    },
+    "pflichtfelder_ab": {
+      "geprueft": ["pruefvermerk"]
+    },
+    "gates": {
+      "freigegeben": "Rolle P"
+    }
+  },
+  "eintraege": [
+    {
+      "id": "BEISPIEL-001",
+      "status": "freigegeben",
+      "pruefvermerk": "Fiktiven Entwurf vollständig geprüft.",
+      "historie": [
+        {"datum": "2030-01-10", "status": "idee", "von": "Rolle A"},
+        {"datum": "2030-01-10", "status": "entwurf", "von": "Rolle A"},
+        {"datum": "2030-01-11", "status": "geprueft", "von": "Rolle P"},
+        {
+          "datum": "2030-01-12",
+          "status": "freigegeben",
+          "von": "Rolle P",
+          "vermerk": {"rolle": "Rolle P", "text": "Fiktiven Entwurf freigegeben."}
+        }
+      ]
+    },
+    {
+      "id": "BEISPIEL-002",
+      "status": "verworfen",
+      "grund": "Die fiktive Idee liegt bereits vor.",
+      "historie": [
+        {"datum": "2030-01-10", "status": "idee", "von": "Rolle A"},
+        {"datum": "2030-01-11", "status": "verworfen", "von": "Rolle A"}
+      ]
+    },
+    {
+      "id": "BEISPIEL-003",
+      "status": "zurueckgestellt",
+      "grund": "Das fiktive Material ist noch nicht vollständig.",
+      "wiedervorlage": "2030-02-01",
+      "historie": [
+        {"datum": "2030-01-10", "status": "idee", "von": "Rolle A"},
+        {"datum": "2030-01-11", "status": "entwurf", "von": "Rolle A"},
+        {"datum": "2030-01-12", "status": "zurueckgestellt", "von": "Rolle A"}
+      ]
+    }
+  ]
+}
