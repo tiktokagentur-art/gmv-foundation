@@ -75,6 +75,7 @@ Offene Punkte stehen im [ADR-Index](docs/adr/README.md).
 **Symphony-Pilot.** Gemäß der CEO-Entscheidung vom 24.11.2026 wird OpenAI Symphony lokal als Orchestrator für Codex mit GitHub Issues als Tracker pilotiert (P0, siehe [#74](https://github.com/tiktokagentur-art/gmv-foundation/issues/74)).
 Aline bleibt in der Control Plane die alleinige Zuweisungsautorität und vergibt als Einzige das Label `gmv-symphony-pilot`.
 Symphony liefert nur Patches; PRs werden nach grüner CI manuell gemergt, kein Auto-Merge.
+Ruleset 26896505 verlangt 0 Approvals und nur die drei Checks „Lint and structure“, „Backend“ und „Image“, wobei die aktive Einstellung `require_extra_approval_for_unattributed_changes` für nicht zugeordnete Änderungen eine Zusatz-Freigabe verlangt.
 Das Konzept steht in [docs/SYMPHONY-GITHUB-V1.md](docs/SYMPHONY-GITHUB-V1.md) (PR #66).
 
 ## Struktur
