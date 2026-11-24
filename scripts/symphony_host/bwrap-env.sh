@@ -7,6 +7,10 @@
 # Credential-Speicher werden mit leerem tmpfs bzw. /dev/null überdeckt.
 # Ausnahme: ~/.codex/auth.json bleibt für den Modellzugriff von Codex
 # lesbar, aber schreibgeschützt (Restrisiko, siehe docs/symphony/sandbox.md).
+# /mnt/bot ist dasselbe Laufwerk wie /home/box und /workspace (/dev/vdb) –
+# daher wird /mnt nach --dev-bind / / mit tmpfs überdeckt. Ebenso die
+# Host-Laufzeitpfade /opt/sand, /exec-daemon, /pod-daemon und
+# /var/lib/sand-box-runtime (Datei: --ro-bind /dev/null).
 
 : "${PILOT_DIR:=/workspace/symphony-pilot}"
 : "${GMV_HOME:=/home/box}"
@@ -19,6 +23,22 @@ gmv_bwrap_args() {
     --proc /proc
     --tmpfs /tmp
   )
+  # Nur wenn der Pfad existiert, und erst nach --dev-bind / /.
+  local runtime_masks=(
+    /mnt
+    /opt/sand
+    /exec-daemon
+    /pod-daemon
+    /var/lib/sand-box-runtime
+  )
+  local p
+  for p in "${runtime_masks[@]}"; do
+    if [ -d "$p" ] && [ ! -L "$p" ]; then
+      args+=(--tmpfs "$p")
+    elif [ -e "$p" ] || [ -L "$p" ]; then
+      args+=(--ro-bind /dev/null "$p")
+    fi
+  done
   local mask_dirs=(
     "$GMV_HOME/secrets"
     "$GMV_HOME/.config/gh"
