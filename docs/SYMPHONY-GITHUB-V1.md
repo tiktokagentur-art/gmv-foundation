@@ -109,7 +109,7 @@ bewusste, eng begrenzte Ausnahme von Phase B: Das serverseitige
 Dispatch-Gate fehlt weiterhin. Ersatzweise vergeben Aline oder Deniz das Label
 `gmv-symphony-pilot` an genau ein harmloses Issue, und Symphony läuft mit
 `max_concurrent_agents: 1`, wenigen Turns und wird nach einem Lauf gestoppt.
-Merge bleibt bei Petrus über die bestehende Review-Pflicht auf `main`.
+Das Ruleset auf `main` verlangt 0 Approvals und nur die drei Checks „Lint and structure“, „Backend“ und „Image“. Gemergt wird nach grüner CI von Aline oder Deniz.
 
 Erkenntnisse aus dem Pilot (Issue #87, Draft-PR #88):
 
