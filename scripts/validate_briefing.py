@@ -7,6 +7,12 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from schema_check import check_fields, is_nonempty_text, load_json, report_errors  # noqa: E402
+
 TEXT_FIELDS = ("thema", "zielgruppe", "format", "rechteinformationen")
 REQUIRED_FIELDS = (*TEXT_FIELDS, "quellen")
 
@@ -15,16 +21,12 @@ def validate(briefing: object) -> list[tuple[str, str]]:
     if not isinstance(briefing, dict):
         return [("$", "Ein JSON-Objekt wird erwartet.")]
 
-    errors = []
-    for field in REQUIRED_FIELDS:
-        if field not in briefing:
-            errors.append((field, "Pflichtfeld fehlt."))
+    missing, unknown = check_fields(briefing, REQUIRED_FIELDS)
+    errors = [(field, "Pflichtfeld fehlt.") for field in missing]
 
     for field in TEXT_FIELDS:
-        if field in briefing:
-            value = briefing[field]
-            if not isinstance(value, str) or not value.strip():
-                errors.append((field, "Eine nicht leere Zeichenkette wird erwartet."))
+        if field in briefing and not is_nonempty_text(briefing[field]):
+            errors.append((field, "Eine nicht leere Zeichenkette wird erwartet."))
 
     if "quellen" in briefing:
         sources = briefing["quellen"]
@@ -32,18 +34,14 @@ def validate(briefing: object) -> list[tuple[str, str]]:
             errors.append(("quellen", "Eine Liste mit mindestens einer Quelle wird erwartet."))
         else:
             for index, source in enumerate(sources):
-                if not isinstance(source, str) or not source.strip():
+                if not is_nonempty_text(source):
                     errors.append((f"quellen[{index}]", "Die Quelle muss nicht leerer Text sein."))
 
-    for field in sorted(briefing.keys() - REQUIRED_FIELDS):
+    for field in unknown:
         label = json.dumps(field)[1:-1] if field else '""'
         errors.append((label, "Unbekanntes Feld."))
 
     return errors
-
-
-def reject_constant(value: str) -> None:
-    raise ValueError(f"Unzulässige JSON-Konstante {value}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -54,23 +52,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     status = 0
     for path in args.datei:
         filename = str(path).replace("\r", r"\r").replace("\n", r"\n")
-        try:
-            content = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeError):
-            print(f"{filename}: $: Datei kann nicht als UTF-8 gelesen werden.", file=sys.stderr)
-            status = 2
+        briefing, load_error = load_json(path)
+        if load_error is not None:
+            message = (
+                "Datei kann nicht als UTF-8 gelesen werden."
+                if load_error == "read"
+                else "Ungültiges JSON."
+            )
+            status = report_errors([f"{filename}: $: {message}"], exit_code=2)
             continue
 
-        try:
-            briefing = json.loads(content, parse_constant=reject_constant)
-        except (ValueError, RecursionError):
-            print(f"{filename}: $: Ungültiges JSON.", file=sys.stderr)
-            status = 2
-            continue
-
-        for field, message in validate(briefing):
-            print(f"{filename}: {field}: {message}", file=sys.stderr)
-            status = max(status, 1)
+        errors = (f"{filename}: {field}: {message}" for field, message in validate(briefing))
+        status = max(status, report_errors(errors))
 
     return status
 

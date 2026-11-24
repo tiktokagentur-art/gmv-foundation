@@ -1,11 +1,21 @@
 """Validiert ein Entscheidungs- und Änderungsregister im JSON-Format."""
 
 import argparse
-import json
 import re
 import sys
-from datetime import date
 from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from schema_check import (  # noqa: E402
+    check_fields,
+    is_nonempty_text,
+    load_json,
+    parse_iso_date,
+    report_errors,
+)
 
 TEXT_FIELDS = {"entscheidungstraeger", "freigabe", "scope", "owner"}
 ENTRY_FIELDS = TEXT_FIELDS | {"id", "status", "evidence", "historie"}
@@ -14,31 +24,18 @@ CLOSING_STATUSES = {"umgesetzt", "verifiziert", "dokumentiert"}
 EVIDENCE_STATUSES = CLOSING_STATUSES | {"abgeschlossen"}
 STATUSES = EVIDENCE_STATUSES | {"vorgeschlagen", "freigegeben", "abgelehnt"}
 ID_PATTERN = re.compile(r"DEC-[0-9]{3,}")
-DATE_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 
 def _check_fields(record, fields, label, errors, prefix=""):
-    for field in sorted(fields - record.keys()):
+    missing, unknown = check_fields(record, sorted(fields))
+    for field in missing:
         errors.append(f"{label}: {prefix}{field}: Pflichtfeld fehlt")
-    for field in sorted(record.keys() - fields):
+    for field in unknown:
         errors.append(f"{label}: {prefix}{field!r}: unbekanntes Feld")
-
-
-def _nonempty_text(value):
-    return isinstance(value, str) and bool(value.strip())
 
 
 def _valid_status(value):
     return isinstance(value, str) and value in STATUSES
-
-
-def _parse_date(value):
-    if isinstance(value, str) and DATE_PATTERN.fullmatch(value):
-        try:
-            return date.fromisoformat(value)
-        except ValueError:
-            pass
-    return None
 
 
 def _check_history(history, status, label, errors):
@@ -56,7 +53,7 @@ def _check_history(history, status, label, errors):
         _check_fields(item, HISTORY_FIELDS, label, errors, prefix=f"{field}.")
 
         if "datum" in item:
-            current_date = _parse_date(item["datum"])
+            current_date = parse_iso_date(item["datum"])
             if current_date is None:
                 errors.append(
                     f"{label}: {field}.datum: gültiges Datum im Format JJJJ-MM-TT erwartet"
@@ -72,7 +69,7 @@ def _check_history(history, status, label, errors):
             else:
                 errors.append(f"{label}: {field}.status: ungültiger Status")
 
-        if "von" in item and not _nonempty_text(item["von"]):
+        if "von" in item and not is_nonempty_text(item["von"]):
             errors.append(f"{label}: {field}.von: nicht leere Zeichenkette erwartet")
 
     last = history[-1]
@@ -115,7 +112,7 @@ def validate(register):
 
         _check_fields(entry, ENTRY_FIELDS, label, errors)
         for field in sorted(TEXT_FIELDS & entry.keys()):
-            if not _nonempty_text(entry[field]):
+            if not is_nonempty_text(entry[field]):
                 errors.append(f"{label}: {field}: nicht leere Zeichenkette erwartet")
 
         status = entry.get("status")
@@ -137,31 +134,19 @@ def validate(register):
     return errors
 
 
-def _reject_json_constant(value):
-    raise ValueError(f"Ungültige JSON-Konstante: {value}")
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("datei", type=Path, help="Pfad zur JSON-Datei")
     args = parser.parse_args(argv)
 
-    try:
-        source = args.datei.read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
-        print("register: datei: Datei kann nicht als UTF-8 gelesen werden", file=sys.stderr)
-        return 2
-
-    try:
-        register = json.loads(source, parse_constant=_reject_json_constant)
-    except (ValueError, RecursionError):
-        print("register: json: ungültiges JSON", file=sys.stderr)
-        return 2
-
-    errors = validate(register)
-    for error in errors:
-        print(error, file=sys.stderr)
-    return int(bool(errors))
+    register, load_error = load_json(args.datei)
+    if load_error == "read":
+        return report_errors(
+            ["register: datei: Datei kann nicht als UTF-8 gelesen werden"], exit_code=2
+        )
+    if load_error == "json":
+        return report_errors(["register: json: ungültiges JSON"], exit_code=2)
+    return report_errors(validate(register))
 
 
 if __name__ == "__main__":
