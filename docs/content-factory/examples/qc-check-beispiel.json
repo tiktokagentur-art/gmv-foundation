@@ -1,0 +1,56 @@
+[
+  {
+    "id": "FIKTIV-QC-A",
+    "video": "fiktiv-video-a",
+    "erstellende_rolle": "Rolle A",
+    "datum": "2026-01-15",
+    "punkte": {
+      "aussagen": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle B"},
+      "bild": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle B"},
+      "ton": {
+        "ergebnis": "nicht_anwendbar",
+        "pruefende_rolle": "Rolle B",
+        "notiz": "Fiktives Video ohne Ton."
+      },
+      "rechte": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle C"},
+      "untertitel": {"ergebnis": "nicht_anwendbar", "pruefende_rolle": "Rolle B"},
+      "caption": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle B"},
+      "kennzeichnung": {
+        "ergebnis": "bestanden",
+        "pruefende_rolle": "Rolle B",
+        "ki_kennzeichnung_sichtbar": true,
+        "c2pa": "nicht_vorhanden"
+      },
+      "tool_lizenz": {
+        "ergebnis": "bestanden",
+        "pruefende_rolle": "Rolle C",
+        "tools": [{"name": "Beispieltool", "tarif": "free", "nutzung": "intern"}]
+      }
+    }
+  },
+  {
+    "id": "FIKTIV-QC-B",
+    "video": "fiktiv-video-b",
+    "erstellende_rolle": "Rolle B",
+    "datum": "2026-01-16",
+    "punkte": {
+      "aussagen": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle A"},
+      "bild": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle A"},
+      "ton": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle A"},
+      "rechte": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle C"},
+      "untertitel": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle A"},
+      "caption": {"ergebnis": "bestanden", "pruefende_rolle": "Rolle A"},
+      "kennzeichnung": {
+        "ergebnis": "bestanden",
+        "pruefende_rolle": "Rolle A",
+        "ki_kennzeichnung_sichtbar": true,
+        "c2pa": "vorhanden_gueltig"
+      },
+      "tool_lizenz": {
+        "ergebnis": "bestanden",
+        "pruefende_rolle": "Rolle C",
+        "tools": [{"name": "Beispieltool", "tarif": "kommerziell", "nutzung": "extern"}]
+      }
+    }
+  }
+]
