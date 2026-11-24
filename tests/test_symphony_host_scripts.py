@@ -70,7 +70,9 @@ class BwrapArgsTests(unittest.TestCase):
 
 
 def _bwrap_usable() -> bool:
-    if not shutil.which("bwrap"):
+    # bwrap-env.sh legt ein tmpfs auf /workspace; ohne dieses Verzeichnis (z. B. auf
+    # GitHub-Runnern) kann bwrap den Mountpunkt nicht anlegen. Läuft auf dem Pilot-Host.
+    if not shutil.which("bwrap") or not Path("/workspace").is_dir():
         return False
     probe = subprocess.run(["bwrap", "--dev-bind", "/", "/", "--", "true"],
                            capture_output=True, check=False)
