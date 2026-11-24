@@ -83,6 +83,7 @@ ADR_STATUS = {
     "docs/adr/0012-hosting-region-usa.md": "Accepted",
     "docs/adr/0013-repository-visibility-public.md": "Accepted",
     "docs/adr/0014-github-moderator-trust-boundary.md": "Accepted",
+    "docs/adr/0015-aline-l1-testmandate.md": "Accepted",
 }
 
 ADR_MARKERS = {
