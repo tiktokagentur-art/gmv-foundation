@@ -29,6 +29,9 @@ hooks:
   # before_run: python3 /opt/gmv/symphony_dispatch_gate.py check
   timeout_ms: 120000
 agent:
+  # Pro Symphony-Prozess genau ein Issue: Der Wächter stoppt bei einem zweiten
+  # Dispatch. Parallelität = getrennte run-symphony.sh-Aufrufe je Issue, begrenzt
+  # durch gmv.dispatch_gate.max_concurrent und den gemeinsamen Slot-Zähler.
   max_concurrent_agents: 1
   max_turns: 6
 codex:
@@ -75,8 +78,13 @@ gmv:
   dispatch_gate:
     enabled: false
     flag: GMV_SYMPHONY_DISPATCH_GATE
+    # Parallele Symphony-Prozesse auf dem Host (1 bis 10). Zählt mit den
+    # Codex-Recherchen (research.sh) gegen die gemeinsame Obergrenze 10.
+    # Vorlage: 1. Höher erst nach Samiras Prüfung des Gates.
+    max_concurrent: 1
   token_budget:
-    max_tokens_per_run: 2000000
+    # = MAX_TOKENS_PER_RUN_CEILING und Wächter --budget (Petrus 24.11.2026: 5M)
+    max_tokens_per_run: 5000000
     reserve_per_turn: 300000
     on_exceeded: stop
     on_unknown_usage: stop

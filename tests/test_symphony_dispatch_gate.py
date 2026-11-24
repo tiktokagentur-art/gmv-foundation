@@ -17,7 +17,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from symphony_dispatch_gate import (  # noqa: E402
     DEFAULT_MAX_TOKENS_PER_RUN,
     GATE_FLAG,
+    MAX_CONCURRENT_RUNS_CEILING,
     MAX_TOKENS_PER_RUN_CEILING,
+    RC_NO_SLOT,
+    RC_QUOTA_FAIL_CLOSED,
     REPOSITORY,
     BudgetExceeded,
     Claim,
@@ -25,8 +28,12 @@ from symphony_dispatch_gate import (  # noqa: E402
     DispatchLock,
     DispatchRequest,
     GateDenied,
+    SharedSlots,
     TokenBudget,
+    acquire_issue_once,
+    classify_quota_failure,
     main,
+    read_max_concurrent,
     split_frontmatter,
     validate_workflow,
 )
@@ -217,14 +224,14 @@ class TokenBudgetTests(unittest.TestCase):
         with self.assertRaises(BudgetExceeded):
             b.ensure_can_start_turn(1)
 
-    def test_approved_budget_is_2m_and_hard_stops_on_reaching(self) -> None:
-        self.assertEqual(DEFAULT_MAX_TOKENS_PER_RUN, 2_000_000)
-        self.assertEqual(MAX_TOKENS_PER_RUN_CEILING, 2_000_000)
+    def test_approved_budget_is_5m_and_hard_stops_on_reaching(self) -> None:
+        self.assertEqual(DEFAULT_MAX_TOKENS_PER_RUN, 5_000_000)
+        self.assertEqual(MAX_TOKENS_PER_RUN_CEILING, 5_000_000)
         b = TokenBudget(DEFAULT_MAX_TOKENS_PER_RUN)
-        b.record(1_999_999)
+        b.record(4_999_999)
         self.assertFalse(b.exhausted)
         with self.assertRaises(BudgetExceeded):
-            b.record(1)  # genau 2.000.000 erreicht
+            b.record(1)  # genau 5.000.000 erreicht
         self.assertTrue(b.exhausted)
         self.assertEqual(b.remaining, 0)
         with self.assertRaises(BudgetExceeded):
@@ -335,7 +342,17 @@ class WorkflowTemplateTests(unittest.TestCase):
                     '"api.openai.com"="allow"',
                     '"api.openai.com"="allow","codeload.github.com"="allow"')),
             "reserve too high": lambda c: c["gmv"]["token_budget"].__setitem__(
-                "reserve_per_turn", 400_000),
+                "reserve_per_turn", 900_000),
+            "no max_concurrent": lambda c: c["gmv"]["dispatch_gate"].pop("max_concurrent"),
+            "max_concurrent 0": lambda c: c["gmv"]["dispatch_gate"].__setitem__(
+                "max_concurrent", 0),
+            "max_concurrent 11": lambda c: c["gmv"]["dispatch_gate"].__setitem__(
+                "max_concurrent", 11),
+            "max_concurrent bool": lambda c: c["gmv"]["dispatch_gate"].__setitem__(
+                "max_concurrent", True),
+            "agents 3 per process": lambda c: (
+                c["gmv"]["dispatch_gate"].__setitem__("max_concurrent", 3),
+                c["agent"].__setitem__("max_concurrent_agents", 3)),
             "literal token": lambda c: c["tracker"]["provider"].__setitem__("token", "abc"),
         }
         for name, mutate in mutations.items():
@@ -343,6 +360,316 @@ class WorkflowTemplateTests(unittest.TestCase):
             mutate(cfg)
             with self.subTest(name=name):
                 self.assertNotEqual(validate_workflow(cfg), [])
+
+
+def _once_worker(once_dir: str, issue: int, barrier, results) -> None:
+    barrier.wait()
+    try:
+        acquire_issue_once(Path(once_dir), issue)
+        results.put("won")
+    except GateDenied as exc:
+        results.put(exc.reason)
+
+
+def _slot_worker(slot_dir: str, lock: str, issue: int, pid: int, barrier, results) -> None:
+    barrier.wait()
+    slots = SharedSlots(Path(slot_dir), Path(lock), pid_alive=lambda _pid: True)
+    try:
+        slots.acquire(issue, pid, max_symphony=MAX_CONCURRENT_RUNS_CEILING)
+        results.put("won")
+    except GateDenied as exc:
+        results.put(exc.reason)
+
+
+class SharedSlotTests(unittest.TestCase):
+    """Gemeinsamer Zähler Codex (research.sh) + Symphony, max. 10."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        base = Path(self._tmp.name)
+        self.slot_dir = base / "state" / "slots"
+        self.lock = base / ".research.lock"
+        self.dead: set[int] = set()
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def slots(self, max_total: int = MAX_CONCURRENT_RUNS_CEILING) -> SharedSlots:
+        return SharedSlots(self.slot_dir, self.lock, max_total,
+                           pid_alive=lambda pid: pid not in self.dead)
+
+    def research_slot(self, pid: int) -> None:
+        # Format wie research.sh: "pid=<pid> reserved=<n> id=<id> dayfile=<pfad>"
+        self.slot_dir.mkdir(parents=True, exist_ok=True)
+        (self.slot_dir / str(pid)).write_text(
+            f"pid={pid} reserved=500000 id=20261124-x dayfile=/x/tokens.txt\n",
+            encoding="utf-8")
+
+    def test_ceiling_is_10_and_only_lowerable(self) -> None:
+        self.assertEqual(MAX_CONCURRENT_RUNS_CEILING, 10)
+        for bad in (0, 11, True, "10"):
+            with self.subTest(bad=bad), self.assertRaises(GateDenied):
+                SharedSlots(self.slot_dir, self.lock, bad)
+
+    def test_up_to_10_symphony_runs_then_denied(self) -> None:
+        s = self.slots()
+        for i in range(1, 11):
+            s.acquire(100 + i, 1000 + i, max_symphony=10)
+        self.assertEqual(s.count(), (10, 10))
+        with self.assertRaises(GateDenied) as ctx:
+            s.acquire(200, 2000, max_symphony=10)
+        self.assertEqual(ctx.exception.reason, "shared_limit_reached")
+
+    def test_research_and_symphony_share_the_counter(self) -> None:
+        for pid in range(500, 507):
+            self.research_slot(pid)  # 7 Codex-Recherchen laufen
+        s = self.slots()
+        for i in range(3):
+            s.acquire(10 + i, 900 + i, max_symphony=10)
+        with self.assertRaises(GateDenied) as ctx:
+            s.acquire(20, 999, max_symphony=10)
+        self.assertEqual(ctx.exception.reason, "shared_limit_reached")
+        self.assertEqual(s.count(), (10, 3))
+
+    def test_symphony_share_limited_by_max_concurrent(self) -> None:
+        s = self.slots()
+        s.acquire(1, 11, max_symphony=1)
+        with self.assertRaises(GateDenied) as ctx:
+            s.acquire(2, 12, max_symphony=1)
+        self.assertEqual(ctx.exception.reason, "symphony_limit_reached")
+        for bad in (0, 11):
+            with self.subTest(bad=bad), self.assertRaises(GateDenied):
+                s.acquire(3, 13, max_symphony=bad)
+
+    def test_same_issue_never_twice(self) -> None:
+        s = self.slots()
+        s.acquire(7, 70, max_symphony=10)
+        with self.assertRaises(GateDenied) as ctx:
+            s.acquire(7, 71, max_symphony=10)
+        self.assertEqual(ctx.exception.reason, "issue_already_running")
+
+    def test_slot_file_format_is_research_compatible(self) -> None:
+        path = self.slots().acquire(7, 4242, max_symphony=1)
+        self.assertEqual(path, self.slot_dir / "4242")
+        text = path.read_text(encoding="utf-8")
+        self.assertRegex(text, r"^pid=4242 reserved=0 id=symphony-issue-7 ")
+        self.assertIn("kind=symphony issue=7", text)
+        self.assertNotIn("dayfile=", text)  # kein Anteil am Codex-Tagesbudget
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_release_and_stale_cleanup(self) -> None:
+        s = self.slots()
+        s.acquire(1, 31, max_symphony=10)
+        s.acquire(2, 32, max_symphony=10)
+        self.research_slot(33)
+        self.assertFalse(s.release(2, 31))  # fremdes Issue: nichts löschen
+        self.assertTrue(s.release(1, 31))
+        self.dead.update({32, 33})
+        self.assertEqual(s.count(), (0, 0))
+        self.assertFalse((self.slot_dir / "32").exists())  # tote Symphony-Slots weg
+        self.assertTrue((self.slot_dir / "33").exists())  # Codex-Slot räumt research.sh
+
+    def test_lock_timeout_is_fail_closed(self) -> None:
+        import fcntl
+        import os
+
+        import symphony_dispatch_gate as gate_mod
+
+        self.lock.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(self.lock, os.O_RDWR | os.O_CREAT, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        old = gate_mod.SLOT_LOCK_TIMEOUT
+        try:
+            gate_mod.SLOT_LOCK_TIMEOUT = 0.2
+            with self.assertRaises(GateDenied) as ctx:
+                with gate_mod._flock(self.lock, gate_mod.SLOT_LOCK_TIMEOUT):
+                    pass
+            self.assertEqual(ctx.exception.reason, "slot_lock_timeout")
+        finally:
+            gate_mod.SLOT_LOCK_TIMEOUT = old
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
+
+    def test_concurrent_acquire_respects_limit(self) -> None:
+        ctx = multiprocessing.get_context("fork")
+        barrier, results = ctx.Barrier(15), ctx.Queue()
+        procs = [ctx.Process(target=_slot_worker, args=(
+            str(self.slot_dir), str(self.lock), 300 + i, 3000 + i, barrier, results))
+            for i in range(15)]
+        for p in procs:
+            p.start()
+        for p in procs:
+            p.join(30)
+        outcomes = [results.get(timeout=5) for _ in procs]
+        self.assertEqual(outcomes.count("won"), 10)
+        self.assertEqual(outcomes.count("shared_limit_reached"), 5)
+        self.assertEqual(len(list(self.slot_dir.iterdir())), 10)
+
+    def test_concurrent_same_issue_has_one_winner(self) -> None:
+        ctx = multiprocessing.get_context("fork")
+        barrier, results = ctx.Barrier(8), ctx.Queue()
+        procs = [ctx.Process(target=_slot_worker, args=(
+            str(self.slot_dir), str(self.lock), 77, 7000 + i, barrier, results))
+            for i in range(8)]
+        for p in procs:
+            p.start()
+        for p in procs:
+            p.join(30)
+        outcomes = [results.get(timeout=5) for _ in procs]
+        self.assertEqual(outcomes.count("won"), 1)
+        self.assertEqual(outcomes.count("issue_already_running"), 7)
+
+
+class IssueOnceTests(unittest.TestCase):
+    def test_once_per_issue_not_global(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            acquire_issue_once(Path(tmp), 5)
+            acquire_issue_once(Path(tmp), 6)  # anderes Issue: erlaubt
+            with self.assertRaises(GateDenied) as ctx:
+                acquire_issue_once(Path(tmp), 5)
+            self.assertEqual(ctx.exception.reason, "issue_already_started")
+            self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()),
+                             ["issue-5.once", "issue-6.once"])
+
+    def test_invalid_issue_denied(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            for bad in (0, -1, True, "5"):
+                with self.subTest(bad=bad), self.assertRaises(GateDenied):
+                    acquire_issue_once(Path(tmp), bad)
+
+    def test_race_has_exactly_one_winner(self) -> None:
+        ctx = multiprocessing.get_context("fork")
+        with tempfile.TemporaryDirectory() as tmp:
+            barrier, results = ctx.Barrier(12), ctx.Queue()
+            procs = [ctx.Process(target=_once_worker, args=(tmp, 88, barrier, results))
+                     for _ in range(12)]
+            for p in procs:
+                p.start()
+            for p in procs:
+                p.join(30)
+            outcomes = [results.get(timeout=5) for _ in procs]
+        self.assertEqual(outcomes.count("won"), 1)
+        self.assertEqual(outcomes.count("issue_already_started"), 11)
+
+
+class MaxConcurrentTests(unittest.TestCase):
+    @staticmethod
+    def wf(block: str) -> str:
+        return f"---\nagent:\n  max_concurrent_agents: 1\ngmv:\n{block}---\nbody\n"
+
+    def test_reads_values_1_to_10(self) -> None:
+        for n in range(1, 11):
+            text = self.wf(f"  dispatch_gate:\n    enabled: false\n    max_concurrent: {n}\n")
+            self.assertEqual(read_max_concurrent(text), n)
+
+    def test_missing_defaults_to_1_invalid_denied(self) -> None:
+        self.assertEqual(read_max_concurrent(self.wf("  dispatch_gate:\n    enabled: false\n")), 1)
+        for bad in ("0", "11", "abc", "2.5", "-1"):
+            text = self.wf(f"  dispatch_gate:\n    max_concurrent: {bad}\n")
+            with self.subTest(bad=bad), self.assertRaises(GateDenied):
+                read_max_concurrent(text)
+
+    def test_ignores_other_blocks(self) -> None:
+        text = ("---\nagent:\n  max_concurrent: 9\ngmv:\n  token_budget:\n"
+                "    max_concurrent: 8\n  dispatch_gate:\n    max_concurrent: 2 # Kommentar\n"
+                "---\n")
+        self.assertEqual(read_max_concurrent(text), 2)
+
+    def test_matches_yaml_on_template(self) -> None:
+        text = WORKFLOW.read_text(encoding="utf-8")
+        cfg = yaml.safe_load(split_frontmatter(text)[0])
+        self.assertEqual(read_max_concurrent(text), cfg["gmv"]["dispatch_gate"]["max_concurrent"])
+
+    def test_template_is_consistent_and_gate_off(self) -> None:
+        cfg = yaml.safe_load(split_frontmatter(WORKFLOW.read_text(encoding="utf-8"))[0])
+        self.assertIs(cfg["gmv"]["dispatch_gate"]["enabled"], False)
+        self.assertEqual(cfg["agent"]["max_concurrent_agents"], 1)
+        self.assertLessEqual(cfg["gmv"]["dispatch_gate"]["max_concurrent"], 10)
+        for n in (1, 3, 10):
+            cfg["gmv"]["dispatch_gate"]["max_concurrent"] = n
+            with self.subTest(n=n):
+                self.assertEqual(validate_workflow(cfg), [])
+
+
+class QuotaFailClosedTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self._tmp.name)
+        self.env = {
+            "GMV_SHARED_SLOT_DIR": str(self.base / "slots"),
+            "GMV_SHARED_SLOT_LOCK": str(self.base / ".research.lock"),
+            "GMV_ALERTS_LOG": str(self.base / "ALERTS.log"),
+            "GMV_QUOTA_STOP": str(self.base / "state" / "quota-stop"),
+        }
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def run_main(self, *argv: str) -> int:
+        from unittest import mock
+
+        with mock.patch.dict("os.environ", self.env):
+            return main(list(argv))
+
+    def test_classifier(self) -> None:
+        cases = {
+            "error: usage_limit_reached for plan": "quota_exhausted",
+            '{"code":"insufficient_quota"}': "quota_exhausted",
+            "HTTP 429 Too Many Requests": "rate_limited",
+            "rate_limit_exceeded": "rate_limited",
+            "status: 401": "auth_failed",
+            "refresh_token_expired": "auth_failed",
+            "Please log in again with codex login": "auth_failed",
+            "failed to persist auth.json: Read-only file system (os error 30)":
+                "auth_refresh_blocked",
+        }
+        for text, code in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(classify_quota_failure(text), code)
+        # Normale Dashboard-/Logzeilen eines grünen Laufs lösen nichts aus.
+        for ok in ("Rate Limits", "rate limits updated", "Tokens: in 1,401 | out 429 | total 1,830",
+                   "child_exited code=0", "NET https://api.openai.com/v1/models -> 200"):
+            with self.subTest(ok=ok):
+                self.assertIsNone(classify_quota_failure(ok))
+
+    def test_scan_hit_writes_alert_and_marker_then_blocks(self) -> None:
+        log = self.base / "run.out"
+        log.write_text("... usage_limit_reached ...\n", encoding="utf-8")
+        self.assertEqual(self.run_main("quota-check"), 0)
+        self.assertEqual(self.run_main("quota-scan", "--issue", "12", str(log)),
+                         RC_QUOTA_FAIL_CLOSED)
+        alerts = (self.base / "ALERTS.log").read_text(encoding="utf-8")
+        self.assertIn("ALERT symphony issue=12 quota_fail_closed reason=quota_exhausted", alerts)
+        self.assertNotIn("usage_limit_reached ...", alerts)  # keine Log-Inhalte
+        self.assertEqual((self.base / "ALERTS.log").stat().st_mode & 0o777, 0o600)
+        # kein Retry-Sturm: jeder weitere Start bleibt gesperrt, bis ein Mensch eingreift
+        for _ in range(3):
+            self.assertEqual(self.run_main("quota-check"), RC_QUOTA_FAIL_CLOSED)
+
+    def test_clean_scan_and_missing_files_pass(self) -> None:
+        log = self.base / "run.out"
+        log.write_text("Rate Limits\nAgent task finished\n", encoding="utf-8")
+        self.assertEqual(self.run_main("quota-scan", "--issue", "12", str(log),
+                                       str(self.base / "missing.log")), 0)
+        self.assertFalse((self.base / "ALERTS.log").exists())
+        self.assertEqual(self.run_main("quota-check"), 0)
+
+    def test_cli_slot_cycle_and_limits(self) -> None:
+        wf = self.base / "WORKFLOW.md"
+        wf.write_text("---\ngmv:\n  dispatch_gate:\n    max_concurrent: 1\n---\n",
+                      encoding="utf-8")
+        import os
+
+        me = str(os.getpid())
+        self.assertEqual(self.run_main("slot-acquire", "--issue", "5", "--pid", me,
+                                       "--workflow", str(wf)), 0)
+        self.assertEqual(self.run_main("slot-acquire", "--issue", "6", "--pid", "1",
+                                       "--workflow", str(wf)), RC_NO_SLOT)
+        self.assertEqual(self.run_main("slot-release", "--issue", "5", "--pid", me), 0)
+        self.assertEqual(list((self.base / "slots").iterdir()), [])
+        self.env["GMV_MAX_TOTAL_RUNS"] = "11"  # darf nur senken
+        self.assertEqual(self.run_main("slot-acquire", "--issue", "5", "--pid", me,
+                                       "--workflow", str(wf)), 2)
 
 
 if __name__ == "__main__":
