@@ -64,6 +64,8 @@ Gültig:
 
 Offene Punkte stehen im [ADR-Index](docs/adr/README.md).
 
+**Symphony-Pilot.** Gemäß CEO-Entscheidung vom 24.11.2026 (P0, siehe [#74](https://github.com/tiktokagentur-art/gmv-foundation/issues/74)) wird OpenAI Symphony lokal als Orchestrator für Codex mit GitHub Issues als Tracker pilotiert. Aline / Control Plane bleibt die alleinige Zuweisungsautorität, und nur Aline vergibt das Label `gmv-symphony-pilot`. Jeder PR erfordert die Freigabe von Petrus, und automatische Merges sind ausgeschlossen. Die Details stehen in [docs/SYMPHONY-GITHUB-V1.md](docs/SYMPHONY-GITHUB-V1.md) (PR #66, noch im Entwurf).
+
 ## Struktur
 
 ```text
