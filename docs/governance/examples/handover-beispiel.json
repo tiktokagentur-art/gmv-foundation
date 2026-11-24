@@ -1,0 +1,38 @@
+{
+  "aufgabenprotokoll": [
+    {
+      "id": "FIKTIV-A-001",
+      "verantwortlich": "Rolle A",
+      "termin": "2030-01-10",
+      "status": "in_arbeit",
+      "naechster_schritt": "Fiktive Musterkarte beschriften",
+      "ergebnis_link": "https://example.invalid/ergebnisse/musterkarte"
+    },
+    {
+      "id": "FIKTIV-A-002",
+      "verantwortlich": "Rolle B",
+      "termin": "2030-01-11",
+      "status": "erledigt",
+      "naechster_schritt": "",
+      "ergebnis_link": "https://example.invalid/ergebnisse/musterbogen"
+    }
+  ],
+  "uebergaben": [
+    {
+      "id": "FIKTIV-U-001",
+      "eingang": "Fiktive Musterkarte",
+      "owner": "Rolle A",
+      "erwarteter_output": "Beschriftete fiktive Musterkarte",
+      "uebergabebeleg": "https://example.invalid/belege/musterkarte",
+      "akzeptierende_stelle": "Rolle C"
+    },
+    {
+      "id": "FIKTIV-U-002",
+      "eingang": "Fiktiver Musterbogen",
+      "owner": "Rolle B",
+      "erwarteter_output": "Abgelegter fiktiver Musterbogen",
+      "uebergabebeleg": "https://example.invalid/belege/musterbogen",
+      "akzeptierende_stelle": "Rolle D"
+    }
+  ]
+}
