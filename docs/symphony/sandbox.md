@@ -54,10 +54,10 @@ Domain-Allowlist bleibt exakt, der Upstream prüft erneut, und
 
 Der Codex-Prozess selbst (ChatGPT-Anmeldung) spricht `chatgpt.com` und
 `auth.openai.com` direkt an (`NO_PROXY` nur für diese Hosts). Aus dem
-Namespace sind beide erreichbar (HTTP 200, ohne Auth). Ein Modellaufruf
-wurde nicht getestet. Beim Start versuchte Codex zusätzlich
-`*.oaiusercontent.com`; der Egress-Proxy lehnt das ab. Ob das den
-Modellbetrieb stört, ist erst beim ersten freigegebenen Lauf prüfbar.
+Namespace sind beide erreichbar (HTTP 200, ohne Auth). In den Pilotläufen
+vom 24.11.2026 (Issues #87, #106, #108) lehnte der Egress-Proxy
+`*.oaiusercontent.com` jeweils ab. Alle drei Läufe endeten regulär und
+lieferten einen Patch (PRs #105, #107, #109). Die Domain bleibt blockiert.
 
 ## Wie Symphony die Sandbox setzt
 
@@ -76,7 +76,7 @@ Modellbetrieb stört, ist erst beim ersten freigegebenen Lauf prüfbar.
 
 | Datei (Repo → Host `bin/`) | Zweck |
 | --- | --- |
-| `scripts/symphony_host/run-symphony.sh` | Einziger Start; ohne `GMV_SYMPHONY_START_APPROVED=yes` Abbruch, ohne Guardrail-Flag |
+| `scripts/symphony_host/run-symphony.sh` | Einziger Start; ohne `GMV_SYMPHONY_START_APPROVED=yes` Abbruch. Nur auf dem Host: Guardrail-Flag per Opt-in `GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED=yes` für genau einen Aufruf, externer Wächter (Tokenbudget, ein Issue, ein Dispatch, Laufzeit) und Einmal-Sperre je Lauf. Diese Erweiterungen fehlen in der Repo-Kopie. |
 | `scripts/symphony_host/bwrap-env.sh` | Masken für bwrap |
 | `scripts/symphony_host/egress-proxy.sh` | Proxy starten/stoppen (Nutzerprozess, PID und Log unter `log/`) |
 | `scripts/symphony_egress_proxy.py` | Allowlist-Proxy, nur `CONNECT` auf Port 443, keine IP-Literale, keine Inhaltsprotokolle |
@@ -93,3 +93,4 @@ Sandbox kein Netz. Klon und `github_api` laufen weiterhin außerhalb.
 - Lesbar bleibt innerhalb des Pilot-Verzeichnisses auch der Inhalt anderer
   Issue-Workspaces und der Logs.
 - Netzebene unabhängig von Codex (nftables je UID) braucht Root.
+- Externen Wächter und Einmal-Sperre vom Host per eigenem PR ins Repo übernehmen.
