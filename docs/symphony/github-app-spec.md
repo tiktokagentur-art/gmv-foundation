@@ -91,6 +91,36 @@ Umsetzung: `scripts/symphony_app_token.py` (Tests ohne echten Key:
 Ein Symphony-Start auf dem Host läuft nur über einen Wrapper, der diesen
 Helfer aufruft und ohne ausdrückliche Startfreigabe abbricht.
 
+## Live-Rechte lesend nachweisen
+
+`scripts/symphony_app_audit.py` ruft per App-JWT (RS256, unter 10 Minuten)
+nur `GET /app` und `GET /app/installations` auf. Ausgegeben werden Slug,
+Owner, App-Rechte, Events und je Installation Konto, `repository_selection`,
+Rechte und `suspended_at`. Es entsteht kein Installation-Token, JWT und Key
+erscheinen nie in der Ausgabe. Die Repository-Liste je Installation liefert
+`symphony_app_token.py selftest` (Token holen, lesen, sofort widerrufen).
+
+```text
+python3 scripts/symphony_app_audit.py
+python3 scripts/symphony_app_token.py selftest
+```
+
+Stand 24.11.2026 (Host, lesend): Slug `gmv-symphony-worker`, Owner
+`tiktokagentur-art`, App-Rechte und Installationsrechte jeweils
+`issues: read`, `metadata: read`, keine Events, eine Installation
+(`185263574`, `repository_selection: selected`, nicht suspendiert).
+Selbsttest: Repositories `tiktokagentur-art/gmv-foundation`,
+`revoked: true`, `after_revoke_http: 401`.
+
+**Warum `GET /apps/gmv-symphony-worker` 404 liefert:** Der Slug stimmt. Die
+App ist privat (nur im Owner-Konto installierbar). Der öffentliche Endpunkt
+`GET /apps/{slug}` liefert für private Apps ohne passende Authentifizierung
+404. Lesbar ist die App über `GET /app` mit App-JWT; genau das macht das
+Audit-Skript und meldet den 404 zusätzlich als `public_apps_slug_http`.
+Für Prüfende ohne Key: App-Einstellungen in der GitHub-Oberfläche unter
+Organisation → Settings → Developer settings → GitHub Apps →
+`gmv-symphony-worker` → Permissions & events.
+
 ## Private Key und Ablage
 
 - Private Key nur im Secret Store des Orchestrator-Hosts (ADR-0007 offen),
@@ -120,5 +150,8 @@ Freigabe.
 - [x] Private Key in der Host-Secret-Ablage (Rechte `600`), nicht im Repo
 - [ ] Webhook aus und Stammdaten in den App-Einstellungen bestätigen (Petrus)
 - [ ] Moderator-Audit nach Installation: `bypass_actors` weiterhin `[]`
-- [ ] Persönliches Admin-Token: wird nicht mehr referenziert, ist aber noch
-  gültig. Widerruf ist eine separate Entscheidung.
+- [ ] Persönliches `gh`-Token des Hosts (Stand 24.11.2026: Scopes `gist`,
+  `read:org`, `repo`, `workflow`, kein `admin:org` mehr): Symphony nutzt es
+  nicht (im Namespace ausgeblendet). Es dient nur dem Operator auf dem Host
+  (Label-Prüfung und -Entfernung, Branches und PRs). Widerruf oder Ersatz ist
+  eine separate Entscheidung.

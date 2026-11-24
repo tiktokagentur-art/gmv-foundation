@@ -6,7 +6,7 @@
 # Modell: Das ganze Dateisystem bleibt sichtbar (Binärdateien, Toolchains),
 # Credential-Speicher werden mit leerem tmpfs bzw. /dev/null überdeckt.
 # Ausnahme: ~/.codex/auth.json bleibt für den Modellzugriff von Codex
-# erreichbar (Restrisiko, siehe docs/symphony/sandbox.md).
+# lesbar, aber schreibgeschützt (Restrisiko, siehe docs/symphony/sandbox.md).
 
 : "${PILOT_DIR:=/workspace/symphony-pilot}"
 : "${GMV_HOME:=/home/box}"
@@ -51,10 +51,14 @@ gmv_bwrap_args() {
   done
   # /workspace: nur das Pilot-Verzeichnis bleibt sichtbar.
   args+=(--tmpfs /workspace --bind "$PILOT_DIR" "$PILOT_DIR")
-  # ~/.codex: leer und beschreibbar (sitzungslokal), nur auth.json eingeblendet.
+  # ~/.codex: leer und beschreibbar (sitzungslokal), nur auth.json eingeblendet,
+  # und zwar schreibgeschützt (--ro-bind): Aus dem Namespace kann die Anmeldung
+  # nicht verändert oder ersetzt werden. Lesbar bleibt sie (Restrisiko, siehe
+  # docs/symphony/sandbox.md). Muss Codex das Token erneuern, schlägt das im
+  # Namespace fehl (fail-closed); erneuert wird außerhalb per `codex login`.
   args+=(--tmpfs "$GMV_HOME/.codex")
   if [ -f "$GMV_HOME/.codex/auth.json" ]; then
-    args+=(--bind "$GMV_HOME/.codex/auth.json" "$GMV_HOME/.codex/auth.json")
+    args+=(--ro-bind "$GMV_HOME/.codex/auth.json" "$GMV_HOME/.codex/auth.json")
   fi
   printf '%s\0' "${args[@]}"
 }

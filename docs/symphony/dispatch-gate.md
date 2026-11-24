@@ -123,3 +123,12 @@ Helfer stammt.
   verbrauchte ohne Gate über 7,5 Mio.).
 - Sperre: vorerst auf dem Host; Control-Plane-Verlagerung als eigenes Ticket.
 - Offen: Aktivierung des Flags nur mit separatem CEO-Go.
+- Stand 24.11.2026: Das Gate bleibt **bewusst aus**, solange genau ein
+  Operator auf genau einem Host steuert und Pilotläufe nur einzeln startet.
+  Ersatzweise greifen auf dem Host: Startfreigabe je Aufruf
+  (`GMV_SYMPHONY_START_APPROVED`), Einmal-Sperre `log/pilot-run.once`, genau
+  ein gelabeltes offenes Issue (Vorabprüfung), externer Wächter (ein Issue,
+  ein Dispatch, kein Retry, Tokenbudget, Laufzeit) und Widerruf des
+  Installation-Tokens nach jedem Lauf. Das ersetzt keine Claim-, Lease- oder
+  Fencing-Prüfung. Sobald ein zweiter Operator, ein zweiter Host oder
+  Dauerbetrieb dazukommt, ist das Gate Voraussetzung (CP-002).
