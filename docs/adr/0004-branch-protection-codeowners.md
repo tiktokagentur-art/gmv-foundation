@@ -73,7 +73,6 @@ CODEOWNERS-Wirkung braucht ein neues oder angepasstes ADR.
 - [../github-moderator.md](../github-moderator.md)
 - [ADR-0013](0013-repository-visibility-public.md)
 
-
 ## Live Ruleset Readback und Review Governance V2 — 24.11.2026
 
 Die frühere Konfiguration oben ist der am 10.11.2026 dokumentierte Snapshot. Ein
