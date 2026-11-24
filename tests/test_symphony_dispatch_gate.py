@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import copy
+import json
 import multiprocessing
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
@@ -21,6 +24,7 @@ from symphony_dispatch_gate import (  # noqa: E402
     MAX_TOKENS_PER_RUN_CEILING,
     RC_NO_SLOT,
     RC_QUOTA_FAIL_CLOSED,
+    RC_UNKNOWN_FAIL_CLOSED,
     REPOSITORY,
     BudgetExceeded,
     Claim,
@@ -32,8 +36,11 @@ from symphony_dispatch_gate import (  # noqa: E402
     TokenBudget,
     acquire_issue_once,
     classify_quota_failure,
+    host_paths,
     main,
     read_max_concurrent,
+    release_lock,
+    run_verdict,
     split_frontmatter,
     validate_workflow,
 )
@@ -593,22 +600,30 @@ class MaxConcurrentTests(unittest.TestCase):
 
 class QuotaFailClosedTests(unittest.TestCase):
     def setUp(self) -> None:
+        import symphony_dispatch_gate as gate_mod
+
         self._tmp = tempfile.TemporaryDirectory()
         self.base = Path(self._tmp.name)
-        self.env = {
-            "GMV_SHARED_SLOT_DIR": str(self.base / "slots"),
-            "GMV_SHARED_SLOT_LOCK": str(self.base / ".research.lock"),
-            "GMV_ALERTS_LOG": str(self.base / "ALERTS.log"),
-            "GMV_QUOTA_STOP": str(self.base / "state" / "quota-stop"),
-        }
+        self.env: dict[str, str] = {}
+        # Pfade sind fest verdrahtet: Tests patchen die Konstanten, nicht die Umgebung.
+        self._patches = [
+            mock.patch.object(gate_mod, "DEFAULT_SHARED_SLOT_DIR", self.base / "slots"),
+            mock.patch.object(gate_mod, "DEFAULT_SHARED_SLOT_LOCK", self.base / ".research.lock"),
+            mock.patch.object(gate_mod, "DEFAULT_ALERTS_LOG", self.base / "ALERTS.log"),
+            mock.patch.object(gate_mod, "DEFAULT_QUOTA_STOP", self.base / "state" / "quota-stop"),
+            mock.patch.object(gate_mod, "DEFAULT_RUN_STOP", self.base / "state" / "symphony-stop"),
+        ]
+        for patch in self._patches:
+            patch.start()
 
     def tearDown(self) -> None:
+        for patch in self._patches:
+            patch.stop()
         self._tmp.cleanup()
 
     def run_main(self, *argv: str) -> int:
-        from unittest import mock
-
-        with mock.patch.dict("os.environ", self.env):
+        clean = {k: v for k, v in os.environ.items() if not k.startswith("GMV_")}
+        with mock.patch.dict("os.environ", {**clean, **self.env}, clear=True):
             return main(list(argv))
 
     def test_classifier(self) -> None:
@@ -658,8 +673,6 @@ class QuotaFailClosedTests(unittest.TestCase):
         wf = self.base / "WORKFLOW.md"
         wf.write_text("---\ngmv:\n  dispatch_gate:\n    max_concurrent: 1\n---\n",
                       encoding="utf-8")
-        import os
-
         me = str(os.getpid())
         self.assertEqual(self.run_main("slot-acquire", "--issue", "5", "--pid", me,
                                        "--workflow", str(wf)), 0)
@@ -670,6 +683,157 @@ class QuotaFailClosedTests(unittest.TestCase):
         self.env["GMV_MAX_TOTAL_RUNS"] = "11"  # darf nur senken
         self.assertEqual(self.run_main("slot-acquire", "--issue", "5", "--pid", me,
                                        "--workflow", str(wf)), 2)
+
+    def test_path_overrides_rejected_unless_identical(self) -> None:
+        import symphony_dispatch_gate as gate_mod
+
+        for var in gate_mod.PATH_ENV_VARS.values():
+            with self.subTest(var=var):
+                with self.assertRaises(GateDenied) as ctx:
+                    host_paths({var: "/tmp/elsewhere"})
+                self.assertEqual(ctx.exception.reason, "path_override_forbidden")
+                self.env = {var: "/tmp/elsewhere"}
+                self.assertEqual(self.run_main("quota-check"), 2)
+        self.env = {}
+        same = {"GMV_SHARED_SLOT_DIR": str(self.base / "slots")}
+        self.assertEqual(host_paths(same)["slot_dir"], self.base / "slots")
+
+    def test_shipped_paths_are_the_research_host_paths(self) -> None:
+        src = (ROOT / "scripts" / "symphony_dispatch_gate.py").read_text(encoding="utf-8")
+        for line in ('DEFAULT_SHARED_SLOT_DIR = Path("/workspace/research/state/slots")',
+                     'DEFAULT_SHARED_SLOT_LOCK = Path("/workspace/research/.research.lock")',
+                     'DEFAULT_ALERTS_LOG = Path("/workspace/research/ALERTS.log")',
+                     'DEFAULT_QUOTA_STOP = Path("/workspace/research/state/quota-stop")',
+                     'DEFAULT_RUN_STOP = Path("/workspace/research/state/symphony-stop")'):
+            self.assertIn(line, src)
+
+    def test_max_total_env_only_lowers(self) -> None:
+        wf = self.base / "WORKFLOW.md"
+        wf.write_text("---\ngmv:\n  dispatch_gate:\n    max_concurrent: 10\n---\n",
+                      encoding="utf-8")
+        for bad in ("11", "0", "-1", "abc", ""):
+            self.env = {"GMV_MAX_TOTAL_RUNS": bad}
+            with self.subTest(bad=bad):
+                self.assertEqual(self.run_main("slot-acquire", "--issue", "5", "--pid",
+                                               str(os.getpid()), "--workflow", str(wf)), 2)
+        self.env = {"GMV_MAX_TOTAL_RUNS": "2"}
+        for issue, pid in (("5", os.getpid()), ("6", os.getppid())):
+            self.assertEqual(self.run_main("slot-acquire", "--issue", issue, "--pid", str(pid),
+                                           "--workflow", str(wf)), 0)
+        self.assertEqual(self.run_main("slot-acquire", "--issue", "7", "--pid", "1",
+                                       "--workflow", str(wf)), RC_NO_SLOT)
+
+
+class RunVerdictTests(unittest.TestCase):
+    def log(self, *events: dict) -> Path:
+        tmp = tempfile.NamedTemporaryFile("w", delete=False, suffix=".log", encoding="utf-8")
+        with tmp:
+            tmp.write("Python noise line\n")
+            for e in events:
+                tmp.write(json.dumps(e) + "\n")
+        self.addCleanup(os.unlink, tmp.name)
+        return Path(tmp.name)
+
+    @staticmethod
+    def stop(reason: str) -> dict:
+        return {"watchdog": "stop", "reason": reason}
+
+    CLEAN = {"watchdog": "terminated", "clean": True}
+
+    def test_known_stops_pass(self) -> None:
+        for reason, rc in (("first_run_finished", 0), ("child_exited code=0", 0),
+                           ("retry_cycle_scheduled", 1), ("second_dispatch issue=5", 1),
+                           ("second_issue issue=6 first=5", 1), ("max_runtime", 1),
+                           ("token_budget_reached total=4700001 stop_at=4700000", 1),
+                           ("loop_sessions sessions=4 max=3", 1)):
+            with self.subTest(reason=reason):
+                self.assertIsNone(run_verdict(rc, self.log(self.stop(reason), self.CLEAN)))
+
+    def test_unclear_outcomes_fail_closed(self) -> None:
+        cases = {
+            "exit_rc_unexpected": (3, [self.stop("first_run_finished"), self.CLEAN]),
+            "no_watchdog_verdict": (1, []),
+            "unknown_stop_reason": (1, [self.stop("token_readout_missing"), self.CLEAN]),
+            "unknown_stop_reason ": (1, [self.stop("child_exited code=-9"), self.CLEAN]),
+            "unclean_termination": (1, [self.stop("max_runtime"),
+                                        {"watchdog": "terminated", "clean": False}]),
+        }
+        for code, (rc, events) in cases.items():
+            with self.subTest(code=code):
+                self.assertEqual(run_verdict(rc, self.log(*events)), code.strip())
+        self.assertEqual(run_verdict(1, None), "no_watchdog_verdict")
+        self.assertEqual(run_verdict(99, None), "exit_rc_unexpected")
+        two = self.log(self.stop("max_runtime"), self.stop("first_run_finished"), self.CLEAN)
+        self.assertEqual(run_verdict(1, two), "no_watchdog_verdict")
+
+
+class ManualReleaseTests(QuotaFailClosedTests):
+    """Sperren nur manuell und protokolliert freigeben: wer, wann, warum."""
+
+    def paths(self) -> dict:
+        return host_paths({})
+
+    def test_run_verdict_cli_sets_marker_and_blocks(self) -> None:
+        self.assertEqual(self.run_main("run-verdict", "--issue", "8", "--rc", "99"),
+                         RC_UNKNOWN_FAIL_CLOSED)
+        self.assertIn("issue=8 unknown_fail_closed reason=exit_rc_unexpected",
+                      (self.base / "ALERTS.log").read_text(encoding="utf-8"))
+        self.assertEqual(self.run_main("quota-check"), RC_UNKNOWN_FAIL_CLOSED)
+
+    def test_release_requires_who_and_why_and_logs_it(self) -> None:
+        self.run_main("run-verdict", "--issue", "8", "--rc", "99")
+        marker = self.base / "state" / "symphony-stop"
+        for by, why in (("", "Ursache geklärt, Login erneuert"), ("Samira", "kurz"),
+                        ("x", "Ursache geklärt, Login erneuert"),
+                        ("Samira", "Zeile1\nZeile2 mit genug Text")):
+            with self.subTest(by=by, why=why), self.assertRaises(GateDenied):
+                release_lock("run-stop", by, why, self.paths())
+            self.assertTrue(marker.exists())
+        archived = release_lock("run-stop", "Samira Nouri", "Watchdog-Log geprüft, Ursache: Proxy",
+                                self.paths())
+        self.assertFalse(marker.exists())
+        self.assertTrue(archived.exists())  # archiviert, nicht gelöscht
+        alerts = (self.base / "ALERTS.log").read_text(encoding="utf-8")
+        self.assertRegex(alerts, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} .*RELEASE kind=run-stop "
+                                 r"by='Samira Nouri' reason='Watchdog-Log geprüft, Ursache: Proxy'")
+        self.assertEqual(self.run_main("quota-check"), 0)
+        with self.assertRaises(GateDenied) as ctx:
+            release_lock("run-stop", "Samira Nouri", "nochmal freigeben bitte", self.paths())
+        self.assertEqual(ctx.exception.reason, "release_nothing_locked")
+
+    def test_release_once_per_issue_only_when_not_running(self) -> None:
+        once_dir = self.base / "once"
+        acquire_issue_once(once_dir, 9)
+        acquire_issue_once(once_dir, 10)
+        slots = SharedSlots(self.base / "slots", self.base / ".research.lock",
+                            pid_alive=lambda _pid: True)
+        slots.acquire(9, os.getpid(), max_symphony=10)  # lebender Prozess
+        with self.assertRaises(GateDenied) as ctx:
+            release_lock("once", "Deniz Kaya", "Fehlstart nach Token-Fehler", self.paths(),
+                         issue=9, once_dir=once_dir)
+        self.assertEqual(ctx.exception.reason, "issue_still_running")
+        self.assertEqual(self.run_main(
+            "release", "--kind", "once", "--issue", "10", "--dir", str(once_dir),
+            "--by", "Deniz Kaya", "--reason", "Fehlstart nach Proxy-Fehler, neues Go von Aline"), 0)
+        self.assertFalse((once_dir / "issue-10.once").exists())
+        self.assertTrue((once_dir / "issue-9.once").exists())
+        self.assertIn("RELEASE kind=once issue=10 by='Deniz Kaya'",
+                      (self.base / "ALERTS.log").read_text(encoding="utf-8"))
+        acquire_issue_once(once_dir, 10)  # erst danach wieder startbar
+        self.assertEqual(self.run_main("release", "--kind", "once", "--issue", "10", "--dir",
+                                       str(once_dir), "--by", "Deniz Kaya", "--reason", "x"), 2)
+
+
+class OperatorRuleDocsTests(unittest.TestCase):
+    def test_docs_state_manual_logged_release_and_fail_closed(self) -> None:
+        for name in ("dispatch-gate.md", "quota-refresh.md"):
+            text = (ROOT / "docs" / "symphony" / name).read_text(encoding="utf-8")
+            with self.subTest(doc=name):
+                for needed in ("release --kind", "ALERTS.log", "rc=13", "symphony-stop",
+                               "neues Go", "box"):
+                    self.assertIn(needed, text)
+                self.assertRegex(text, r"(?i)manuell")
+                self.assertRegex(text, r"(?i)protokolliert")
 
 
 if __name__ == "__main__":

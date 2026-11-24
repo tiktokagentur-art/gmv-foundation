@@ -55,6 +55,7 @@ MAX_CONCURRENT_RUNS_CEILING = 10
 RC_BLOCKED = 2
 RC_NO_SLOT = 5  # wie research.sh: gemeinsames Parallelitätslimit erreicht
 RC_QUOTA_FAIL_CLOSED = 9
+RC_UNKNOWN_FAIL_CLOSED = 13  # unklarer Ausgang eines Laufs: weitere Starts gesperrt
 WORKER_ID = re.compile(r"^[a-z0-9][a-z0-9-]{2,62}$")
 CLAIM_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{2,127}$")
 
@@ -355,6 +356,7 @@ DEFAULT_SHARED_SLOT_DIR = Path("/workspace/research/state/slots")
 DEFAULT_SHARED_SLOT_LOCK = Path("/workspace/research/.research.lock")
 DEFAULT_ALERTS_LOG = Path("/workspace/research/ALERTS.log")
 DEFAULT_QUOTA_STOP = Path("/workspace/research/state/quota-stop")
+DEFAULT_RUN_STOP = Path("/workspace/research/state/symphony-stop")
 SLOT_LOCK_TIMEOUT = 10.0  # wie ``flock -w 10`` in research.sh
 SLOT_FIELD = re.compile(r"(\w+)=(\S*)")
 
@@ -610,13 +612,149 @@ def scan_files_for_quota(paths: list[Path]) -> str | None:
     return None
 
 
+# Fest verdrahtet (Samira, Review PR #137, Auflage 4). Die Variablen werden nur
+# gelesen, um einen abweichenden Wert abzulehnen: Ein Override könnte den Zähler,
+# den Lock oder die Stopp-Marker auf einen leeren Pfad umlenken und damit lockern.
+PATH_ENV_VARS = {
+    "slot_dir": "GMV_SHARED_SLOT_DIR",
+    "slot_lock": "GMV_SHARED_SLOT_LOCK",
+    "alerts": "GMV_ALERTS_LOG",
+    "quota_stop": "GMV_QUOTA_STOP",
+    "run_stop": "GMV_RUN_STOP",
+}
+
+
 def host_paths(env: Mapping[str, str]) -> dict[str, Path]:
-    return {
-        "slot_dir": Path(env.get("GMV_SHARED_SLOT_DIR", str(DEFAULT_SHARED_SLOT_DIR))),
-        "slot_lock": Path(env.get("GMV_SHARED_SLOT_LOCK", str(DEFAULT_SHARED_SLOT_LOCK))),
-        "alerts": Path(env.get("GMV_ALERTS_LOG", str(DEFAULT_ALERTS_LOG))),
-        "quota_stop": Path(env.get("GMV_QUOTA_STOP", str(DEFAULT_QUOTA_STOP))),
+    paths = {
+        "slot_dir": DEFAULT_SHARED_SLOT_DIR,
+        "slot_lock": DEFAULT_SHARED_SLOT_LOCK,
+        "alerts": DEFAULT_ALERTS_LOG,
+        "quota_stop": DEFAULT_QUOTA_STOP,
+        "run_stop": DEFAULT_RUN_STOP,
     }
+    for key, var in PATH_ENV_VARS.items():
+        raw = env.get(var)
+        if raw is not None and Path(raw) != Path(paths[key]):
+            raise GateDenied("path_override_forbidden", var)
+    return {k: Path(v) for k, v in paths.items()}
+
+
+# Ausgang eines Laufs. Bekannte Wächter-Stopps sind gewollt (das Issue ist über
+# die Einmal-Sperre verbraucht). Alles andere ist unklar und sperrt weitere
+# Starts (fail-closed), bis ein Mensch protokolliert freigibt.
+KNOWN_WATCHDOG_STOPS = (
+    "first_run_finished",
+    "child_exited code=0",
+    "token_budget_reached",
+    "second_issue",
+    "second_dispatch",
+    "retry_cycle_scheduled",
+    "loop_sessions",
+    "max_runtime",
+)
+
+
+def run_verdict(rc: int, watchdog_log: Path | None) -> str | None:
+    """``None`` = bekannter Ausgang; sonst ein stabiler Code für den unklaren Fall."""
+    if rc not in (0, 1):
+        return "exit_rc_unexpected"
+    events: list[dict[str, Any]] = []
+    if watchdog_log is not None:
+        try:
+            lines = Path(watchdog_log).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            lines = ""
+        for line in lines.splitlines():
+            line = line.strip()
+            if not line.startswith("{"):
+                continue
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(event, dict) and "watchdog" in event:
+                events.append(event)
+    stops = [e for e in events if e.get("watchdog") == "stop"]
+    if len(stops) != 1:
+        return "no_watchdog_verdict"
+    reason = str(stops[0].get("reason", ""))
+    if not any(reason == k or reason.startswith(k + " ") for k in KNOWN_WATCHDOG_STOPS):
+        return "unknown_stop_reason"
+    terminated = [e for e in events if e.get("watchdog") == "terminated"]
+    if not terminated or terminated[-1].get("clean") is not True:
+        return "unclean_termination"
+    return None
+
+
+def _append_alert(alerts: Path, line: str) -> None:
+    alerts = Path(alerts)
+    alerts.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd = os.open(alerts, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    with os.fdopen(fd, "a", encoding="utf-8") as fh:
+        fh.write(f"{time.strftime('%Y-%m-%d %H:%M:%S %Z')} {line}\n")
+
+
+def record_run_stop(alerts: Path, marker: Path, issue: int, reason: str) -> None:
+    _append_alert(
+        alerts,
+        f"ALERT symphony issue={issue} unknown_fail_closed reason={reason} "
+        "- keine weiteren Symphony-Starts bis zur protokollierten Freigabe",
+    )
+    marker = Path(marker)
+    marker.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(f"{time.strftime('%Y-%m-%d %H:%M:%S %Z')} issue={issue} reason={reason}\n")
+
+
+# Manuelle, protokollierte Freigabe (nie aus run-symphony.sh). Wer, wann, warum
+# landen in ALERTS.log; die Sperrdatei wird archiviert, nicht gelöscht.
+RELEASE_BY = re.compile(r"^[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß .'-]{1,59}$")
+RELEASE_KINDS = ("once", "quota-stop", "run-stop")
+
+
+def release_lock(
+    kind: str,
+    by: str,
+    reason: str,
+    paths: Mapping[str, Path],
+    issue: int | None = None,
+    once_dir: Path | None = None,
+    pid_alive: Any = _pid_alive,
+) -> Path:
+    if kind not in RELEASE_KINDS:
+        raise GateDenied("release_kind_invalid")
+    if not isinstance(by, str) or not RELEASE_BY.fullmatch(by.strip()):
+        raise GateDenied("release_by_missing")
+    if (
+        not isinstance(reason, str)
+        or not 10 <= len(reason.strip()) <= 300
+        or any(ord(c) < 32 for c in reason)
+    ):
+        raise GateDenied("release_reason_missing")
+    issue_txt = ""
+    if kind == "once":
+        issue = parse_issue(issue)
+        if once_dir is None:
+            raise GateDenied("release_once_dir_missing")
+        target = Path(once_dir) / f"issue-{issue}.once"
+        slots = SharedSlots(paths["slot_dir"], paths["slot_lock"], pid_alive=pid_alive)
+        with _flock(slots.lock_path):
+            if any(s.kind == "symphony" and s.issue == issue for s in slots._live_slots()):
+                raise GateDenied("issue_still_running")
+        issue_txt = f" issue={issue}"
+    else:
+        target = Path(paths["quota_stop" if kind == "quota-stop" else "run_stop"])
+    if not target.exists():
+        raise GateDenied("release_nothing_locked")
+    archived = target.with_name(f"{target.name}.released-{time.strftime('%Y%m%d-%H%M%S')}")
+    os.replace(target, archived)
+    _append_alert(
+        paths["alerts"],
+        f"RELEASE kind={kind}{issue_txt} by={by.strip()!r} reason={reason.strip()!r} "
+        f"archiv={archived.name}",
+    )
+    return archived
 
 
 # --------------------------------------------------------------------------
@@ -835,7 +973,17 @@ def main(argv: list[str] | None = None) -> int:
     oa = sub.add_parser("once-acquire", help="Einmal-Sperre pro Issue anlegen")
     oa.add_argument("--issue", type=int, required=True)
     oa.add_argument("--dir", type=Path, required=True)
-    sub.add_parser("quota-check", help="Quota-Stopp-Marker prüfen")
+    sub.add_parser("quota-check", help="Quota- und Lauf-Stopp-Marker prüfen")
+    rv = sub.add_parser("run-verdict", help="Ausgang eines Laufs bewerten (fail-closed)")
+    rv.add_argument("--issue", type=int, required=True)
+    rv.add_argument("--rc", type=int, required=True)
+    rv.add_argument("--watchdog-log", type=Path)
+    rl = sub.add_parser("release", help="Sperre manuell und protokolliert freigeben")
+    rl.add_argument("--kind", choices=RELEASE_KINDS, required=True)
+    rl.add_argument("--by", required=True)
+    rl.add_argument("--reason", required=True)
+    rl.add_argument("--issue", type=int)
+    rl.add_argument("--dir", type=Path)
     qs = sub.add_parser("quota-scan", help="Laufprotokolle auf Quota/Auth prüfen")
     qs.add_argument("--issue", type=int, required=True)
     qs.add_argument("files", type=Path, nargs="*")
@@ -848,8 +996,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {err}", file=sys.stderr)
         return 1 if errors else 0
 
-    paths = host_paths(os.environ)
     try:
+        paths = host_paths(os.environ)
         if args.cmd == "slot-acquire":
             max_symphony = read_max_concurrent(args.workflow.read_text(encoding="utf-8"))
             slots = SharedSlots(paths["slot_dir"], paths["slot_lock"],
@@ -875,6 +1023,21 @@ def main(argv: list[str] | None = None) -> int:
             except GateDenied as exc:
                 print(f"BLOCKED: {exc.reason} ({paths['quota_stop']})", file=sys.stderr)
                 return RC_QUOTA_FAIL_CLOSED
+            if paths["run_stop"].exists():
+                print(f"BLOCKED: run_stop_active ({paths['run_stop']})", file=sys.stderr)
+                return RC_UNKNOWN_FAIL_CLOSED
+            return 0
+        if args.cmd == "run-verdict":
+            code = run_verdict(args.rc, args.watchdog_log)
+            if code is None:
+                return 0
+            record_run_stop(paths["alerts"], paths["run_stop"], parse_issue(args.issue), code)
+            print(f"ALERT: unknown_fail_closed reason={code}", file=sys.stderr)
+            return RC_UNKNOWN_FAIL_CLOSED
+        if args.cmd == "release":
+            archived = release_lock(args.kind, args.by, args.reason, paths,
+                                    issue=args.issue, once_dir=args.dir)
+            print(f"released: {archived.name} (ALERTS.log)", file=sys.stderr)
             return 0
         if args.cmd == "quota-scan":
             code = scan_files_for_quota(args.files)

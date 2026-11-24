@@ -23,7 +23,13 @@
 #    Retry-Zyklus beginnt, der erste Lauf endet oder eine Schleife erkennbar ist.
 #    Danach widerruft symphony_app_token.py das Installation-Token.
 # 10. Nach dem Lauf: Protokolle auf Quota/Rate-Limit/Auth/Refresh prüfen. Treffer ->
-#    ALERTS.log + Stopp-Marker, rc=9, kein Retry.
+#    ALERTS.log + Stopp-Marker, rc=9, kein Retry. Danach den Ausgang bewerten: nur
+#    bekannte Wächter-Stopps gelten als geklärt; jeder unklare Ausgang (auch ein
+#    Abbruch nach der Einmal-Sperre) -> ALERTS.log + Lauf-Stopp-Marker, rc=13.
+#    Freigabe von Sperren nur manuell und protokolliert (symphony_dispatch_gate.py
+#    release), nie aus diesem Skript.
+# Pfade für Slots, Lock, ALERTS.log und Marker sind im Gate fest verdrahtet;
+# GMV_SHARED_SLOT_*/GMV_ALERTS_LOG/GMV_QUOTA_STOP/GMV_RUN_STOP mit anderem Wert -> rc=2.
 # 11. Guardrail-Flag nur per Opt-in GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED=yes für
 #    genau diesen Aufruf; nie dauerhaft hinterlegt.
 # Kein Root, keine Rechteänderung, kein Schreibzugriff auf auth.json.
@@ -56,11 +62,21 @@ if [ -e "$ONCE" ]; then
 fi
 python3 "$GATE_PY" quota-check || exit $?
 SLOT_HELD=0
+ONCE_TAKEN=0
+VERDICT_DONE=0
+WD_LOG=""
 release_slot() {
+  local rc=$?
+  # Unklarer Abbruch nach once-acquire (Proxy, Token, Signal, set -e): fail-closed.
+  if [ "$ONCE_TAKEN" = 1 ] && [ "$VERDICT_DONE" = 0 ]; then
+    VERDICT_DONE=1
+    python3 "$GATE_PY" run-verdict --issue "$ISSUE" --rc 99 || rc=13
+  fi
   if [ "$SLOT_HELD" = 1 ]; then
     python3 "$GATE_PY" slot-release --issue "$ISSUE" --pid "$$" || true
     SLOT_HELD=0
   fi
+  exit "$rc"
 }
 trap release_slot EXIT
 python3 "$GATE_PY" slot-acquire --issue "$ISSUE" --pid "$$" \
@@ -70,6 +86,7 @@ if ! python3 "$GATE_PY" once-acquire --issue "$ISSUE" --dir "$ONCE_DIR"; then
   echo "BLOCKED: Issue #$ISSUE wurde bereits gestartet; kein zweiter Lauf" >&2
   exit 2
 fi
+ONCE_TAKEN=1
 SYM_FLAGS=()
 if [ "${GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED:-}" = "yes" ]; then
   SYM_FLAGS+=(--i-understand-that-this-will-be-running-without-the-usual-guardrails)
@@ -97,7 +114,13 @@ while kill -0 "$CHILD" 2>/dev/null; do wait "$CHILD"; RC=$?; done
 set -e
 shopt -s nullglob
 if ! python3 "$GATE_PY" quota-scan --issue "$ISSUE" "$RUN_OUT" "$WD_LOG" "$LOGROOT"/log/*; then
+  VERDICT_DONE=1
   echo "ALERT: Quota/Auth fail-closed für Issue #$ISSUE (ALERTS.log); kein Retry" >&2
   exit 9
+fi
+VERDICT_DONE=1
+if ! python3 "$GATE_PY" run-verdict --issue "$ISSUE" --rc "$RC" --watchdog-log "$WD_LOG"; then
+  echo "ALERT: unklarer Ausgang für Issue #$ISSUE (ALERTS.log); weitere Starts gesperrt" >&2
+  exit 13
 fi
 exit "$RC"

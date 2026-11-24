@@ -107,7 +107,16 @@ Symphony belegt denselben Zähler wie `research.sh`.
 - Abgelehnt wird unter dem Lock, wenn alle Slots ≥ 10 (`shared_limit_reached`,
   rc=5), Symphony-Slots ≥ `max_concurrent` (`symphony_limit_reached`, rc=5)
   oder dasselbe Issue schon einen Slot hat (`issue_already_running`).
-  `GMV_MAX_TOTAL_RUNS` darf nur senken.
+  `GMV_MAX_TOTAL_RUNS` darf nur senken (1 bis 10, sonst Abbruch rc=2).
+- Pfade sind fest verdrahtet (Samira, Review PR #137, Auflage 4): Slot-Verzeichnis,
+  Lock, `ALERTS.log`, `state/quota-stop` und `state/symphony-stop` unter
+  `/workspace/research`. Ist `GMV_SHARED_SLOT_DIR`, `GMV_SHARED_SLOT_LOCK`,
+  `GMV_ALERTS_LOG`, `GMV_QUOTA_STOP` oder `GMV_RUN_STOP` mit einem anderen Wert
+  gesetzt, bricht jedes Host-Kommando ab (`path_override_forbidden`, rc=2).
+- Keine Sicherheitsgrenze gegen `box`: Zähler, Lock, Sperr- und Markerdateien
+  sind für jeden Prozess desselben Unix-Users schreibbar. Sie synchronisieren
+  kooperierende Skripte. Gegen einen entglittenen Host-Prozess unter `box`
+  schützen sie nicht (Restrisiko 4, Abnahme durch Samira vor `max_concurrent > 1`).
 - Einmal-Sperre pro Issue: `log/once/issue-<n>.once`, angelegt mit `O_EXCL`.
   Bei einem Race gewinnt genau ein Aufruf; jeder weitere Start desselben Issues
   endet mit `BLOCKED` (rc=2). Andere Issues sind nicht betroffen.
@@ -119,6 +128,38 @@ Symphony belegt denselben Zähler wie `research.sh`.
   Wächter nie die Dispatches eines anderen Prozesses.
 
 Quota-, Rate-Limit- und Login-Regel: [quota-refresh.md](quota-refresh.md).
+
+### Unklarer Ausgang: fail-closed
+
+Nach jedem Lauf bewertet `run-verdict` den Ausgang. Geklärt sind nur Wächter-Stopps
+mit sauberem Ende (`terminated clean=true`, rc 0 oder 1): `first_run_finished`,
+`child_exited code=0`, `token_budget_reached`, `second_issue`, `second_dispatch`,
+`retry_cycle_scheduled`, `loop_sessions`, `max_runtime`. Alles andere gilt als
+unklar, zum Beispiel ein fehlender oder unbekannter Wächter-Stopp
+(`token_readout_missing`, `child_exited code≠0`), ein unsauberes Ende, ein
+anderer Exit-Code oder ein Abbruch nach `once-acquire` (Proxy, Token, Signal):
+
+- rc=13 (`RC_UNKNOWN_FAIL_CLOSED`), eine Zeile in `ALERTS.log`,
+- Marker `/workspace/research/state/symphony-stop`: Jeder weitere Symphony-Start
+  endet vor Slot, Proxy und Token mit rc=13.
+
+### Freigabe von Sperren: nur manuell und protokolliert
+
+Weder `run-symphony.sh` noch ein anderes Skript gibt eine Sperre frei. Eine
+Einmal-Sperre nach einem Fehlstart, der Lauf-Stopp-Marker und der
+Quota-Stopp-Marker werden nur von einem Menschen freigegeben:
+
+```text
+python3 bin/symphony_dispatch_gate.py release --kind once --issue <n> \
+  --dir log/once --by "<Name>" --reason "<Ursache und Go, 10-300 Zeichen>"
+python3 bin/symphony_dispatch_gate.py release --kind run-stop --by "<Name>" --reason "<...>"
+```
+
+- Pflicht: wer (`--by`) und warum (`--reason`), das Wann setzt das Werkzeug.
+  Alles steht als `RELEASE kind=… by=… reason=…` in `ALERTS.log`.
+- Die Sperrdatei wird archiviert (`*.released-<zeitstempel>`), nicht gelöscht.
+- Eine Einmal-Sperre ist nicht freigebbar, solange das Issue einen lebenden Slot hat.
+- Ein erneuter Start desselben Issues braucht zusätzlich ein neues Go.
 
 ## Sandbox
 

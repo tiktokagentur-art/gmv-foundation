@@ -174,13 +174,10 @@ class WrapperTests(unittest.TestCase):
         self.assertNotIn("pilot-run.once", joined)
         self.assertIn("exit 9", joined)
 
-    def _run(self, tmp: str, issue: str | None = "42", **extra: str):
+    def _run(self, tmp: str, issue: str | None = "42"):
+        # Nur Fälle, die vor dem ersten Gate-Aufruf enden (Host-Pfade bleiben unberührt).
         env = {**os.environ, "GMV_SYMPHONY_START_APPROVED": "yes",
-               "GMV_SYMPHONY_APP_KEY_PATH": "/nonexistent/key.pem", "PILOT_DIR": tmp,
-               "GMV_SHARED_SLOT_DIR": f"{tmp}/shared/slots",
-               "GMV_SHARED_SLOT_LOCK": f"{tmp}/shared/.research.lock",
-               "GMV_ALERTS_LOG": f"{tmp}/shared/ALERTS.log",
-               "GMV_QUOTA_STOP": f"{tmp}/shared/quota-stop", **extra}
+               "GMV_SYMPHONY_APP_KEY_PATH": "/nonexistent/key.pem", "PILOT_DIR": tmp}
         env.pop("GMV_SYMPHONY_ISSUE", None)
         if issue is not None:
             env["GMV_SYMPHONY_ISSUE"] = issue
@@ -203,53 +200,38 @@ class WrapperTests(unittest.TestCase):
             proc = self._run(tmp, "42")
             self.assertEqual(proc.returncode, 2)
             self.assertIn("kein zweiter Lauf", proc.stderr)
-            self.assertFalse((Path(tmp) / "shared" / "slots").exists())
 
-    def test_other_issue_not_blocked_by_once_but_by_full_slots(self) -> None:
-        # Issue 42 ist verbraucht; Issue 43 kommt an der Sperre vorbei und scheitert erst
-        # am vollen gemeinsamen Zähler (rc=5) - vor Proxy, Token und Symphony.
-        with tempfile.TemporaryDirectory() as tmp:
-            once = Path(tmp) / "log" / "once"
-            once.mkdir(parents=True)
-            (once / "issue-42.once").write_text("used\n", encoding="utf-8")
-            (Path(tmp) / "WORKFLOW.md").write_text(
-                "---\ngmv:\n  dispatch_gate:\n    max_concurrent: 3\n---\n", encoding="utf-8")
-            slots = Path(tmp) / "shared" / "slots"
-            slots.mkdir(parents=True)
-            (slots / str(os.getpid())).write_text("pid=x reserved=0 id=t\n", encoding="utf-8")
-            proc = self._run(tmp, "43", GMV_MAX_TOTAL_RUNS="1")
-            self.assertEqual(proc.returncode, 5, proc.stderr)
-            self.assertIn("shared_limit_reached", proc.stderr)
-            self.assertFalse((once / "issue-43.once").exists())
-            self.assertEqual(sorted(p.name for p in slots.iterdir()), [str(os.getpid())])
-            self.assertFalse((Path(tmp) / "log" / "egress-proxy.pid").exists())
-
-    def test_quota_stop_marker_blocks_start(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            (Path(tmp) / "shared").mkdir()
-            (Path(tmp) / "shared" / "quota-stop").write_text("x\n", encoding="utf-8")
-            proc = self._run(tmp, "44")
-            self.assertEqual(proc.returncode, 9)
-            self.assertIn("quota_stop_active", proc.stderr)
-            self.assertFalse((Path(tmp) / "log" / "once" / "issue-44.once").exists())
+    def test_wrapper_never_releases_locks_itself(self) -> None:
+        joined = "\n".join(self._code())
+        self.assertNotIn(" release ", joined)
+        self.assertNotIn("rm -f \"$ONCE", joined)
+        self.assertIn("run-verdict", joined)
 
     def test_watchdog_present_next_to_wrapper(self) -> None:
         self.assertTrue((HOST / "symphony_watchdog.py").is_file())
 
 
-STUB_TOKEN = """import subprocess, sys
+STUB_TOKEN = """import os, subprocess, sys
 args = sys.argv[1:]
 assert args[:2] == ["exec", "--"], args
+if os.environ.get("STUB_TOKEN_FAIL"):
+    raise SystemExit(1)
 raise SystemExit(subprocess.call(args[2:]))
 """
-STUB_WATCHDOG = """import os, sys
+STUB_WATCHDOG = """import json, os, sys
 from pathlib import Path
 a = sys.argv[1:]
 out = Path(a[a.index("--stdout-file") + 1])
 Path(os.environ["STUB_ARGS"]).write_text("\\n".join(a), encoding="utf-8")
 out.write_text(os.environ.get("STUB_OUTPUT", "Rate Limits\\n"), encoding="utf-8")
-slots = list(Path(os.environ["GMV_SHARED_SLOT_DIR"]).iterdir())
+slots = list(Path(os.environ["STUB_SLOT_DIR"]).iterdir())
 Path(os.environ["STUB_SLOTS"]).write_text(str(len(slots)), encoding="utf-8")
+reason = os.environ.get("STUB_REASON", "first_run_finished")
+if reason != "none":
+    print(json.dumps({"watchdog": "started", "pid": 1}), file=sys.stderr)
+    print(json.dumps({"watchdog": "stop", "reason": reason}), file=sys.stderr)
+    print(json.dumps({"watchdog": "terminated",
+                      "clean": os.environ.get("STUB_CLEAN", "1") == "1"}), file=sys.stderr)
 raise SystemExit(int(os.environ.get("STUB_RC", "0")))
 """
 
@@ -264,16 +246,21 @@ class WrapperFlowTests(unittest.TestCase):
         self.bin.mkdir()
         for name in ("run-symphony.sh", "bwrap-env.sh"):
             shutil.copy(HOST / name, self.bin / name)
-        shutil.copy(ROOT / "scripts" / "symphony_dispatch_gate.py", self.bin)
+        self.shared = self.base / "research"
+        gate = (ROOT / "scripts" / "symphony_dispatch_gate.py").read_text(encoding="utf-8")
+        # Pfade sind fest verdrahtet; der Test zeigt sie im kopierten Gate auf ein Temp-Verzeichnis.
+        self.assertEqual(gate.count('Path("/workspace/research/'), 5)
+        (self.bin / "symphony_dispatch_gate.py").write_text(
+            gate.replace('Path("/workspace/research/', f'Path("{self.shared}/'), encoding="utf-8")
         (self.bin / "symphony_app_token.py").write_text(STUB_TOKEN, encoding="utf-8")
         (self.bin / "symphony_watchdog.py").write_text(STUB_WATCHDOG, encoding="utf-8")
-        (self.bin / "egress-proxy.sh").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        (self.bin / "egress-proxy.sh").write_text(
+            '#!/bin/sh\n[ -z "$STUB_PROXY_FAIL" ]\n', encoding="utf-8")
         (self.bin / "egress-proxy.sh").chmod(0o755)
         self.pilot = self.base / "pilot"
         self.pilot.mkdir()
         (self.pilot / "WORKFLOW.md").write_text(
             "---\ngmv:\n  dispatch_gate:\n    max_concurrent: 2\n---\n", encoding="utf-8")
-        self.shared = self.base / "research"
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
@@ -281,14 +268,22 @@ class WrapperFlowTests(unittest.TestCase):
     def run_wrapper(self, issue: str, **extra: str):
         env = {**os.environ, "GMV_SYMPHONY_START_APPROVED": "yes", "PILOT_DIR": str(self.pilot),
                "GMV_HOME": str(self.base / "home"), "GMV_SYMPHONY_ISSUE": issue,
-               "GMV_SHARED_SLOT_DIR": str(self.shared / "state" / "slots"),
-               "GMV_SHARED_SLOT_LOCK": str(self.shared / ".research.lock"),
-               "GMV_ALERTS_LOG": str(self.shared / "ALERTS.log"),
-               "GMV_QUOTA_STOP": str(self.shared / "state" / "quota-stop"),
+               "STUB_SLOT_DIR": str(self.shared / "state" / "slots"),
                "STUB_ARGS": str(self.base / f"args-{issue}"),
                "STUB_SLOTS": str(self.base / f"slots-{issue}"), **extra}
+        for var in ("GMV_SHARED_SLOT_DIR", "GMV_SHARED_SLOT_LOCK", "GMV_ALERTS_LOG",
+                    "GMV_QUOTA_STOP", "GMV_RUN_STOP", "GMV_MAX_TOTAL_RUNS"):
+            if var not in extra:
+                env.pop(var, None)
         return subprocess.run(["bash", str(self.bin / "run-symphony.sh")], env=env,
                               capture_output=True, text=True, check=False, timeout=60)
+
+    @property
+    def slots(self) -> Path:
+        return self.shared / "state" / "slots"
+
+    def alerts(self) -> str:
+        return (self.shared / "ALERTS.log").read_text(encoding="utf-8")
 
     def test_clean_run_holds_slot_and_releases_it(self) -> None:
         proc = self.run_wrapper("21")
@@ -303,10 +298,66 @@ class WrapperFlowTests(unittest.TestCase):
         self.assertEqual(self.run_wrapper("21").returncode, 2)
         self.assertEqual(self.run_wrapper("22").returncode, 0)
 
-    def test_child_rc_is_passed_through_and_slot_released(self) -> None:
-        proc = self.run_wrapper("23", STUB_RC="1")
+    def test_known_guard_stop_rc_is_passed_through(self) -> None:
+        proc = self.run_wrapper("23", STUB_RC="1", STUB_REASON="retry_cycle_scheduled")
         self.assertEqual(proc.returncode, 1, proc.stderr)
-        self.assertEqual(list((self.shared / "state" / "slots").iterdir()), [])
+        self.assertEqual(list(self.slots.iterdir()), [])
+        self.assertFalse((self.shared / "state" / "symphony-stop").exists())
+        self.assertEqual(self.run_wrapper("26").returncode, 0)
+
+    def test_unknown_outcomes_are_fail_closed(self) -> None:
+        cases = {
+            "unknown reason": {"STUB_RC": "1", "STUB_REASON": "token_readout_missing"},
+            "child crash": {"STUB_RC": "1", "STUB_REASON": "child_exited code=-11"},
+            "no verdict": {"STUB_RC": "1", "STUB_REASON": "none"},
+            "unclean": {"STUB_RC": "3", "STUB_CLEAN": "0"},
+            "token helper fails": {"STUB_TOKEN_FAIL": "1"},
+            "proxy fails after once": {"STUB_PROXY_FAIL": "1"},
+        }
+        stop = self.shared / "state" / "symphony-stop"
+        for n, (name, extra) in enumerate(cases.items(), start=60):
+            with self.subTest(name=name):
+                stop.unlink(missing_ok=True)
+                proc = self.run_wrapper(str(n), **extra)
+                self.assertEqual(proc.returncode, 13, proc.stderr)
+                self.assertTrue(stop.exists())
+                self.assertIn(f"issue={n} unknown_fail_closed", self.alerts())
+                self.assertEqual(list(self.slots.iterdir()), [])
+                self.assertTrue((self.pilot / "log" / "once" / f"issue-{n}.once").exists())
+        blocked = self.run_wrapper("70")
+        self.assertEqual(blocked.returncode, 13)
+        self.assertIn("run_stop_active", blocked.stderr)
+        self.assertFalse((self.base / "args-70").exists())
+
+    def test_path_overrides_are_rejected(self) -> None:
+        for var in ("GMV_SHARED_SLOT_DIR", "GMV_SHARED_SLOT_LOCK", "GMV_ALERTS_LOG",
+                    "GMV_QUOTA_STOP", "GMV_RUN_STOP"):
+            with self.subTest(var=var):
+                proc = self.run_wrapper("31", **{var: str(self.base / "elsewhere")})
+                self.assertEqual(proc.returncode, 2)
+                self.assertIn("path_override_forbidden", proc.stderr)
+                self.assertFalse((self.base / "args-31").exists())
+
+    def test_max_total_only_lowerable(self) -> None:
+        for bad in ("11", "0", "abc"):
+            with self.subTest(bad=bad):
+                proc = self.run_wrapper("32", GMV_MAX_TOTAL_RUNS=bad)
+                self.assertEqual(proc.returncode, 2)
+                self.assertIn("max_total_runs_invalid", proc.stderr)
+        self.slots.mkdir(parents=True, exist_ok=True)
+        (self.slots / str(os.getpid())).write_text("pid=x reserved=0 id=t\n", encoding="utf-8")
+        proc = self.run_wrapper("33", GMV_MAX_TOTAL_RUNS="1")
+        self.assertEqual(proc.returncode, 5, proc.stderr)
+        self.assertIn("shared_limit_reached", proc.stderr)
+        self.assertFalse((self.pilot / "log" / "once" / "issue-33.once").exists())
+
+    def test_quota_stop_marker_blocks_start(self) -> None:
+        (self.shared / "state").mkdir(parents=True)
+        (self.shared / "state" / "quota-stop").write_text("x\n", encoding="utf-8")
+        proc = self.run_wrapper("44")
+        self.assertEqual(proc.returncode, 9)
+        self.assertIn("quota_stop_active", proc.stderr)
+        self.assertFalse((self.pilot / "log" / "once" / "issue-44.once").exists())
 
     def test_quota_hit_is_fail_closed_for_all_issues(self) -> None:
         proc = self.run_wrapper("24", STUB_OUTPUT="error: usage_limit_reached\n", STUB_RC="1")
