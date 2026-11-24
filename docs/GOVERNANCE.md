@@ -51,7 +51,7 @@ Ablauf:
 
 1. Vorlage [adr/template.md](adr/template.md) nach `docs/adr/NNNN-kurzer-titel.md` kopieren.
 2. Status `Proposed`, solange nicht entschieden ist. Der erste Satz der Entscheidung lautet `Nicht entschieden.`
-3. Pull Request. Merge-Voraussetzung sind die drei erforderlichen, grünen Checks (0 Approvals).
+3. Pull Request. Merge-Voraussetzung sind die drei erforderlichen, grünen Checks und der aktuelle Live-Zustand des Rulesets. Readback vom 24.11.2026: 1 Approval; das genehmigte Ziel von 0 wird erst nach nachgewiesenen automatisierten Review- und Risikogates aktiviert.
 4. Ein Entscheid setzt den Status auf `Accepted` und beginnt die Entscheidung mit `Entschieden.` Wer entscheiden darf, muss im ADR stehen. Fehlt die Rolle, bleibt der Status `Proposed`.
 5. Eine Ersetzung ist ein neues ADR. Das alte wird `Superseded` und verlinkt das neue. Der alte Text bleibt lesbar.
 6. Der Index [adr/README.md](adr/README.md) führt jede Nummer.
