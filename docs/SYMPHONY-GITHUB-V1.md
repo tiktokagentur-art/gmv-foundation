@@ -6,6 +6,7 @@
 - Scope: GitHub Issues als Eingang für OpenAI Symphony; kein Linear
 - Referenz: [Symphony SPEC](https://github.com/openai/symphony/blob/main/SPEC.md)
 - Implementierung: [Symphony Elixir](https://github.com/openai/symphony/blob/main/elixir/README.md)
+- Geprüfte Symphony-Version: `openai/symphony@be10a1b` (2026-09-15), Release `nightly` `linux_x86_64`
 
 ## Ziel
 
@@ -99,6 +100,27 @@ GitHub-Labels reichen ausdrücklich **nicht** für Restart-Sicherheit.
   Lease/Fencing, Code-SHA, PR-SHA, Tests, Review, Kosten und Stop-Grund.
 - Keine produktiven Railway-Dienste, Migrationen, Repository-Rulesets,
   Berechtigungen, Merges oder Deployments in dieser Phase verändern.
+
+## CEO-Entscheidung 24.11.2026 und lokaler Ein-Worker-Pilot
+
+Petrus hat am 24.11.2026 entschieden: Issue #74 ist P0, PR #66 wird geprüft,
+danach folgt ein lokaler Pilot mit genau einem Codex-Worker. Das ist eine
+bewusste, eng begrenzte Ausnahme von Phase B: Das serverseitige
+Dispatch-Gate fehlt weiterhin. Ersatzweise vergibt nur Aline das Label
+`gmv-symphony-pilot` an genau ein harmloses Issue, und Symphony läuft mit
+`max_concurrent_agents: 1`, wenigen Turns und wird nach einem Lauf gestoppt.
+Merge bleibt bei Petrus über die bestehende Review-Pflicht auf `main`.
+
+Erkenntnisse aus dem Pilot (Issue #87, Draft-PR #88):
+
+- Der Start verlangt das Flag
+  `--i-understand-that-this-will-be-running-without-the-usual-guardrails`.
+- Die Vorlage braucht `hooks.after_create` (Repo-Klon), sonst ist der Workspace leer.
+- Solange das Issue `open` ist, dispatcht Symphony erneut. Ohne
+  Control-Plane-Statusübergang muss der Lauf manuell gestoppt werden.
+- Das Host-Token für `github_api` hatte im Pilot die Rechte des persönlichen
+  Kontos. Vor jedem weiteren Lauf: eigene GitHub-App bzw. minimal berechtigtes Token.
+- Token-Verbrauch für einen README-Absatz: ca. 480.000 (überwiegend Kontext-Input).
 
 ## Implementierungsphasen
 
