@@ -15,12 +15,35 @@ tracker:
     - gmv-symphony-pilot
 workspace:
   root: /tmp/gmv-symphony-workspaces
+hooks:
+  # Repo-Klon in den frisch angelegten, leeren Workspace. Öffentliches Repo,
+  # daher ohne Token: kein Credential in Hook, URL oder .git/config.
+  after_create: |
+    set -eu
+    git clone --depth 1 --single-branch --branch main --no-tags https://github.com/tiktokagentur-art/gmv-foundation.git .
+    git config --local core.hooksPath /dev/null
+    test -z "$(git status --porcelain)"
+  # Phase B, noch NICHT aktiv: serverseitiges Dispatch-Gate vor jedem Lauf.
+  # before_run: python3 /opt/gmv/symphony_dispatch_gate.py check
+  timeout_ms: 120000
 agent:
   max_concurrent_agents: 1
   max_turns: 6
 codex:
   command: codex app-server
   thread_sandbox: read-only
+# GMV-Erweiterung. Annahme: Symphony ignoriert unbekannte Schlüssel; vor
+# Phase B gegen die gepinnte Version prüfen. Ausgewertet wird der Block vom
+# Dispatch-Gate (scripts/symphony_dispatch_gate.py), nicht von Symphony.
+gmv:
+  dispatch_gate:
+    enabled: false
+    flag: GMV_SYMPHONY_DISPATCH_GATE
+  token_budget:
+    max_tokens_per_run: 150000
+    reserve_per_turn: 25000
+    on_exceeded: stop
+    on_unknown_usage: stop
 ---
 
 # GMVGANG Symphony – GitHub Pilot (nicht aktivieren)
