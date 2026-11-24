@@ -18,8 +18,12 @@ ADRs, CI und später für Anwendungscode. Es gibt keine Ausnahme für Administra
 
 ## Pull Request und Merge-Voraussetzungen
 
-Ein Pull Request gegen `main` braucht keine Approval-Zahl größer 0.
-Merge-Voraussetzung sind die drei erforderlichen, aktuellen Checks
+Der Live-Readback vom 24.11.2026 zeigt derzeit **ein erforderliches Approval**
+und die Zustimmung zum letzten reviewbaren Push. Das CEO-Ziel für Review
+Governance V2 sind 0 generelle Approvals; diese Ruleset-Änderung bleibt bis zum
+Nachweis aktiver automatisierter Codex-Review- und Risikogates ausstehend.
+Bis dahin ist der tatsächliche Live-Zustand maßgeblich. Merge-Voraussetzung sind
+die drei erforderlichen, aktuellen Checks
 (`Lint and structure`, `Backend`, `Image`), jeweils grün gegen den
 aktuellen Head ([ADR-0004](docs/adr/0004-branch-protection-codeowners.md)).
 
@@ -87,7 +91,9 @@ Ein übersprungener Datenbanktest in CI ist ein Fehler.
 
 Die Regeln oben gelten als Arbeitsregel. Was GitHub technisch durchsetzt,
 dokumentiert [ADR-0004](docs/adr/0004-branch-protection-codeowners.md):
-Schutz von `main` durch das aktive Ruleset, erforderliche Checks, 0 Approvals,
-kein direkter Push und kein Force-Push. CODEOWNERS hat keine aktiven Owner.
+Schutz von `main` durch das aktive Ruleset, erforderliche Checks, derzeit
+1 Approval plus Last-Push-Approval, kein direkter Push und kein Force-Push.
+Das CEO-Ziel von 0 generellen Approvals ist bis zum Review-/Risikogate-Nachweis
+nicht aktiviert; siehe [ADR-0004](docs/adr/0004-branch-protection-codeowners.md). CODEOWNERS hat keine aktiven Owner.
 
 Diese Datei ändert keine Repository-Einstellungen.
