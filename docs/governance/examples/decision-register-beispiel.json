@@ -1,0 +1,31 @@
+[
+  {
+    "id": "DEC-001",
+    "entscheidungstraeger": "Rolle A",
+    "freigabe": "Fiktive Freigabe durch Rolle A",
+    "scope": "Beispiel: Vorlage für einen Wochenbericht einführen",
+    "owner": "Rolle B",
+    "status": "abgeschlossen",
+    "evidence": ["Fiktives Prüfprotokoll zur Wochenberichtsvorlage"],
+    "historie": [
+      {"datum": "2030-01-07", "status": "vorgeschlagen", "von": "Rolle B"},
+      {"datum": "2030-01-08", "status": "freigegeben", "von": "Rolle A"},
+      {"datum": "2030-01-09", "status": "umgesetzt", "von": "Rolle B"},
+      {"datum": "2030-01-10", "status": "verifiziert", "von": "Rolle C"},
+      {"datum": "2030-01-10", "status": "dokumentiert", "von": "Rolle B"},
+      {"datum": "2030-01-11", "status": "abgeschlossen", "von": "Rolle A"}
+    ]
+  },
+  {
+    "id": "DEC-002",
+    "entscheidungstraeger": "Rolle A",
+    "freigabe": "Fiktive Freigabe ausstehend",
+    "scope": "Beispiel: Ablage für Musterprotokolle einrichten",
+    "owner": "Rolle C",
+    "status": "vorgeschlagen",
+    "evidence": [],
+    "historie": [
+      {"datum": "2030-01-12", "status": "vorgeschlagen", "von": "Rolle C"}
+    ]
+  }
+]
