@@ -65,6 +65,16 @@ und für die Region in [ADR-0012](adr/0012-hosting-region-usa.md) festgehalten.
 Python / FastAPI ist entschieden
 ([ADR-0002](adr/0002-python-fastapi.md)), CEO-Entscheidung vom 09.11.2026.
 
+## Dauerhaftes L1-Testmandat für Aline
+
+[ADR-0015](adr/0015-aline-l1-testmandate.md) dokumentiert die
+CEO-Entscheidung vom 20.11.2026: Nach einmaliger technischer Aktivierung
+kann Aline (GMV-VE-001) ausschließlich konforme synthetische
+L1-Tests ohne einzelne CEO-Freigabe ausführen. Die Entscheidung
+ist kein sofortiges API-, Secret-, Merge- oder Produktionsrecht.
+Die Aktivierungsgates stehen in
+[ALINE-L1-MANDATE.md](ALINE-L1-MANDATE.md).
+
 ## Eine Instanz je Domäne
 
 [ADR-0003](adr/0003-single-assignment-authority.md) gilt für jede Umsetzung:
