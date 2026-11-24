@@ -106,7 +106,7 @@ GitHub-Labels reichen ausdrücklich **nicht** für Restart-Sicherheit.
 Petrus hat am 24.11.2026 entschieden: Issue #74 ist P0, PR #66 wird geprüft,
 danach folgt ein lokaler Pilot mit genau einem Codex-Worker. Das ist eine
 bewusste, eng begrenzte Ausnahme von Phase B: Das serverseitige
-Dispatch-Gate fehlt weiterhin. Ersatzweise vergibt nur Aline das Label
+Dispatch-Gate fehlt weiterhin. Ersatzweise vergeben Aline oder Deniz das Label
 `gmv-symphony-pilot` an genau ein harmloses Issue, und Symphony läuft mit
 `max_concurrent_agents: 1`, wenigen Turns und wird nach einem Lauf gestoppt.
 Merge bleibt bei Petrus über die bestehende Review-Pflicht auf `main`.
