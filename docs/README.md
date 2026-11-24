@@ -17,6 +17,7 @@ Sie legen keine Infrastruktur an und enthalten keinen Anwendungscode.
 | [SYMPHONY-GITHUB-V1.md](SYMPHONY-GITHUB-V1.md) | Symphony auf GitHub Issues: Entwurf, Grenzen, Phasen |
 | [symphony/github-app-spec.md](symphony/github-app-spec.md) | Symphony GitHub App: Rechteliste, nicht angelegt |
 | [symphony/dispatch-gate.md](symphony/dispatch-gate.md) | Symphony Dispatch-Gate: Entwurf, standardmäßig aus |
+| [symphony/sandbox.md](symphony/sandbox.md) | Symphony/Codex-Sandbox: was erzwungen ist, was nicht |
 | [adr/README.md](adr/README.md) | Index der ADRs, einschließlich offener Punkte |
 | [../SECURITY.md](../SECURITY.md) | Secrets, Rechte, Identität, Autorisierung, Audit |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Branch, Pull Request, unabhängige Review |

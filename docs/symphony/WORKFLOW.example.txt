@@ -14,7 +14,9 @@ tracker:
   required_labels:
     - gmv-symphony-pilot
 workspace:
-  root: /tmp/gmv-symphony-workspaces
+  # Nicht unter /tmp: /tmp ist in der Turn-Sandbox nicht beschreibbar
+  # (excludeSlashTmp), und Workspaces anderer Issues bleiben getrennt.
+  root: ~/gmv-symphony/workspaces
 hooks:
   # Repo-Klon in den frisch angelegten, leeren Workspace. Öffentliches Repo,
   # daher ohne Token: kein Credential in Hook, URL oder .git/config.
@@ -30,8 +32,34 @@ agent:
   max_concurrent_agents: 1
   max_turns: 6
 codex:
-  command: codex app-server
-  thread_sandbox: read-only
+  # Geprüft gegen openai/symphony@be10a1b und codex-cli 0.172.0:
+  # - Symphony sendet bei jedem Turn `sandboxPolicy`. Ohne eigenen Wert ist das
+  #   workspaceWrite inkl. /tmp; `thread_sandbox` allein wirkt NICHT.
+  # - Schreiben: nur cwd (= Workspace des Issues), /tmp und $TMPDIR gesperrt,
+  #   .git ist von Codex schreibgeschützt (keine Commits im Workspace).
+  # - Netz: networkAccess false; erreichbar ist nur, was der Codex-Netzwerk-Proxy
+  #   (features.network_proxy, Profil gmv_symphony) per Allowlist durchlässt.
+  # - Lesen: wird durch die Turn-Policy NICHT eingeschränkt (siehe
+  #   docs/symphony/sandbox.md, Host-Lösung).
+  command: >-
+    codex
+    -c 'default_permissions="gmv_symphony"'
+    -c features.network_proxy=true
+    -c 'permissions.gmv_symphony.network={enabled=true,domains={"github.com"="allow","api.github.com"="allow","codeload.github.com"="allow","objects.githubusercontent.com"="allow","api.openai.com"="allow"}}'
+    -c 'permissions.gmv_symphony.filesystem={":root"="read",":workspace_roots"={"."="write"}}'
+    app-server
+  # Nicht `never`: Symphony nimmt dann jede Freigabeanfrage automatisch an.
+  # Symphonys Standard (`reject`-Map) lehnt codex-cli 0.172.0 beim
+  # thread/start ab. Mit `on-request` bricht Symphony den Turn bei jeder
+  # Eskalationsanfrage ab (approval_required), also fail-closed.
+  approval_policy: on-request
+  thread_sandbox: workspace-write
+  turn_sandbox_policy:
+    type: workspaceWrite
+    writableRoots: []
+    networkAccess: false
+    excludeTmpdirEnvVar: true
+    excludeSlashTmp: true
 # GMV-Erweiterung. Annahme: Symphony ignoriert unbekannte Schlüssel; vor
 # Phase B gegen die gepinnte Version prüfen. Ausgewertet wird der Block vom
 # Dispatch-Gate (scripts/symphony_dispatch_gate.py), nicht von Symphony.
@@ -40,8 +68,8 @@ gmv:
     enabled: false
     flag: GMV_SYMPHONY_DISPATCH_GATE
   token_budget:
-    max_tokens_per_run: 500000
-    reserve_per_turn: 80000
+    max_tokens_per_run: 2000000
+    reserve_per_turn: 300000
     on_exceeded: stop
     on_unknown_usage: stop
 ---
@@ -83,7 +111,7 @@ freigegeben und stellt keine Sicherheitsgarantie dar.
 2. Fehlen Autorisierung, gültiger Lease, Fencing oder zulässige Pfade:
    mit `BLOCKED` abbrechen, keine Änderungen durchführen.
 3. Nur die zugewiesenen Dateien im isolierten Workspace prüfen.
-   In dieser Pilot-Vorlage ist Codex ausdrücklich `read-only`.
+   Schreiben ist nur im Workspace des Issues möglich, `.git` ist gesperrt.
 4. Keine GitHub-API-Schreibaktionen, Commits, Pushes, Branch-Erstellung,
    Issue-Transitions, PR-Erstellung, Merges, Deployments, Migrationen,
    IAM- oder Secret-Änderungen ausführen.
