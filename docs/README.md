@@ -5,6 +5,7 @@ Sie legen keine Infrastruktur an und enthalten keinen Anwendungscode.
 
 | Dokument | Inhalt |
 | --- | --- |
+| [developer/README.md](developer/README.md) | Developer Handbook: Einstieg, Factories, Vorlagen und Checks |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Schichten, Zustandsregel, Begriffe |
 | [DATA_MODEL.md](DATA_MODEL.md) | Kernentitäten der V1 |
 | [WORKITEM_LIFECYCLE.md](WORKITEM_LIFECYCLE.md) | Zustände, Übergänge, Lease, Fencing |
@@ -13,6 +14,9 @@ Sie legen keine Infrastruktur an und enthalten keinen Anwendungscode.
 | [GOVERNANCE.md](GOVERNANCE.md) | Entscheidungen, Review, Änderung |
 | [github-moderator.md](github-moderator.md) | GitHub Moderator V1: Architektur, Modi, Berechtigungen |
 | [github-moderator-security-review.md](github-moderator-security-review.md) | Sicherheits- und Testnachweis für den Moderator |
+| [SYMPHONY-GITHUB-V1.md](SYMPHONY-GITHUB-V1.md) | Symphony auf GitHub Issues: Entwurf, Grenzen, Phasen |
+| [symphony/github-app-spec.md](symphony/github-app-spec.md) | Symphony GitHub App: Rechteliste, nicht angelegt |
+| [symphony/dispatch-gate.md](symphony/dispatch-gate.md) | Symphony Dispatch-Gate: Entwurf, standardmäßig aus |
 | [adr/README.md](adr/README.md) | Index der ADRs, einschließlich offener Punkte |
 | [../SECURITY.md](../SECURITY.md) | Secrets, Rechte, Identität, Autorisierung, Audit |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Branch, Pull Request, unabhängige Review |
