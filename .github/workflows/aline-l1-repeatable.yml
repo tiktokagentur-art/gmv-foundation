@@ -1,0 +1,134 @@
+name: ALINE-L1 repeatable synthetic test
+
+# A new L1 workflow. Deliberately separate from ALINE-START-001 one-shot.
+# Not scheduled, and no push, PR or workflow-run activation.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Only one API request may be in progress; do not cancel a potentially
+# billable request in the middle of execution.
+concurrency:
+  group: aline-l1-synthetic-api-global
+  cancel-in-progress: false
+
+jobs:
+  aline-l1:
+    name: Guarded L1 single-model synthetic invocation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    # New/dedicated environment: nothing from aline-l1-staging is reused.
+    # First-time activation requires a separate CEO-controlled setup.
+    environment: aline-l1-autotest
+    steps:
+      - name: Checkout reviewed default-branch policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: trusted-main
+
+      - name: Verify agent identity, activation and hard-limit attestation
+        env: &guard-env
+          ALINE_L1_ACTIVATED: ${{ vars.ALINE_L1_ACTIVATED }}
+          ALINE_L1_PROJECT_DEDICATED: ${{ vars.ALINE_L1_PROJECT_DEDICATED }}
+          ALINE_L1_HARD_LIMIT_ATTESTED: ${{ vars.ALINE_L1_HARD_LIMIT_ATTESTED }}
+          ALINE_L1_BUDGET_USD: ${{ vars.ALINE_L1_BUDGET_USD }}
+          ALINE_L1_MODEL: ${{ vars.ALINE_L1_MODEL }}
+          ALINE_L1_ACTOR: ${{ vars.ALINE_L1_ACTOR }}
+          ALINE_L1_ACTOR_ID: ${{ vars.ALINE_L1_ACTOR_ID }}
+          ALINE_L1_FIXTURE_PATH: worker-src/prototypes/aline-openai-worker/examples/synthetic.json
+        run: |
+          set -euo pipefail
+          # Validate identity/activation before checking out the worker.
+          python - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, "trusted-main/scripts")
+          from aline_l1_runner_guard import validate_environment
+          validate_environment(os.environ)
+          print("Aline L1 activation and actor gate: PASS")
+          PY
+
+      - name: Checkout exactly the independently reviewed L1 worker commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: worker-src
+          ref: 6dc875ecd4e7acb70b7f09023ab9af08d5c906ec
+
+      - name: Verify worker and synthetic fixture integrity
+        run: |
+          set -euo pipefail
+          test "$(git -C worker-src rev-parse HEAD)" = "6dc875ecd4e7acb70b7f09023ab9af08d5c906ec"
+          test "$(git -C worker-src hash-object prototypes/aline-openai-worker/examples/synthetic.json)" = "d6ff931080fa69de5998f2626e8c2702509242f1"
+          echo "Pinned reviewed worker and synthetic fixture verified"
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install fixed worker dependencies
+        run: python -m pip install --disable-pip-version-check --no-cache-dir -r worker-src/prototypes/aline-openai-worker/requirements.txt
+
+      - name: Offline preflight and fixture validation
+        env: *guard-env
+        run: |
+          set -euo pipefail
+          python trusted-main/scripts/aline_l1_runner_guard.py
+          f=worker-src/prototypes/aline-openai-worker
+          python "$f/worker.py" --input "$f/examples/synthetic.json" --validate-only > /dev/null
+          python "$f/worker.py" --input "$f/examples/synthetic.json" --offline-demo > "$RUNNER_TEMP/aline-l1-offline.json"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          p = Path(os.environ["RUNNER_TEMP"]) / "aline-l1-offline.json"
+          data = json.loads(p.read_text(encoding="utf-8"))
+          assert data["execution_mode"] == "offline_deterministic_demo"
+          assert data["api_requests_made"] == 0
+          assert data["writes_performed"] == 0
+          assert [f["ticket_id"] for f in data["report"]["findings"]] == ["EX-001", "EX-002"]
+          p.unlink()
+          print("Offline preflight: PASS")
+          PY
+
+      - name: Recheck activation immediately before the single API request
+        env: *guard-env
+        run: python trusted-main/scripts/aline_l1_runner_guard.py
+
+      - name: One remote inference only, no tool calls, no retries
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-6.1-terra
+        run: |
+          set -euo pipefail
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::Dedicated L1 environment secret missing; no API call"
+            exit 1
+          fi
+          umask 077
+          response_file="$(mktemp "$RUNNER_TEMP/aline-l1-XXXXXX.json")"
+          trap 'rm -f "$response_file"' EXIT
+          python worker-src/prototypes/aline-openai-worker/worker.py \
+            --input worker-src/prototypes/aline-openai-worker/examples/synthetic.json \
+            --confirm-api-call --confirm-data-transfer > "$response_file"
+          python - "$response_file" <<'PY'
+          import json
+          import sys
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              data = json.load(stream)
+          assert data["worker_id"] == "GMV-VE-001"
+          assert data["runtime_status"] == "advisory_only_not_authoritative"
+          assert data["execution_mode"] == "openai_model_call"
+          assert data["api_requests_made"] == 1
+          assert data["synthetic_input"] is True
+          assert data["writes_performed"] == 0
+          assert [f["ticket_id"] for f in data["report"]["findings"]] == ["EX-001", "EX-002"]
+          assert all(f["evidence_status"] == "unknown" for f in data["report"]["findings"])
+          print(json.dumps({"status": "PASS", "worker": "GMV-VE-001",
+                            "model": "gpt-6.1-terra", "api_requests_made": 1,
+                            "writes_performed": 0}, sort_keys=True))
+          PY

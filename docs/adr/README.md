@@ -25,6 +25,7 @@ Prüfung des Vorschlags erlaubt, nimmt den Vorschlag nicht an.
 | [0012](0012-hosting-region-usa.md) | Hosting-Region USA (Railway sfo) | Accepted |
 | [0013](0013-repository-visibility-public.md) | Repository-Sichtbarkeit: public | Accepted |
 | [0014](0014-github-moderator-trust-boundary.md) | GitHub Moderator V1, Betriebsmodi und Credential-Isolation | Accepted |
+| [0015](0015-aline-l1-testmandate.md) | Dauerhaftes L1-Testmandat für Aline | Accepted |
 
 ## Offene Entscheidungen
 
@@ -64,3 +65,8 @@ beschränkt (CEO-Auswahl 10.11.2026 05:49 MEZ).
 GitHub Moderator V1, Betriebsmodi und Credential-Isolation sind
 [0014](0014-github-moderator-trust-boundary.md)
 (Accepted, CEO 10.11.2026).
+
+Das dauerhafte, widerrufbare Aline-L1-Testmandat ist
+[0015](0015-aline-l1-testmandate.md) (Accepted, CEO 20.11.2026).
+Es erlaubt Einzeltests ohne erneute CEO-Freigabe nur nach
+technischer Aktivierungsabnahme des isolierten Testkorridors.
