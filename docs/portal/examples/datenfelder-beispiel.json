@@ -1,0 +1,22 @@
+{
+  "eintraege": [
+    {
+      "id": "FIKTIV-PORTAL-001",
+      "rolle": "haendler",
+      "bezeichnung": "Nordlicht Haushalt (fiktiv)",
+      "region": "Fiktive Testregion Nord",
+      "datenquelle": "Fiktives Pilotbeispiel",
+      "rechtsgrundlage": "platzhalter-bis-datenschutzpruefung",
+      "status": "fiktiv"
+    },
+    {
+      "id": "FIKTIV-PORTAL-002",
+      "rolle": "creator",
+      "bezeichnung": "Fiktives Teststudio Papierplanet",
+      "region": "Fiktive Testregion Süd",
+      "datenquelle": "Fiktives Pilotbeispiel",
+      "rechtsgrundlage": "platzhalter-bis-datenschutzpruefung",
+      "status": "fiktiv"
+    }
+  ]
+}
