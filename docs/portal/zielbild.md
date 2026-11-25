@@ -4,7 +4,7 @@ Stand: Entwurf (Pilot), 25.11.2026. Am Portal ist noch nichts gebaut. Dieses Dok
 
 ## Ziel
 
-Das GMVGANG Portal gibt Händlern und Creators getrennte Arbeitsbereiche, in denen der Kernablauf Kampagne, Interesse, Musteranfrage, Entscheidung, Videolink und Feedback intern nachvollziehbar durchläuft.
+Das GMVGANG Portal gibt Händlern und Creators getrennte Arbeitsbereiche, in denen der Kernablauf Kampagne, Interesse, Musteranfrage, Entscheidung, Videolink und Feedback intern nachvollziehbar durchläuft; der erste Pilot ist ein Händler-Pilot.
 
 ## Shop-Portal
 
@@ -19,7 +19,7 @@ Das Shop-Portal ist der Arbeitsbereich für die Rolle Händler (Händler- oder M
 
 Das Creator-Portal ist der Arbeitsbereich für die Rolle Creator.
 
-- Die Rolle Creator hat dort ein Profil mit ihrer Qualifikation.
+- Ein Profil der Rolle Creator mit Qualifikation folgt erst mit der späteren Creator-Welle.
 - Die Rolle Creator meldet Interesse an Kampagnen, stellt Musteranfragen und reicht Videolinks ein.
 - Der Zugang zum Creator-Portal ist getrennt vom Netzwerk- und Vertragsstatus der Rolle Creator.
 
@@ -32,4 +32,4 @@ Das Creator-Portal ist der Arbeitsbereich für die Rolle Creator.
 
 ## Fiktives Beispiel
 
-Die fiktive Marke „Nordlicht Haushalt UG“ (Rolle Händler) legt im Shop-Portal eine Kampagne für ein fiktives Produkt an. Eine fiktive Rolle Creator sieht die Kampagne im Creator-Portal, meldet Interesse und stellt eine Musteranfrage. Die Rolle Händler entscheidet im Shop-Portal über die Anfrage. Danach reicht die Rolle Creator im Creator-Portal einen Videolink ein, und die Rolle Händler gibt Feedback.
+Die Marke „Nordlicht Haushalt (fiktiv)“ (Rolle Händler) legt im Shop-Portal eine Kampagne für ein fiktives Produkt an. Eine fiktive Rolle Creator sieht die Kampagne im Creator-Portal, meldet Interesse und stellt eine Musteranfrage. Die Rolle Händler entscheidet im Shop-Portal über die Anfrage. Danach reicht die Rolle Creator im Creator-Portal einen Videolink ein, und die Rolle Händler gibt Feedback.
