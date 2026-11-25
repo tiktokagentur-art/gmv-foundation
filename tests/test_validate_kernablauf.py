@@ -65,7 +65,7 @@ def test_document_requires_field(document, schema_errors, field):
         ("creator_rolle", 12, "nicht leerer Text erwartet"),
         (
             "creator_rolle",
-            "  rOLLE hÄNDLER nORDLICHT\t",
+            "  nORDLICHT hAUSHALT (FIKTIV)\t",
             "muss sich von haendler_rolle unterscheiden",
         ),
         ("schritte", {}, "Liste erwartet"),

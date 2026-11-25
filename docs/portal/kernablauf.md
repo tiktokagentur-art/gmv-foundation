@@ -1,6 +1,6 @@
 # Portal-Kernablauf im Pilot
 
-Sobald das Portal in Staging verfügbar ist, wird der Ablauf einmal mit zwei getrennten fiktiven Konten durchgespielt. Das Händlerkonto arbeitet im Shop-Portal, das Creator-Konto im Creator-Portal. Beim Kontowechsel prüfen, dass jedes Konto Zugriff auf den eigenen Arbeitsbereich hat und der andere Arbeitsbereich gesperrt ist.
+Der erste Pilot ist ein Händler-Pilot: Im Mittelpunkt steht die Händlerrolle, Creator kommen nur so weit vor, wie der Kernablauf es braucht. Sobald das Portal in Staging verfügbar ist, wird der Ablauf einmal mit zwei getrennten fiktiven Konten durchgespielt. Das Händlerkonto arbeitet im Shop-Portal, das Creator-Konto im Creator-Portal. Beim Kontowechsel prüfen, dass jedes Konto Zugriff auf den eigenen Arbeitsbereich hat und der andere Arbeitsbereich gesperrt ist.
 
 ## Abnahme in Staging
 
@@ -23,4 +23,4 @@ Der Validator meldet Schemafehler zeilenweise im Format `id: feld: meldung`. Exi
 
 ## Fiktive Daten
 
-Für den Pilot gelten ausschließlich fiktive Daten und interne Abläufe ohne externe Ansprache. Echte Personen, Händler und Creators sowie echte Personendaten gehören nicht ins öffentliche Repo. Rechtsgrundlagen bleiben Platzhalter.
+Für den Pilot gelten ausschließlich fiktive Daten und interne Abläufe ohne externe Ansprache. Echte Personen, Händler und Creators sowie echte Personendaten gehören nicht ins öffentliche Repo. Rechtsgrundlagen bleiben Platzhalter. Der Betrieb läuft mit fiktiven Daten auf GMV-V3 (USA); übernommener Altbestand wird nur gelesen.
