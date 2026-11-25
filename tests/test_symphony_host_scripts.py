@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -169,7 +170,8 @@ class WrapperTests(unittest.TestCase):
         joined = "\n".join(self._code())
         order = [joined.index(x) for x in (
             "quota-check", "trap release_slot EXIT", "slot-acquire", "once-acquire",
-            'egress-proxy.sh" start', 'python3 "$TOKEN_PY" exec', "quota-scan")]
+            "prepare-run", 'proxy-start --proxy-script "$HERE/egress-proxy.sh"',
+            'python3 "$TOKEN_PY" exec', "quota-scan")]
         self.assertEqual(order, sorted(order))
         self.assertNotIn("pilot-run.once", joined)
         self.assertIn("exit 9", joined)
@@ -218,12 +220,21 @@ if os.environ.get("STUB_TOKEN_FAIL"):
     raise SystemExit(1)
 raise SystemExit(subprocess.call(args[2:]))
 """
-STUB_WATCHDOG = """import json, os, sys
+STUB_WATCHDOG = """import json, os, sys, time
 from pathlib import Path
 a = sys.argv[1:]
 out = Path(a[a.index("--stdout-file") + 1])
 Path(os.environ["STUB_ARGS"]).write_text("\\n".join(a), encoding="utf-8")
 out.write_text(os.environ.get("STUB_OUTPUT", "Rate Limits\\n"), encoding="utf-8")
+time.sleep(float(os.environ.get("STUB_SLEEP", "0")))
+# Schreibpfade, die Symphony nutzen würde: logs-root und workspace.root der WORKFLOW.md
+logs_root = Path(a[a.index("--logs-root") + 1])
+(logs_root / "log").mkdir(parents=True, exist_ok=True)
+(logs_root / "log" / "symphony.log").write_text("stub\\n", encoding="utf-8")
+wf = Path(a[-1]).read_text(encoding="utf-8")
+root = Path(next(ln.split(": ", 1)[1] for ln in wf.splitlines() if ln.startswith("  root: ")))
+(root / "GMV-1").mkdir(parents=True, exist_ok=True)
+(root / "GMV-1" / "x.txt").write_text("stub\\n", encoding="utf-8")
 slots = list(Path(os.environ["STUB_SLOT_DIR"]).iterdir())
 Path(os.environ["STUB_SLOTS"]).write_text(str(len(slots)), encoding="utf-8")
 reason = os.environ.get("STUB_REASON", "first_run_finished")
@@ -234,6 +245,14 @@ if reason != "none":
                       "clean": os.environ.get("STUB_CLEAN", "1") == "1"}), file=sys.stderr)
 raise SystemExit(int(os.environ.get("STUB_RC", "0")))
 """
+
+
+def pilot_workflow(max_concurrent: int) -> str:
+    return (
+        "---\ntracker:\n  kind: github\n  required_labels:\n    - gmv-symphony-pilot\n"
+        "workspace:\n  # Kommentar\n  root: /workspace/symphony-pilot/workspaces\n"
+        f"gmv:\n  dispatch_gate:\n    max_concurrent: {max_concurrent}\n---\nPrompt\n"
+    )
 
 
 class WrapperFlowTests(unittest.TestCase):
@@ -259,8 +278,7 @@ class WrapperFlowTests(unittest.TestCase):
         (self.bin / "egress-proxy.sh").chmod(0o755)
         self.pilot = self.base / "pilot"
         self.pilot.mkdir()
-        (self.pilot / "WORKFLOW.md").write_text(
-            "---\ngmv:\n  dispatch_gate:\n    max_concurrent: 2\n---\n", encoding="utf-8")
+        (self.pilot / "WORKFLOW.md").write_text(pilot_workflow(2), encoding="utf-8")
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
@@ -293,7 +311,8 @@ class WrapperFlowTests(unittest.TestCase):
         self.assertTrue((self.pilot / "log" / "once" / "issue-21.once").exists())
         args = (self.base / "args-21").read_text(encoding="utf-8").split("\n")
         self.assertEqual(args[args.index("--budget") + 1], "5000000")
-        self.assertEqual(args[args.index("--log") + 1], str(self.pilot / "log/issue-21/log"))
+        run_dir = self.pilot / "runs" / "issue-21"
+        self.assertEqual(args[args.index("--log") + 1], str(run_dir / "log" / "log"))
         # zweiter Start desselben Issues: blockiert; anderes Issue: läuft
         self.assertEqual(self.run_wrapper("21").returncode, 2)
         self.assertEqual(self.run_wrapper("22").returncode, 0)
@@ -369,6 +388,196 @@ class WrapperFlowTests(unittest.TestCase):
         nxt = self.run_wrapper("25")
         self.assertEqual(nxt.returncode, 9)
         self.assertFalse((self.base / "args-25").exists())  # nichts gestartet
+
+
+    # --- Samira, Bedingung 1: Tracker- und Zustandstrennung je Issue -----------------
+
+    def _snapshot(self) -> dict[str, tuple[int, int]]:
+        out = {}
+        for root in (self.pilot, self.shared):
+            for f in root.rglob("*"):
+                if f.is_file():
+                    st = f.stat()
+                    out[str(f)] = (st.st_ino, st.st_mtime_ns)
+        return out
+
+    def start_wrapper(self, issue: str, **extra: str) -> subprocess.Popen:
+        env = {**os.environ, "GMV_SYMPHONY_START_APPROVED": "yes", "PILOT_DIR": str(self.pilot),
+               "GMV_HOME": str(self.base / "home"), "GMV_SYMPHONY_ISSUE": issue,
+               "STUB_SLOT_DIR": str(self.slots),
+               "STUB_ARGS": str(self.base / f"args-{issue}"),
+               "STUB_SLOTS": str(self.base / f"slots-{issue}"), **extra}
+        for var in ("GMV_SHARED_SLOT_DIR", "GMV_SHARED_SLOT_LOCK", "GMV_ALERTS_LOG",
+                    "GMV_QUOTA_STOP", "GMV_RUN_STOP", "GMV_MAX_TOTAL_RUNS"):
+            env.pop(var, None)
+        return subprocess.Popen(["bash", str(self.bin / "run-symphony.sh")], env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    def test_two_parallel_slots_have_separate_tracker_and_state(self) -> None:
+        before = self._snapshot()
+        procs = {n: self.start_wrapper(n, STUB_SLEEP="2") for n in ("31", "32")}
+        for n, proc in procs.items():
+            _, err = proc.communicate(timeout=60)
+            self.assertEqual(proc.returncode, 0, err)
+            # beide liefen gleichzeitig: jeder sah zwei Symphony-Slots
+            self.assertEqual((self.base / f"slots-{n}").read_text(encoding="utf-8"), "2")
+        self.assertEqual(list(self.slots.iterdir()), [])
+        roots = set()
+        for n in ("31", "32"):
+            run_dir = self.pilot / "runs" / f"issue-{n}"
+            wf = (run_dir / "WORKFLOW.md").read_text(encoding="utf-8")
+            self.assertIn("    - gmv-symphony-pilot\n    - gmv-symphony-issue-" + n + "\n", wf)
+            self.assertIn(f"  root: {run_dir / 'workspaces'}\n", wf)
+            self.assertTrue((run_dir / "workspaces" / "GMV-1" / "x.txt").exists())
+            args = (self.base / f"args-{n}").read_text(encoding="utf-8").split("\n")
+            i = args.index("--chdir")
+            self.assertEqual(args[i - 6:i + 2], [
+                "--ro-bind", str(self.pilot), str(self.pilot),
+                "--bind", str(run_dir), str(run_dir), "--chdir", str(run_dir)])
+            self.assertEqual(args[-1], str(run_dir / "WORKFLOW.md"))
+            self.assertEqual(args[args.index("--logs-root") + 1], str(run_dir / "log"))
+            self.assertEqual(args[args.index("--stdout-file") + 1], str(run_dir / "run.out"))
+            roots.add(wf)
+        self.assertEqual(len(roots), 2)
+        # Schreibpfad-Inventar: alles Geschriebene liegt im eigenen Lauf-Verzeichnis
+        # oder ist eine der flock-/O_EXCL-geschützten gemeinsamen Dateien.
+        after = self._snapshot()
+        written = {f for f, v in after.items() if before.get(f) != v}
+        allowed_shared = {
+            str(self.pilot / "log" / "once" / "issue-31.once"),
+            str(self.pilot / "log" / "once" / "issue-32.once"),
+            str(self.shared / ".research.lock"),
+        }
+        per_issue = {n: str(self.pilot / "runs" / f"issue-{n}") + "/" for n in ("31", "32")}
+        stray = [f for f in written if f not in allowed_shared
+                 and not any(f.startswith(d) for d in per_issue.values())]
+        self.assertEqual(stray, [])
+        self.assertTrue(any(f.startswith(per_issue["31"]) for f in written))
+        self.assertTrue(any(f.startswith(per_issue["32"]) for f in written))
+
+    def test_template_limit_one_blocks_second_parallel_slot(self) -> None:
+        (self.pilot / "WORKFLOW.md").write_text(pilot_workflow(1), encoding="utf-8")
+        first = self.start_wrapper("33", STUB_SLEEP="3")
+        deadline = time.monotonic() + 20
+        while not (self.slots.exists() and any(self.slots.iterdir())):
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(0.05)
+        second = self.run_wrapper("34")
+        self.assertEqual(second.returncode, 5, second.stderr)
+        self.assertFalse((self.pilot / "runs" / "issue-34").exists())
+        _, err = first.communicate(timeout=60)
+        self.assertEqual(first.returncode, 0, err)
+
+    def test_existing_run_dir_blocks_start_fail_closed(self) -> None:
+        (self.pilot / "runs" / "issue-35").mkdir(parents=True)
+        proc = self.run_wrapper("35")
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("run_dir_exists", proc.stderr)
+        self.assertFalse((self.base / "args-35").exists())  # nichts gestartet
+        self.assertEqual(list(self.slots.iterdir()), [])
+
+    def test_proxy_start_runs_under_slot_lock(self) -> None:
+        log = self.base / "proxy-calls"
+        (self.bin / "egress-proxy.sh").write_text(
+            f'#!/bin/sh\nflock -n {self.shared}/.research.lock true && echo free >>{log} '
+            f'|| echo locked >>{log}\n', encoding="utf-8")
+        proc = self.run_wrapper("36")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(log.read_text(encoding="utf-8"), "locked\n")
+
+
+# --- Samira, Bedingung 2: run-wave.sh stoppt den Proxy nur ohne lebenden Slot -----------
+
+STUB_GH = """#!/bin/sh
+echo "$*" >> "$STUB_GH_LOG"
+"""
+
+
+class RunWaveTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self._tmp.name)
+        self.pilot = self.base / "pilot"
+        (self.pilot / "bin").mkdir(parents=True)
+        self.shared = self.base / "research"
+        gate = (ROOT / "scripts" / "symphony_dispatch_gate.py").read_text(encoding="utf-8")
+        (self.pilot / "bin" / "symphony_dispatch_gate.py").write_text(
+            gate.replace('Path("/workspace/research/', f'Path("{self.shared}/'), encoding="utf-8")
+        self.calls = self.base / "proxy-calls"
+        proxy = self.pilot / "bin" / "egress-proxy.sh"
+        proxy.write_text(f'#!/bin/sh\necho "$1" >> {self.calls}\n', encoding="utf-8")
+        proxy.chmod(0o755)
+        one = self.pilot / "pilot-one-run.sh"
+        one.write_text('#!/bin/sh\necho "run $1"\nexit "${STUB_RUN_RC:-0}"\n', encoding="utf-8")
+        one.chmod(0o755)
+        self.fake = self.base / "fakebin"
+        self.fake.mkdir()
+        (self.fake / "gh").write_text(STUB_GH, encoding="utf-8")
+        (self.fake / "gh").chmod(0o755)
+        self.gh_log = self.base / "gh.log"
+        self.children: list[subprocess.Popen] = []
+
+    def tearDown(self) -> None:
+        for c in self.children:
+            c.kill()
+            c.wait()
+        self._tmp.cleanup()
+
+    def wave(self, issue: str, **extra: str) -> subprocess.CompletedProcess:
+        env = {**os.environ, "PILOT_DIR": str(self.pilot), "GMV_WAVE_LABEL_DELAY": "0",
+               "STUB_GH_LOG": str(self.gh_log),
+               "PATH": f"{self.fake}:{os.environ['PATH']}", **extra}
+        return subprocess.run(["bash", str(HOST / "run-wave.sh"), issue], env=env,
+                              capture_output=True, text=True, check=False, timeout=60)
+
+    def live_symphony_slot(self, issue: int) -> None:
+        child = subprocess.Popen(["sleep", "60"])
+        self.children.append(child)
+        slots = self.shared / "state" / "slots"
+        slots.mkdir(parents=True, exist_ok=True)
+        (slots / str(child.pid)).write_text(
+            f"pid={child.pid} reserved=0 id=symphony-issue-{issue} kind=symphony issue={issue}\n",
+            encoding="utf-8")
+
+    def test_idle_stops_proxy_and_sets_issue_labels(self) -> None:
+        proc = self.wave("41")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(self.calls.read_text(encoding="utf-8"), "stop\n")
+        gh = self.gh_log.read_text(encoding="utf-8")
+        self.assertIn("--add-label gmv-symphony-pilot --add-label gmv-symphony-issue-41", gh)
+        self.assertIn("--remove-label gmv-symphony-issue-41", gh)
+        self.assertIn("run 41", proc.stdout)
+
+    def test_run_rc_is_passed_through_after_idle_stop(self) -> None:
+        proc = self.wave("42", STUB_RUN_RC="13")
+        self.assertEqual(proc.returncode, 13)
+        self.assertEqual(self.calls.read_text(encoding="utf-8"), "stop\n")
+
+    def test_live_symphony_slot_keeps_proxy_rc14_and_alert(self) -> None:
+        self.live_symphony_slot(77)
+        proc = self.wave("43")
+        self.assertEqual(proc.returncode, 14, proc.stderr)
+        self.assertFalse(self.calls.exists())  # kein Stopp
+        alerts = (self.shared / "ALERTS.log").read_text(encoding="utf-8")
+        self.assertIn("ALERT run-wave issue=43 proxy_stop_refused live_symphony_slots=1 issues=77",
+                      alerts)
+        self.assertEqual(oct((self.shared / "ALERTS.log").stat().st_mode & 0o777), "0o600")
+
+    def test_research_slot_alone_does_not_block_proxy_stop(self) -> None:
+        child = subprocess.Popen(["sleep", "60"])
+        self.children.append(child)
+        slots = self.shared / "state" / "slots"
+        slots.mkdir(parents=True)
+        (slots / str(child.pid)).write_text(f"pid={child.pid} reserved=0 id=r1\n", encoding="utf-8")
+        self.assertEqual(self.wave("44").returncode, 0)
+        self.assertEqual(self.calls.read_text(encoding="utf-8"), "stop\n")
+
+    def test_invalid_issue_or_existing_run_dir_aborts_before_labels(self) -> None:
+        self.assertEqual(self.wave("abc").returncode, 20)
+        (self.pilot / "runs" / "issue-45").mkdir(parents=True)
+        self.assertEqual(self.wave("45").returncode, 20)
+        self.assertFalse(self.gh_log.exists())
+        self.assertFalse(self.calls.exists())
 
 
 if __name__ == "__main__":
