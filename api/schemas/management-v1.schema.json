@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GMVGANG Management Factory V1 offline contracts",
+  "description": "Pydantic app.management.schemas is normative; this document defines the transport envelope, not an active API.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "enum": [
+        "manager_profile",
+        "management_decision",
+        "management_escalation",
+        "authorization_context"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "description": "Validated by the matching strict Pydantic V1 model; this envelope alone is insufficient for authorization."
+    }
+  }
+}
