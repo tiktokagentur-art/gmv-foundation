@@ -1,6 +1,6 @@
 # Datenfeldkatalog für den Portal-Pilot
 
-Die Datenschutzprüfung ist offen. Für den Pilot sind ausschließlich fiktive Testdaten zulässig. Echte Einträge, Personen- und Kontaktdaten sowie Listen gehören weder ins Repo noch nach Notion. `rechtsgrundlage` bleibt bis zum Abschluss der Datenschutzprüfung auf `platzhalter-bis-datenschutzpruefung`.
+Die Datenschutzprüfung ist offen. Für den Pilot sind ausschließlich fiktive Testdaten zulässig. Echte Einträge, Personen- und Kontaktdaten sowie Listen gehören weder ins Repo noch in das interne Dokumentationssystem. `rechtsgrundlage` bleibt bis zum Abschluss der Datenschutzprüfung auf `platzhalter-bis-datenschutzpruefung`.
 
 Das JSON-Objekt enthält ausschließlich die Pflichtliste `eintraege`. Sie darf leer sein. Jeder Eintrag hat diese Pflichtfelder.
 
