@@ -32,4 +32,4 @@ Das Creator-Portal ist der Arbeitsbereich für die Rolle Creator.
 
 ## Fiktives Beispiel
 
-Die fiktive Marke „Nordlicht Haushalt UG“ (Rolle Händler) legt im Shop-Portal eine Kampagne für ein fiktives Produkt an. Eine fiktive Rolle Creator sieht die Kampagne im Creator-Portal, meldet Interesse und stellt eine Musteranfrage. Die Rolle Händler entscheidet im Shop-Portal über die Anfrage. Danach reicht die Rolle Creator im Creator-Portal einen Videolink ein, und die Rolle Händler gibt Feedback.
+Die Marke „Nordlicht Haushalt (fiktiv)“ (Rolle Händler) legt im Shop-Portal eine Kampagne für ein fiktives Produkt an. Eine fiktive Rolle Creator sieht die Kampagne im Creator-Portal, meldet Interesse und stellt eine Musteranfrage. Die Rolle Händler entscheidet im Shop-Portal über die Anfrage. Danach reicht die Rolle Creator im Creator-Portal einen Videolink ein, und die Rolle Händler gibt Feedback.
