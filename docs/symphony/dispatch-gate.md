@@ -121,8 +121,9 @@ Symphony belegt denselben Zähler wie `research.sh`.
   Bei einem Race gewinnt genau ein Aufruf; jeder weitere Start desselben Issues
   endet mit `BLOCKED` (rc=2). Andere Issues sind nicht betroffen.
 - Reihenfolge in `run-symphony.sh`: Freigabe → Issue → Einmal-Sperre vorhanden?
-  → Quota-Stopp → Slot → Einmal-Sperre anlegen → Lauf-Verzeichnis
-  `runs/issue-<n>/` → Proxy (unter dem Slot-Lock) → Token → Wächter →
+  → Quota-Stopp → Slot → Lauf-Verzeichnis `runs/issue-<n>/` (scheitert es:
+  rc=2 nur für diesen Start) → Einmal-Sperre anlegen → Proxy (unter dem
+  Slot-Lock) → Token → Wächter →
   Quota-Prüfung → Slot frei (`trap … EXIT`).
 - Zustand je Issue in `runs/issue-<n>/`: eigene `WORKFLOW.md` (Pflicht-Label
   `gmv-symphony-issue-<n>`, eigener `workspace.root`), Symphony-Logs, die der

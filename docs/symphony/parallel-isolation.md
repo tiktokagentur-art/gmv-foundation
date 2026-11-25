@@ -10,9 +10,16 @@ bleibt ([dispatch-gate.md](dispatch-gate.md)).
 
 ## Bedingung 1: eigener Zustand je Issue
 
-`run-symphony.sh` legt nach der Einmal-Sperre `runs/issue-<n>/` exklusiv an
-(`symphony_dispatch_gate.py prepare-run`, Modus 700). Existiert das
-Verzeichnis schon, startet nichts (`run_dir_exists`, fail-closed).
+`run-symphony.sh` legt nach dem Slot und **vor** der Einmal-Sperre
+`runs/issue-<n>/` exklusiv an (`symphony_dispatch_gate.py prepare-run`, Modus
+700). Existiert das Verzeichnis schon (`run_dir_exists`), ist `runs/` ein
+Symlink (`runs_dir_symlink`) oder hat die Pilot-`WORKFLOW.md` eine unerwartete
+Struktur (`workflow_structure_unexpected`), endet nur dieser Start mit rc=2:
+keine Einmal-Sperre, kein `symphony-stop`, kein rc=13, andere Issues laufen
+weiter (Samira, Review #149, Auflage 1). Die `WORKFLOW.md` wird vor dem Anlegen
+erzeugt; eine unerwartete Struktur hinterlässt kein halbes Verzeichnis. Ein
+vorhandenes `runs/issue-<n>/` räumt ein Mensch nach Prüfung auf. Jeder Abbruch
+**nach** der Einmal-Sperre bleibt fail-closed (rc=13, `symphony-stop`).
 
 | Pfad in `runs/issue-<n>/` | Inhalt |
 | --- | --- |
@@ -80,19 +87,56 @@ existieren, Labels `gmv-symphony-pilot` und `gmv-symphony-issue-<n>` setzen,
   Stopp zwischen Prüfung und Start eines anderen Laufs fallen.
 - Weitere rc: 20 (Eingabe, `runs/issue-<n>` vorhanden), 21 (Labels nicht gesetzt).
 
-Tests: `RunWaveTests` (Stubs für `gh`, `pilot-one-run.sh` und Proxy) und
+Tests: `RunWaveTests` (Stubs für `gh`, `pilot-one-run.sh` und Proxy),
+`PilotOneRunTests.test_two_parallel_waves_stop_proxy_only_after_last_slot`
+(zwei Wellen gleichzeitig mit der echten `pilot-one-run.sh`-Vorlage: die früher
+endende Welle rc=14 und ALERT, Stopp genau einmal am Ende, unter dem Lock) und
 `IssueIsolationTests` in `tests/test_symphony_dispatch_gate.py`.
+
+## pilot-one-run.sh und Selbsttest (Vorlagen)
+
+`scripts/symphony_host/pilot-one-run.sh` (Host: `pilot-one-run.sh` im
+Pilot-Verzeichnis, aufgerufen von `run-wave.sh`):
+
+- Statt „genau ein offenes Issue mit `gmv-symphony-pilot`“ und „0
+  Symphony-/Codex-Prozesse“: Issue `#<n>` ist offen, trägt `gmv-symphony-pilot` und
+  `gmv-symphony-issue-<n>`, und genau dieses Issue trägt `gmv-symphony-issue-<n>`
+  (sonst rc=10). Wie viele Läufe parallel laufen, begrenzen Slot-Zähler und
+  `max_concurrent` in `run-symphony.sh`; derselbe Issue scheitert an Slot und
+  Einmal-Sperre.
+- Proxy-Start nur über `symphony_dispatch_gate.py proxy-start` unter dem
+  Slot-Lock (rc=12, wenn er scheitert).
+- Selbsttest-Protokoll `log/selftest-<n>-<ts>.txt`, Wächter-Log aus
+  `runs/issue-<n>/watchdog.log` (nicht mehr „neuestes Log“ eines beliebigen Laufs).
+- rc = rc von `run-symphony.sh`. Die Prozesszählung am Ende ist nur Information
+  (vorher endete das Skript mit rc=1, wenn kein Prozess mehr lief).
+
+`scripts/symphony_host/sandbox-selftest.sh`: Proxy-Start ebenfalls nur über
+`proxy-start` unter dem Slot-Lock, der Selbsttest stoppt ihn nie. Die
+Probe-Workspaces `SELFTEST-A`/`SELFTEST-B` liegen in einem eigenen
+`selftest/run-XXXXXX` je Aufruf (statt im gemeinsamen `workspaces/`) und werden
+beim Beenden gelöscht; parallele Selbsttests und Läufe teilen damit keine
+Verzeichnisse. Masken und Erwartungen des Selbsttests sind unverändert.
 
 ## Restrisiken
 
 - **Restrisiko 4 bleibt:** Alle Agenten laufen als UID `box`. Zähler, Locks,
   Sperren, Marker und `ALERTS.log` synchronisieren kooperierende Skripte; gegen
   einen entglittenen Prozess unter `box` außerhalb der Hülle schützen sie nicht.
-- Die Sandbox bleibt unverändert (`--dev-bind / /` mit Masken). Außerhalb des
-  Pilot-Verzeichnisses kann der Symphony-Prozess technisch weiterhin schreiben,
-  was `box` schreiben darf (z. B. `/workspace/research`). Die Codex-Turns selbst
-  schreiben nur im Workspace ([sandbox.md](sandbox.md)).
+- Die Sandbox bleibt unverändert (`--dev-bind / /` mit Masken). `/workspace`
+  ist im Namespace ein leeres tmpfs (nur das Pilot-Verzeichnis ist eingebunden),
+  `/workspace/research` ist dort also nicht sichtbar. Außerhalb davon kann der
+  Symphony-Prozess technisch weiterhin schreiben, was `box` schreiben darf und
+  nicht maskiert ist, z. B. `/home/box`. Die Codex-Turns selbst schreiben nur im
+  Workspace ([sandbox.md](sandbox.md)).
+- Folgt ein Pfad unterhalb von `runs/` einem Symlink, schützt nur die Prüfung
+  auf `runs/` selbst; mit UID `box` kann ein fremder Prozess das umgehen
+  (Restrisiko 4).
+- Die UND-Semantik von `tracker.required_labels` ist am Symphony-Quelltext
+  geprüft, nicht am Binary; Bestätigung beim ersten Doppel-Lauf.
 - `ALERTS.log` sperrt per `flock` nur kooperierende Schreiber. Schreiber ohne
   `flock` (Host-Skripte außerhalb des Repos) hängen weiter mit `O_APPEND` an.
-- Der Host-Stand (`pilot-one-run.sh`, `run-wave.sh`, Labels
-  `gmv-symphony-issue-<n>` auf GitHub) ist nicht umgestellt; siehe PR-Text.
+- Der Host-Stand (`pilot-one-run.sh`, `run-wave.sh`, `sandbox-selftest.sh`,
+  Labels `gmv-symphony-issue-<n>` auf GitHub) ist nicht umgestellt; siehe PR-Text.
+  `gmv.dispatch_gate.enabled` bleibt `false`; Parallelität läuft nur über
+  `max_concurrent` und den Slot-Zähler.

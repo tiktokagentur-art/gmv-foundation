@@ -10,10 +10,11 @@
 # 4. Slot im gemeinsamen Zähler belegen (flock auf /workspace/research/.research.lock,
 #    Slot-Datei state/slots/<pid>; rc=5, wenn voll). Freigabe beim Beenden (trap).
 #    Symphony-Anteil: höchstens gmv.dispatch_gate.max_concurrent aus WORKFLOW.md.
-# 5. Einmal-Sperre per O_EXCL anlegen: bei einem Race gewinnt genau ein Aufruf.
-# 5b. Lauf-Verzeichnis runs/issue-<n>/ exklusiv anlegen: eigene WORKFLOW.md (eigenes
+# 4b. Lauf-Verzeichnis runs/issue-<n>/ exklusiv anlegen: eigene WORKFLOW.md (eigenes
 #    Tracker-Label gmv-symphony-issue-<n>, eigener workspace.root), logs-root, Protokolle.
 #    In bwrap ist nur dieses Verzeichnis beschreibbar (Pilot-Verzeichnis read-only).
+#    Vor der Einmal-Sperre: scheitert es, endet nur dieser Start (rc=2), kein symphony-stop.
+# 5. Einmal-Sperre per O_EXCL anlegen: bei einem Race gewinnt genau ein Aufruf.
 # 6. Allowlist-Egress-Proxy als Nutzerprozess starten (egress-proxy.sh), unter dem
 #    Slot-Lock; gestoppt wird er nur, wenn kein Symphony-Slot mehr lebt (run-wave.sh).
 # 7. Installation-Token der App gmv-symphony-worker erzeugen (symphony_app_token.py,
@@ -86,6 +87,17 @@ trap release_slot EXIT
 python3 "$GATE_PY" slot-acquire --issue "$ISSUE" --pid "$$" \
   --workflow "$PILOT_DIR/WORKFLOW.md" || exit $?
 SLOT_HELD=1
+# Eigener Lauf-Zustand je Issue (Samira, Bedingung 1): runs/issue-<n>/ mit eigener
+# WORKFLOW.md (Label gmv-symphony-issue-<n>, workspace.root im Lauf-Verzeichnis),
+# logs-root, Dashboard-Ausgabe und Wächter-Log. Exklusiv angelegt; existiert es: kein Start.
+# VOR once-acquire (Samira, Review #149, Auflage 1): bekannte Start-Blockaden
+# (run_dir_exists, unerwartete WORKFLOW-Struktur) beenden nur diesen Start mit rc=2,
+# ohne Einmal-Sperre, ohne symphony-stop und ohne rc=13.
+if ! RUN_DIR=$(python3 "$GATE_PY" prepare-run --issue "$ISSUE" --runs-dir "$PILOT_DIR/runs" \
+  --workflow "$PILOT_DIR/WORKFLOW.md"); then
+  echo "BLOCKED: Lauf-Verzeichnis für Issue #$ISSUE nicht angelegt; nur dieser Start endet" >&2
+  exit 2
+fi
 if ! python3 "$GATE_PY" once-acquire --issue "$ISSUE" --dir "$ONCE_DIR"; then
   echo "BLOCKED: Issue #$ISSUE wurde bereits gestartet; kein zweiter Lauf" >&2
   exit 2
@@ -96,11 +108,6 @@ if [ "${GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED:-}" = "yes" ]; then
   SYM_FLAGS+=(--i-understand-that-this-will-be-running-without-the-usual-guardrails)
 fi
 unset GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED GMV_SYMPHONY_START_APPROVED
-# Eigener Lauf-Zustand je Issue (Samira, Bedingung 1): runs/issue-<n>/ mit eigener
-# WORKFLOW.md (Label gmv-symphony-issue-<n>, workspace.root im Lauf-Verzeichnis),
-# logs-root, Dashboard-Ausgabe und Wächter-Log. Exklusiv angelegt; existiert es: kein Start.
-RUN_DIR=$(python3 "$GATE_PY" prepare-run --issue "$ISSUE" --runs-dir "$PILOT_DIR/runs" \
-  --workflow "$PILOT_DIR/WORKFLOW.md") || exit 2
 LOGROOT="$RUN_DIR/log"
 RUN_OUT="$RUN_DIR/run.out"
 WD_LOG="$RUN_DIR/watchdog.log"

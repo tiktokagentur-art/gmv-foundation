@@ -898,6 +898,25 @@ class IssueIsolationTests(unittest.TestCase):
         other = gate.prepare_run_dir(runs, 9, WORKFLOW)
         self.assertNotEqual(other, run_dir)
 
+    def test_prepare_run_dir_leaves_nothing_on_bad_workflow_and_rejects_symlink(self) -> None:
+        import symphony_dispatch_gate as gate
+
+        runs = self.base / "runs"
+        bad = self.base / "bad.md"
+        bad.write_text(WORKFLOW.read_text(encoding="utf-8").replace("workspace:\n", "ws:\n"),
+                       encoding="utf-8")
+        with self.assertRaises(gate.GateDenied) as ctx:
+            gate.prepare_run_dir(runs, 4, bad)
+        self.assertEqual(ctx.exception.reason, "workflow_structure_unexpected")
+        self.assertFalse(runs.exists())
+        target = self.base / "elsewhere"
+        target.mkdir()
+        runs.symlink_to(target)
+        with self.assertRaises(gate.GateDenied) as ctx:
+            gate.prepare_run_dir(runs, 4, WORKFLOW)
+        self.assertEqual(ctx.exception.reason, "runs_dir_symlink")
+        self.assertEqual(list(target.iterdir()), [])
+
     def _proxy(self) -> tuple[Path, Path]:
         calls = self.base / "calls"
         script = self.base / "proxy.sh"

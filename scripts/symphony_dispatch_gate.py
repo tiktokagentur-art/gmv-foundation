@@ -815,16 +815,24 @@ def render_issue_workflow(text: str, issue: int, run_dir: Path) -> str:
 
 
 def prepare_run_dir(runs_dir: Path, issue: int, workflow_src: Path) -> Path:
-    """Legt ``runs/issue-<n>`` exklusiv an (700). Existiert es, kein Start."""
+    """Legt ``runs/issue-<n>`` exklusiv an (700). Existiert es, kein Start.
+
+    Läuft in ``run-symphony.sh`` vor ``once-acquire``: Ein Fehler hier beendet nur
+    diesen Start (rc=2) und setzt weder Einmal-Sperre noch ``symphony-stop``.
+    Die WORKFLOW.md wird vor dem Anlegen erzeugt, damit eine unerwartete Struktur
+    kein halbes Lauf-Verzeichnis hinterlässt.
+    """
     issue = parse_issue(issue)
     runs_dir = Path(runs_dir)
-    runs_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     run_dir = runs_dir / f"issue-{issue}"
+    rendered = render_issue_workflow(Path(workflow_src).read_text(encoding="utf-8"), issue, run_dir)
+    if runs_dir.is_symlink():
+        raise GateDenied("runs_dir_symlink", str(runs_dir))
+    runs_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     try:
         run_dir.mkdir(mode=0o700)
     except FileExistsError:
         raise GateDenied("run_dir_exists", str(run_dir)) from None
-    rendered = render_issue_workflow(Path(workflow_src).read_text(encoding="utf-8"), issue, run_dir)
     for sub in ("workspaces", "log"):
         (run_dir / sub).mkdir(mode=0o700)
     fd = os.open(run_dir / "WORKFLOW.md", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

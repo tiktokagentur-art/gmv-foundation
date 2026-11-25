@@ -11,7 +11,12 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/bwrap-env.sh"
 WORKFLOW="${1:-$PILOT_DIR/WORKFLOW.md}"
 PROXY_PORT="${GMV_EGRESS_PROXY_PORT:-18443}"
-"$HERE/egress-proxy.sh" start >/dev/null
+GATE_PY="$HERE/symphony_dispatch_gate.py"
+[ -f "$GATE_PY" ] || GATE_PY="$HERE/../symphony_dispatch_gate.py"
+[ -f "$GATE_PY" ] || { echo "BLOCKED: Dispatch-Gate fehlt ($GATE_PY)" >&2; exit 2; }
+# Gemeinsamer Egress-Proxy: Start nur unter dem Slot-Lock (Samira, Review #149, Auflage 3),
+# damit kein Start/Stopp-Race mit parallelen Läufen entsteht. Der Selbsttest stoppt ihn nie.
+python3 "$GATE_PY" proxy-start --proxy-script "$HERE/egress-proxy.sh" >/dev/null
 
 probe_paths='for p in "$HOME/secrets/gmv-symphony-worker.pem" "$HOME/.config/gh/hosts.yml" "$HOME/.gitconfig" "$HOME/.git-credentials" "$HOME/.codex/sessions" "$HOME/cli-config"; do
   if [ -d "$p" ]; then echo "$p: dir, $(ls -A "$p" 2>/dev/null | wc -l) Einträge";
@@ -26,7 +31,11 @@ bwrap "${BW[@]}" -- bash -c "$probe_paths"
 echo "== 2b Modell-Hosts direkt aus dem Namespace (ohne Auth, nur Status)"
 bwrap "${BW[@]}" -- bash -c 'for u in https://chatgpt.com/ https://auth.openai.com/; do echo "$u $(curl -s -o /dev/null -w %{http_code} --max-time 10 "$u")"; done'
 echo "== 3 Codex-Sandbox (Turn-Policy aus $WORKFLOW)"
-mkdir -p "$PILOT_DIR/workspaces/SELFTEST-A" "$PILOT_DIR/workspaces/SELFTEST-B"
+# Eigenes Verzeichnis je Selbsttest: parallele Selbsttests und Läufe teilen keine
+# Workspaces (Namen SELFTEST-A/-B bleiben, die Probe schreibt ../SELFTEST-B relativ).
+mkdir -p -m 700 "$PILOT_DIR/selftest"
+ST_DIR=$(mktemp -d "$PILOT_DIR/selftest/run-XXXXXX")
+trap 'rm -rf "$ST_DIR"' EXIT
+mkdir -p "$ST_DIR/SELFTEST-A" "$ST_DIR/SELFTEST-B"
 PY="${GMV_TOOLS_PYTHON:-$PILOT_DIR/tools-venv/bin/python}"  # braucht PyYAML
-bwrap "${BW[@]}" -- "$PY" "$HERE/codex_exec_probe.py" "$WORKFLOW" "$PILOT_DIR/workspaces/SELFTEST-A" "$probe_paths"
-rm -rf "$PILOT_DIR/workspaces/SELFTEST-A" "$PILOT_DIR/workspaces/SELFTEST-B"
+bwrap "${BW[@]}" -- "$PY" "$HERE/codex_exec_probe.py" "$WORKFLOW" "$ST_DIR/SELFTEST-A" "$probe_paths"
