@@ -75,6 +75,17 @@ ist kein sofortiges API-, Secret-, Merge- oder Produktionsrecht.
 Die Aktivierungsgates stehen in
 [ALINE-L1-MANDATE.md](ALINE-L1-MANDATE.md).
 
+## Risikobasiertes Autonomiemandat
+
+[ADR-0016](adr/0016-risk-based-autonomy-mandate.md) bestätigt die
+CEO-Entscheidung vom 22.11.2026 zur vorab begrenzten Delegation von R0/R1-
+Routineaktionen. Das ist derzeit nur eine **fachliche** Entscheidung:
+Die [Offline-Policy](autonomy/README.md) ist deaktiviert, und
+das aktive Ruleset verlangt weiterhin 0 Approvals. Automatische Merges
+dürfen erst nach separater technischer Aktivierungsabnahme erfolgen,
+sobald mindestens ein unabhängiges formales GitHub-Approval serverseitig
+erzwungen wird. Produktive Releases und Rechteänderungen sind nicht delegiert.
+
 ## Eine Instanz je Domäne
 
 [ADR-0003](adr/0003-single-assignment-authority.md) gilt für jede Umsetzung:

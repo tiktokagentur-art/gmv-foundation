@@ -89,6 +89,7 @@ ADR_STATUS = {
     "docs/adr/0013-repository-visibility-public.md": "Accepted",
     "docs/adr/0014-github-moderator-trust-boundary.md": "Accepted",
     "docs/adr/0015-aline-l1-testmandate.md": "Accepted",
+    "docs/adr/0016-risk-based-autonomy-mandate.md": "Accepted",
 }
 
 ADR_MARKERS = {
