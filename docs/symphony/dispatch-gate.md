@@ -121,11 +121,14 @@ Symphony belegt denselben Zähler wie `research.sh`.
   Bei einem Race gewinnt genau ein Aufruf; jeder weitere Start desselben Issues
   endet mit `BLOCKED` (rc=2). Andere Issues sind nicht betroffen.
 - Reihenfolge in `run-symphony.sh`: Freigabe → Issue → Einmal-Sperre vorhanden?
-  → Quota-Stopp → Slot → Einmal-Sperre anlegen → Proxy → Token → Wächter →
+  → Quota-Stopp → Slot → Einmal-Sperre anlegen → Lauf-Verzeichnis
+  `runs/issue-<n>/` → Proxy (unter dem Slot-Lock) → Token → Wächter →
   Quota-Prüfung → Slot frei (`trap … EXIT`).
-- Protokolle je Issue: `log/issue-<n>/` (Symphony-Logs, die der Wächter liest),
-  `log/run-issue<n>-<ts>.out`, `log/watchdog-issue<n>-<ts>.log`. So sieht ein
-  Wächter nie die Dispatches eines anderen Prozesses.
+- Zustand je Issue in `runs/issue-<n>/`: eigene `WORKFLOW.md` (Pflicht-Label
+  `gmv-symphony-issue-<n>`, eigener `workspace.root`), Symphony-Logs, die der
+  Wächter liest, `run.out`, `watchdog.log`. So sieht ein Wächter nie die
+  Dispatches eines anderen Prozesses. Schreibpfad-Inventar und Proxy-Regel:
+  [parallel-isolation.md](parallel-isolation.md).
 
 Quota-, Rate-Limit- und Login-Regel: [quota-refresh.md](quota-refresh.md).
 

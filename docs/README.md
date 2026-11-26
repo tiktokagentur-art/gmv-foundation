@@ -19,6 +19,7 @@ Sie legen keine Infrastruktur an und enthalten keinen Anwendungscode.
 | [symphony/dispatch-gate.md](symphony/dispatch-gate.md) | Symphony Dispatch-Gate: Entwurf, standardmäßig aus |
 | [symphony/sandbox.md](symphony/sandbox.md) | Symphony/Codex-Sandbox: was erzwungen ist, was nicht |
 | [symphony/quota-refresh.md](symphony/quota-refresh.md) | Symphony und Codex: Quota-, Rate-Limit- und Login-Regel (fail-closed) |
+| [symphony/parallel-isolation.md](symphony/parallel-isolation.md) | Symphony parallel: Zustand je Issue, Schreibpfade, Proxy-Regel in run-wave.sh |
 | [adr/README.md](adr/README.md) | Index der ADRs, einschließlich offener Punkte |
 | [../SECURITY.md](../SECURITY.md) | Secrets, Rechte, Identität, Autorisierung, Audit |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Branch, Pull Request, unabhängige Review |
