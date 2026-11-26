@@ -10,8 +10,13 @@
 # 4. Slot im gemeinsamen Zähler belegen (flock auf /workspace/research/.research.lock,
 #    Slot-Datei state/slots/<pid>; rc=5, wenn voll). Freigabe beim Beenden (trap).
 #    Symphony-Anteil: höchstens gmv.dispatch_gate.max_concurrent aus WORKFLOW.md.
+# 4b. Lauf-Verzeichnis runs/issue-<n>/ exklusiv anlegen: eigene WORKFLOW.md (eigenes
+#    Tracker-Label gmv-symphony-issue-<n>, eigener workspace.root), logs-root, Protokolle.
+#    In bwrap ist nur dieses Verzeichnis beschreibbar (Pilot-Verzeichnis read-only).
+#    Vor der Einmal-Sperre: scheitert es, endet nur dieser Start (rc=2), kein symphony-stop.
 # 5. Einmal-Sperre per O_EXCL anlegen: bei einem Race gewinnt genau ein Aufruf.
-# 6. Allowlist-Egress-Proxy als Nutzerprozess starten (egress-proxy.sh).
+# 6. Allowlist-Egress-Proxy als Nutzerprozess starten (egress-proxy.sh), unter dem
+#    Slot-Lock; gestoppt wird er nur, wenn kein Symphony-Slot mehr lebt (run-wave.sh).
 # 7. Installation-Token der App gmv-symphony-worker erzeugen (symphony_app_token.py,
 #    außerhalb von bwrap, weil nur hier der App-Key lesbar ist).
 # 8. Symphony in bwrap starten: App-Key, gh-Konfiguration, Git-Credentials,
@@ -82,6 +87,17 @@ trap release_slot EXIT
 python3 "$GATE_PY" slot-acquire --issue "$ISSUE" --pid "$$" \
   --workflow "$PILOT_DIR/WORKFLOW.md" || exit $?
 SLOT_HELD=1
+# Eigener Lauf-Zustand je Issue (Samira, Bedingung 1): runs/issue-<n>/ mit eigener
+# WORKFLOW.md (Label gmv-symphony-issue-<n>, workspace.root im Lauf-Verzeichnis),
+# logs-root, Dashboard-Ausgabe und Wächter-Log. Exklusiv angelegt; existiert es: kein Start.
+# VOR once-acquire (Samira, Review #149, Auflage 1): bekannte Start-Blockaden
+# (run_dir_exists, unerwartete WORKFLOW-Struktur) beenden nur diesen Start mit rc=2,
+# ohne Einmal-Sperre, ohne symphony-stop und ohne rc=13.
+if ! RUN_DIR=$(python3 "$GATE_PY" prepare-run --issue "$ISSUE" --runs-dir "$PILOT_DIR/runs" \
+  --workflow "$PILOT_DIR/WORKFLOW.md"); then
+  echo "BLOCKED: Lauf-Verzeichnis für Issue #$ISSUE nicht angelegt; nur dieser Start endet" >&2
+  exit 2
+fi
 if ! python3 "$GATE_PY" once-acquire --issue "$ISSUE" --dir "$ONCE_DIR"; then
   echo "BLOCKED: Issue #$ISSUE wurde bereits gestartet; kein zweiter Lauf" >&2
   exit 2
@@ -92,20 +108,23 @@ if [ "${GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED:-}" = "yes" ]; then
   SYM_FLAGS+=(--i-understand-that-this-will-be-running-without-the-usual-guardrails)
 fi
 unset GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED GMV_SYMPHONY_START_APPROVED
-"$HERE/egress-proxy.sh" start
+LOGROOT="$RUN_DIR/log"
+RUN_OUT="$RUN_DIR/run.out"
+WD_LOG="$RUN_DIR/watchdog.log"
+# Gemeinsamer Egress-Proxy: Start nur unter dem Slot-Lock (kein Start-/Stop-Race).
+python3 "$GATE_PY" proxy-start --proxy-script "$HERE/egress-proxy.sh"
 mapfile -d '' BW < <(gmv_bwrap_args)
-TS="$(date +%Y%m%d-%H%M%S)"
-LOGROOT="$PILOT_DIR/log/issue-$ISSUE"
-RUN_OUT="$PILOT_DIR/log/run-issue$ISSUE-$TS.out"
-WD_LOG="$PILOT_DIR/log/watchdog-issue$ISSUE-$TS.log"
-mkdir -p "$LOGROOT/log"
+# Einengung im Wrapper (bwrap-env.sh unverändert): Pilot-Verzeichnis nur lesbar,
+# beschreibbar nur das eigene Lauf-Verzeichnis. Spätere Mounts überdecken frühere.
+ISO=(--ro-bind "$PILOT_DIR" "$PILOT_DIR" --bind "$RUN_DIR" "$RUN_DIR")
 set +e
 python3 "$TOKEN_PY" exec -- \
   python3 "$WATCHDOG" --log "$LOGROOT/log" \
     --stdout-file "$RUN_OUT" \
     --budget 5000000 --reserve 300000 --max-sessions 3 --max-runtime 3600 -- \
-  bwrap "${BW[@]}" --chdir "$PILOT_DIR" -- \
-  ./symphony-nightly-linux_x86_64 "${SYM_FLAGS[@]}" --logs-root "$LOGROOT" ./WORKFLOW.md \
+  bwrap "${BW[@]}" "${ISO[@]}" --chdir "$RUN_DIR" -- \
+  "$PILOT_DIR/symphony-nightly-linux_x86_64" "${SYM_FLAGS[@]}" --logs-root "$LOGROOT" \
+  "$RUN_DIR/WORKFLOW.md" \
   2>>"$WD_LOG" &
 CHILD=$!
 trap 'kill -TERM "$CHILD" 2>/dev/null' TERM INT

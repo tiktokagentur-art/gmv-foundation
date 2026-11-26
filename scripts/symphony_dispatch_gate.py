@@ -584,16 +584,13 @@ def check_quota_stop(marker: Path) -> None:
 def record_quota_stop(alerts: Path, marker: Path, issue: int, reason: str) -> None:
     """ALERTS.log-Eintrag plus Stopp-Marker: keine weiteren Starts, kein Retry."""
     stamp = time.strftime("%Y-%m-%d %H:%M:%S %Z")
-    alerts = Path(alerts)
     marker = Path(marker)
-    alerts.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    fd = os.open(alerts, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
-    with os.fdopen(fd, "a", encoding="utf-8") as fh:
-        fh.write(
-            f"{stamp} ALERT symphony issue={issue} quota_fail_closed reason={reason} "
-            "- keine weiteren Starts bis 'codex login' ausserhalb der Huelle erneuert "
-            "und Marker entfernt\n"
-        )
+    _append_alert(
+        alerts,
+        f"ALERT symphony issue={issue} quota_fail_closed reason={reason} "
+        "- keine weiteren Starts bis 'codex login' ausserhalb der Huelle erneuert "
+        "und Marker entfernt",
+    )
     marker.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
@@ -687,11 +684,16 @@ def run_verdict(rc: int, watchdog_log: Path | None) -> str | None:
 
 
 def _append_alert(alerts: Path, line: str) -> None:
+    """Eine Zeile an ALERTS.log anhängen, unter flock auf der Datei selbst (600)."""
     alerts = Path(alerts)
     alerts.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd = os.open(alerts, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
-    with os.fdopen(fd, "a", encoding="utf-8") as fh:
-        fh.write(f"{time.strftime('%Y-%m-%d %H:%M:%S %Z')} {line}\n")
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        os.write(fd, f"{time.strftime('%Y-%m-%d %H:%M:%S %Z')} {line}\n".encode())
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
 
 
 def record_run_stop(alerts: Path, marker: Path, issue: int, reason: str) -> None:
@@ -755,6 +757,117 @@ def release_lock(
         f"archiv={archived.name}",
     )
     return archived
+
+
+# --------------------------------------------------------------------------
+# Trennung je Issue (Samira, Bedingung 1) und Proxy-Regel (Bedingung 2)
+# --------------------------------------------------------------------------
+# Jeder Lauf bekommt ein eigenes Verzeichnis ``runs/issue-<n>`` (einmalig, weil
+# die Einmal-Sperre pro Issue gilt) mit eigener WORKFLOW.md (eigenes Tracker-
+# Label, eigener workspace.root), eigenem logs-root und eigenen Protokollen.
+# Gemeinsam beschreibbar bleiben nur flock-geschützte Dateien: Slot-Zähler und
+# Lock, Sperren/Marker, ALERTS.log und die Proxy-PID-Datei (nur unter dem
+# Slot-Lock gestartet/gestoppt). Siehe docs/symphony/parallel-isolation.md.
+
+ISSUE_LABEL_PREFIX = "gmv-symphony-issue-"
+RC_PROXY_BUSY = 14  # run-wave: Proxy nicht gestoppt, weil noch ein Symphony-Slot lebt
+
+
+def issue_label(issue: int) -> str:
+    return f"{ISSUE_LABEL_PREFIX}{parse_issue(issue)}"
+
+
+def render_issue_workflow(text: str, issue: int, run_dir: Path) -> str:
+    """WORKFLOW.md für genau ein Issue: eigenes Label, eigener workspace.root.
+
+    Ohne YAML-Abhängigkeit, zeilenbasiert und fail-closed: Findet sich die
+    erwartete Struktur nicht genau einmal, wird nichts erzeugt.
+    """
+    issue = parse_issue(issue)
+    front, body = split_frontmatter(text)
+    lines = front.split("\n")
+    roots = [i for i, ln in enumerate(lines) if re.fullmatch(r"  root: \S.*", ln)]
+    ws = [i for i, ln in enumerate(lines) if ln == "workspace:"]
+    if len(ws) != 1 or len(roots) != 1 or roots[0] != ws[0] + 1 + sum(
+        1 for ln in lines[ws[0] + 1 : roots[0]] if ln.lstrip().startswith("#")
+    ):
+        raise GateDenied("workflow_structure_unexpected", "workspace.root")
+    labels = [i for i, ln in enumerate(lines) if ln == "  required_labels:"]
+    if len(labels) != 1:
+        raise GateDenied("workflow_structure_unexpected", "tracker.required_labels")
+    j = labels[0] + 1
+    items: list[str] = []
+    while j < len(lines) and lines[j].startswith("    - "):
+        items.append(lines[j][6:].strip())
+        j += 1
+    if not items or any(i.startswith(ISSUE_LABEL_PREFIX) for i in items):
+        raise GateDenied("workflow_structure_unexpected", "required_labels")
+    if read_max_concurrent(text) < 1:  # validiert max_concurrent fail-closed
+        raise GateDenied("max_concurrent_invalid")
+    run_dir = Path(run_dir)
+    lines[roots[0]] = f"  root: {run_dir / 'workspaces'}"
+    lines.insert(j, f"    - {issue_label(issue)}")
+    header = (
+        f"# Erzeugt von symphony_dispatch_gate.py render-workflow für Issue #{issue}.\n"
+        "# Nicht bearbeiten; Quelle ist die WORKFLOW.md des Pilot-Verzeichnisses.\n"
+    )
+    return "---\n" + header + "\n".join(lines) + "\n---\n" + body
+
+
+def prepare_run_dir(runs_dir: Path, issue: int, workflow_src: Path) -> Path:
+    """Legt ``runs/issue-<n>`` exklusiv an (700). Existiert es, kein Start.
+
+    Läuft in ``run-symphony.sh`` vor ``once-acquire``: Ein Fehler hier beendet nur
+    diesen Start (rc=2) und setzt weder Einmal-Sperre noch ``symphony-stop``.
+    Die WORKFLOW.md wird vor dem Anlegen erzeugt, damit eine unerwartete Struktur
+    kein halbes Lauf-Verzeichnis hinterlässt.
+    """
+    issue = parse_issue(issue)
+    runs_dir = Path(runs_dir)
+    run_dir = runs_dir / f"issue-{issue}"
+    rendered = render_issue_workflow(Path(workflow_src).read_text(encoding="utf-8"), issue, run_dir)
+    if runs_dir.is_symlink():
+        raise GateDenied("runs_dir_symlink", str(runs_dir))
+    runs_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        run_dir.mkdir(mode=0o700)
+    except FileExistsError:
+        raise GateDenied("run_dir_exists", str(run_dir)) from None
+    for sub in ("workspaces", "log"):
+        (run_dir / sub).mkdir(mode=0o700)
+    fd = os.open(run_dir / "WORKFLOW.md", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(rendered)
+    return run_dir
+
+
+def proxy_start(slots: SharedSlots, proxy_script: Path) -> int:
+    """Startet den gemeinsamen Egress-Proxy unter dem Slot-Lock (kein Start-Race)."""
+    import subprocess
+
+    with _flock(slots.lock_path):
+        return subprocess.call([str(proxy_script), "start"])
+
+
+def proxy_stop_if_idle(slots: SharedSlots, proxy_script: Path, alerts: Path, issue: int) -> int:
+    """Stoppt den Proxy nur, wenn kein Symphony-Slot mehr lebt (atomar unter flock).
+
+    Lebt noch ein Slot: ALERTS.log-Eintrag, rc=14, Proxy läuft weiter.
+    """
+    import subprocess
+
+    with _flock(slots.lock_path):
+        live = [s for s in slots._live_slots() if s.kind == "symphony"]
+        if live:
+            issues = ",".join(str(s.issue) for s in live)
+            _append_alert(
+                alerts,
+                f"ALERT run-wave issue={parse_issue(issue)} proxy_stop_refused "
+                f"live_symphony_slots={len(live)} issues={issues}",
+            )
+            return RC_PROXY_BUSY
+        rc = subprocess.call([str(proxy_script), "stop"])
+    return 0 if rc == 0 else RC_BLOCKED
 
 
 # --------------------------------------------------------------------------
@@ -978,6 +1091,15 @@ def main(argv: list[str] | None = None) -> int:
     rv.add_argument("--issue", type=int, required=True)
     rv.add_argument("--rc", type=int, required=True)
     rv.add_argument("--watchdog-log", type=Path)
+    pr = sub.add_parser("prepare-run", help="runs/issue-<n> mit eigener WORKFLOW.md anlegen")
+    pr.add_argument("--issue", type=int, required=True)
+    pr.add_argument("--runs-dir", type=Path, required=True)
+    pr.add_argument("--workflow", type=Path, required=True)
+    ps = sub.add_parser("proxy-start", help="Egress-Proxy unter dem Slot-Lock starten")
+    ps.add_argument("--proxy-script", type=Path, required=True)
+    pq = sub.add_parser("proxy-stop-if-idle", help="Proxy nur ohne lebenden Symphony-Slot stoppen")
+    pq.add_argument("--proxy-script", type=Path, required=True)
+    pq.add_argument("--issue", type=int, required=True)
     rl = sub.add_parser("release", help="Sperre manuell und protokolliert freigeben")
     rl.add_argument("--kind", choices=RELEASE_KINDS, required=True)
     rl.add_argument("--by", required=True)
@@ -1034,6 +1156,19 @@ def main(argv: list[str] | None = None) -> int:
             record_run_stop(paths["alerts"], paths["run_stop"], parse_issue(args.issue), code)
             print(f"ALERT: unknown_fail_closed reason={code}", file=sys.stderr)
             return RC_UNKNOWN_FAIL_CLOSED
+        if args.cmd == "prepare-run":
+            run_dir = prepare_run_dir(args.runs_dir, args.issue, args.workflow)
+            print(run_dir)
+            return 0
+        if args.cmd in ("proxy-start", "proxy-stop-if-idle"):
+            slots = SharedSlots(paths["slot_dir"], paths["slot_lock"])
+            if args.cmd == "proxy-start":
+                return 0 if proxy_start(slots, args.proxy_script) == 0 else RC_BLOCKED
+            rc = proxy_stop_if_idle(slots, args.proxy_script, paths["alerts"], args.issue)
+            if rc == RC_PROXY_BUSY:
+                print("BLOCKED: proxy_stop_refused (Symphony-Slot lebt noch, ALERTS.log)",
+                      file=sys.stderr)
+            return rc
         if args.cmd == "release":
             archived = release_lock(args.kind, args.by, args.reason, paths,
                                     issue=args.issue, once_dir=args.dir)

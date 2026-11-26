@@ -77,13 +77,15 @@ lieferten einen Patch (PRs #105, #107, #109). Die Domain bleibt blockiert.
 | Datei (Repo → Host `bin/`) | Zweck |
 | --- | --- |
 | `scripts/symphony_host/run-symphony.sh` | Einziger Start, genau ein Issue je Aufruf (`GMV_SYMPHONY_ISSUE`); ohne `GMV_SYMPHONY_START_APPROVED=yes` Abbruch. Guardrail-Flag nur per Opt-in `GMV_SYMPHONY_GUARDRAIL_FLAG_APPROVED=yes` für genau einen Aufruf (danach `unset`). Vor dem Start: Quota-Stopp-Marker (rc=9), Slot im gemeinsamen Zähler mit `research.sh` (rc=5), Einmal-Sperre pro Issue `log/once/issue-<n>.once`. Danach externer Wächter, Quota-Prüfung der Protokolle (rc=9), Bewertung des Ausgangs (unklar: rc=13, Lauf-Stopp-Marker), Slot-Freigabe. Pfade fest verdrahtet; Sperren nur manuell und protokolliert freigeben (`release`). Siehe [dispatch-gate.md](dispatch-gate.md) und [quota-refresh.md](quota-refresh.md) |
-| `scripts/symphony_dispatch_gate.py` | Host-Kommandos `slot-acquire`, `slot-release`, `once-acquire`, `quota-check`, `quota-scan`, `run-verdict` für `run-symphony.sh`, dazu `release` nur für Menschen (ohne PyYAML) |
+| `scripts/symphony_dispatch_gate.py` | Host-Kommandos `slot-acquire`, `slot-release`, `once-acquire`, `prepare-run`, `proxy-start`, `quota-check`, `quota-scan`, `run-verdict` für `run-symphony.sh`, `proxy-stop-if-idle` für `run-wave.sh`, dazu `release` nur für Menschen (ohne PyYAML) |
+| `scripts/symphony_host/run-wave.sh` | Ein Issue: Labels `gmv-symphony-pilot` und `gmv-symphony-issue-<n>`, `pilot-one-run.sh`, Proxy nur stoppen, wenn kein Symphony-Slot mehr lebt (sonst `ALERTS.log`, rc=14). Siehe [parallel-isolation.md](parallel-isolation.md) |
 | `scripts/symphony_host/symphony_watchdog.py` | Externer Wächter: stoppt den ganzen Prozessbaum (SIGTERM, dann SIGKILL, danach verifiziert) bei 5.000.000 − 300.000 Tokens (Standard, gleich `--budget` in `run-symphony.sh` und der Obergrenze im Gate), zweitem Issue, zweitem Dispatch, Retry-Zyklus, Ende des ersten Laufs, Schleife, Laufzeitlimit oder fehlender Token-Anzeige. Tests: `tests/test_symphony_watchdog.py` |
 | `scripts/symphony_host/uds_bridge.py` | Nur Versuch, nicht im Start eingebunden: TCP↔Unix-Socket-Brücke für Netz-Isolation per `bwrap --unshare-net` (siehe unten) |
 | `scripts/symphony_host/bwrap-env.sh` | Masken für bwrap |
-| `scripts/symphony_host/egress-proxy.sh` | Proxy starten/stoppen (Nutzerprozess, PID und Log unter `log/`) |
+| `scripts/symphony_host/egress-proxy.sh` | Proxy starten/stoppen (Nutzerprozess, PID und Log unter `log/`); aus `run-symphony.sh`/`run-wave.sh` nur über das Gate unter dem Slot-Lock |
 | `scripts/symphony_egress_proxy.py` | Allowlist-Proxy, nur `CONNECT` auf Port 443, keine IP-Literale, keine Inhaltsprotokolle |
-| `scripts/symphony_host/sandbox-selftest.sh`, `codex_exec_probe.py` | Nachweis ohne Lauf und ohne Modellaufruf; braucht PyYAML (Host: `tools-venv`) |
+| `scripts/symphony_host/sandbox-selftest.sh`, `codex_exec_probe.py` | Nachweis ohne Lauf und ohne Modellaufruf; braucht PyYAML (Host: `tools-venv`). Proxy-Start nur über das Gate unter dem Slot-Lock, Probe-Workspaces je Aufruf unter `selftest/` |
+| `scripts/symphony_host/pilot-one-run.sh` | Ein Lauf für ein Issue: Labels `gmv-symphony-pilot` und `gmv-symphony-issue-<n>` prüfen, Proxy unter dem Slot-Lock, Selbsttest, `run-symphony.sh`; rc = rc des Laufs. Siehe [parallel-isolation.md](parallel-isolation.md) |
 
 Fallback, falls der Proxy nicht stabil läuft: `permissions.gmv_symphony.network`
 auf `enabled=false` setzen und die Proxy-Variablen entfernen. Dann hat die

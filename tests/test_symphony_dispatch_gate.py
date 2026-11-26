@@ -836,5 +836,143 @@ class OperatorRuleDocsTests(unittest.TestCase):
                 self.assertRegex(text, r"(?i)protokolliert")
 
 
+class IssueIsolationTests(unittest.TestCase):
+    """Samira, Bedingungen 1 und 2: eigene WORKFLOW je Issue, Proxy-Stopp nur ohne Slot."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self._tmp.name)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_rendered_workflow_routes_only_own_issue_and_stays_valid(self) -> None:
+        import symphony_dispatch_gate as gate
+
+        text = WORKFLOW.read_text(encoding="utf-8")
+        run_dir = Path("/workspace/symphony-pilot/runs/issue-7")  # nur Text, kein Schreiben
+        rendered = gate.render_issue_workflow(text, 7, run_dir)
+        orig = yaml.safe_load(gate.split_frontmatter(text)[0])
+        new = yaml.safe_load(gate.split_frontmatter(rendered)[0])
+        self.assertEqual(new["tracker"]["required_labels"],
+                         ["gmv-symphony-pilot", "gmv-symphony-issue-7"])
+        self.assertEqual(new["workspace"]["root"], str(run_dir / "workspaces"))
+        self.assertEqual(gate.validate_workflow(new), [])
+        self.assertEqual(new["gmv"]["dispatch_gate"], orig["gmv"]["dispatch_gate"])
+        for key in set(orig) - {"tracker", "workspace"}:
+            self.assertEqual(new[key], orig[key], key)
+        self.assertEqual(gate.split_frontmatter(rendered)[1], gate.split_frontmatter(text)[1])
+        # Vorlage bleibt bei max_concurrent 1 und Gate aus
+        self.assertEqual(orig["gmv"]["dispatch_gate"]["max_concurrent"], 1)
+        self.assertIs(orig["gmv"]["dispatch_gate"]["enabled"], False)
+
+    def test_render_is_fail_closed_on_unexpected_structure(self) -> None:
+        import symphony_dispatch_gate as gate
+
+        text = WORKFLOW.read_text(encoding="utf-8")
+        bad = [
+            text.replace("  required_labels:\n    - gmv-symphony-pilot\n", ""),
+            text.replace("    - gmv-symphony-pilot\n", "    - gmv-symphony-issue-3\n"),
+            text.replace("workspace:\n", "workspace_x:\n"),
+            text.replace("  root: ~/gmv-symphony/workspaces\n",
+                         "  root: a\n  root: b\n"),
+        ]
+        for variant in bad:
+            self.assertNotEqual(variant, text)
+            with self.subTest(variant=variant[:0]), self.assertRaises(gate.GateDenied):
+                gate.render_issue_workflow(variant, 3, self.base)
+
+    def test_prepare_run_dir_is_exclusive_and_private(self) -> None:
+        import symphony_dispatch_gate as gate
+
+        runs = self.base / "runs"
+        run_dir = gate.prepare_run_dir(runs, 8, WORKFLOW)
+        self.assertEqual(run_dir, runs / "issue-8")
+        self.assertEqual(run_dir.stat().st_mode & 0o777, 0o700)
+        self.assertEqual((run_dir / "WORKFLOW.md").stat().st_mode & 0o777, 0o600)
+        self.assertTrue((run_dir / "workspaces").is_dir())
+        self.assertTrue((run_dir / "log").is_dir())
+        with self.assertRaises(gate.GateDenied) as ctx:
+            gate.prepare_run_dir(runs, 8, WORKFLOW)
+        self.assertEqual(ctx.exception.reason, "run_dir_exists")
+        other = gate.prepare_run_dir(runs, 9, WORKFLOW)
+        self.assertNotEqual(other, run_dir)
+
+    def test_prepare_run_dir_leaves_nothing_on_bad_workflow_and_rejects_symlink(self) -> None:
+        import symphony_dispatch_gate as gate
+
+        runs = self.base / "runs"
+        bad = self.base / "bad.md"
+        bad.write_text(WORKFLOW.read_text(encoding="utf-8").replace("workspace:\n", "ws:\n"),
+                       encoding="utf-8")
+        with self.assertRaises(gate.GateDenied) as ctx:
+            gate.prepare_run_dir(runs, 4, bad)
+        self.assertEqual(ctx.exception.reason, "workflow_structure_unexpected")
+        self.assertFalse(runs.exists())
+        target = self.base / "elsewhere"
+        target.mkdir()
+        runs.symlink_to(target)
+        with self.assertRaises(gate.GateDenied) as ctx:
+            gate.prepare_run_dir(runs, 4, WORKFLOW)
+        self.assertEqual(ctx.exception.reason, "runs_dir_symlink")
+        self.assertEqual(list(target.iterdir()), [])
+
+    def _proxy(self) -> tuple[Path, Path]:
+        calls = self.base / "calls"
+        script = self.base / "proxy.sh"
+        script.write_text(f'#!/bin/sh\necho "$1" >> {calls}\n', encoding="utf-8")
+        script.chmod(0o755)
+        return script, calls
+
+    def test_proxy_stop_if_idle(self) -> None:
+        import subprocess
+
+        import symphony_dispatch_gate as gate
+
+        slots = gate.SharedSlots(self.base / "slots", self.base / ".lock")
+        script, calls = self._proxy()
+        alerts = self.base / "ALERTS.log"
+        child = subprocess.Popen(["sleep", "60"])
+        try:
+            (self.base / "slots").mkdir()
+            (self.base / "slots" / str(child.pid)).write_text(
+                f"pid={child.pid} reserved=0 id=symphony-issue-5 kind=symphony issue=5\n",
+                encoding="utf-8")
+            self.assertEqual(gate.proxy_stop_if_idle(slots, script, alerts, 6), 14)
+            self.assertFalse(calls.exists())
+            self.assertIn("issue=6 proxy_stop_refused live_symphony_slots=1 issues=5",
+                          alerts.read_text(encoding="utf-8"))
+        finally:
+            child.kill()
+            child.wait()
+        # Slot tot: Proxy wird gestoppt
+        self.assertEqual(gate.proxy_stop_if_idle(slots, script, alerts, 6), 0)
+        self.assertEqual(calls.read_text(encoding="utf-8"), "stop\n")
+        self.assertEqual(gate.proxy_start(slots, script), 0)
+        self.assertEqual(calls.read_text(encoding="utf-8"), "stop\nstart\n")
+
+    def test_alert_appends_are_locked_and_line_atomic(self) -> None:
+        import symphony_dispatch_gate as gate
+
+        alerts = self.base / "ALERTS.log"
+        procs = [multiprocessing.Process(target=_alert_burst, args=(str(alerts), i))
+                 for i in range(4)]
+        for proc in procs:
+            proc.start()
+        for proc in procs:
+            proc.join(30)
+        lines = alerts.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(lines), 200)
+        self.assertTrue(all(ln.endswith(" ALERT test") for ln in lines))
+        self.assertTrue(callable(gate._append_alert))
+
+
+def _alert_burst(path: str, _i: int) -> None:
+    import symphony_dispatch_gate as gate
+
+    for _ in range(50):
+        gate._append_alert(Path(path), "ALERT test")
+
+
 if __name__ == "__main__":
     unittest.main()
