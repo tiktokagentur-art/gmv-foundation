@@ -88,7 +88,8 @@ def test_openapi_v1_errors_statuses_and_paths_match() -> None:
     assert set(schemas["WorkItemStatus"]["enum"]) == {status.value for status in WorkItemStatus}
     assert set(schemas["ErrorCode"]["enum"]) == {code.value for code in ErrorCode}
     assert set(HTTP_STATUS_BY_CODE) == set(ErrorCode)
-    assert set(spec["paths"]) == {
+    portal_paths = {path for path in spec["paths"] if path.startswith("/v1/portal/")}
+    assert set(spec["paths"]) - portal_paths == {
         "/v1/work-items",
         "/v1/work-items/{work_item_id}",
         "/v1/work-items/{work_item_id}/transitions",
@@ -104,6 +105,23 @@ def test_openapi_v1_errors_statuses_and_paths_match() -> None:
         "/v1/audit-events",
         "/v1/whoami",
     }
+    portal_post_paths = {
+        "/v1/portal/campaigns",
+        "/v1/portal/interests",
+        "/v1/portal/sample-requests",
+        "/v1/portal/decisions",
+        "/v1/portal/video-links",
+        "/v1/portal/feedback-items",
+    }
+    assert portal_paths == portal_post_paths | {
+        "/v1/portal/creators",
+        "/v1/portal/sellers",
+        "/v1/portal/products",
+    }
+    idempotency_key = {"$ref": "#/components/parameters/IdempotencyKey"}
+    for path in sorted(portal_post_paths):
+        parameters = spec["paths"][path]["post"].get("parameters", [])
+        assert parameters.count(idempotency_key) == 1, path
     for path_item in spec["paths"].values():
         for method, operation in path_item.items():
             if method in {"get", "post", "patch"}:
