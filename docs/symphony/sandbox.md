@@ -84,7 +84,8 @@ lieferten einen Patch (PRs #105, #107, #109). Die Domain bleibt blockiert.
 | `scripts/symphony_host/bwrap-env.sh` | Masken für bwrap |
 | `scripts/symphony_host/egress-proxy.sh` | Proxy starten/stoppen (Nutzerprozess, PID und Log unter `log/`); aus `run-symphony.sh`/`run-wave.sh` nur über das Gate unter dem Slot-Lock |
 | `scripts/symphony_egress_proxy.py` | Allowlist-Proxy, nur `CONNECT` auf Port 443, keine IP-Literale, keine Inhaltsprotokolle |
-| `scripts/symphony_host/sandbox-selftest.sh`, `codex_exec_probe.py` | Nachweis ohne Lauf und ohne Modellaufruf; braucht PyYAML (Host: `tools-venv`) |
+| `scripts/symphony_host/sandbox-selftest.sh`, `codex_exec_probe.py` | Nachweis ohne Lauf und ohne Modellaufruf; braucht PyYAML (Host: `tools-venv`). Proxy-Start nur über das Gate unter dem Slot-Lock, Probe-Workspaces je Aufruf unter `selftest/` |
+| `scripts/symphony_host/pilot-one-run.sh` | Ein Lauf für ein Issue: Labels `gmv-symphony-pilot` und `gmv-symphony-issue-<n>` prüfen, Proxy unter dem Slot-Lock, Selbsttest, `run-symphony.sh`; rc = rc des Laufs. Siehe [parallel-isolation.md](parallel-isolation.md) |
 
 Fallback, falls der Proxy nicht stabil läuft: `permissions.gmv_symphony.network`
 auf `enabled=false` setzen und die Proxy-Variablen entfernen. Dann hat die
