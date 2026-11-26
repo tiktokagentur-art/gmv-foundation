@@ -425,6 +425,228 @@ paths:
           $ref: "#/components/responses/Error"
         "403":
           $ref: "#/components/responses/Error"
+  /v1/portal/creators:
+    get:
+      operationId: listPortalCreators
+      summary: Fiktive Creator lesen
+      x-required-scope: portal.read
+      responses:
+        "200":
+          description: Fiktive Einträge, bei leerem Bestand eine leere Liste
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PortalCreator"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+  /v1/portal/sellers:
+    get:
+      operationId: listPortalSellers
+      summary: Fiktive Händler lesen
+      x-required-scope: portal.read
+      responses:
+        "200":
+          description: Fiktive Einträge, bei leerem Bestand eine leere Liste
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PortalSeller"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+  /v1/portal/products:
+    get:
+      operationId: listPortalProducts
+      summary: Fiktive Produkte lesen
+      x-required-scope: portal.read
+      responses:
+        "200":
+          description: Fiktive Einträge, bei leerem Bestand eine leere Liste
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PortalProduct"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+  /v1/portal/campaigns:
+    post:
+      operationId: createPortalCampaign
+      summary: Kampagne für ein fiktives Produkt anlegen
+      x-required-scope: portal.write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortalCampaignCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalCreated"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/portal/interests:
+    post:
+      operationId: createPortalInterest
+      summary: Interesse an einer Kampagne melden
+      x-required-scope: portal.write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortalInterestCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalCreated"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/portal/sample-requests:
+    post:
+      operationId: createPortalSampleRequest
+      summary: Ein Muster zur Kampagne anfragen
+      x-required-scope: portal.write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortalSampleRequestCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalCreated"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/portal/decisions:
+    post:
+      operationId: createPortalDecision
+      summary: Über eine Musteranfrage entscheiden
+      x-required-scope: portal.write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortalDecisionCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalCreated"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/portal/video-links:
+    post:
+      operationId: createPortalVideoLink
+      summary: Videolink nach Zusage einreichen
+      x-required-scope: portal.write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortalVideoLinkCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalCreated"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /v1/portal/feedback-items:
+    post:
+      operationId: createPortalFeedback
+      summary: Feedback zum eingereichten Videolink hinterlegen
+      x-required-scope: portal.write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortalFeedbackCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalCreated"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
 components:
   securitySchemes:
     callerCredential:
@@ -822,3 +1044,147 @@ components:
             - type: string
               minLength: 1
             - type: "null"
+    PortalRole:
+      type: string
+      enum: [creator, seller, admin]
+      description: Fachliche Menschenrolle als Datenwert ohne Berechtigungswirkung.
+    PortalDirectoryEntry:
+      type: object
+      additionalProperties: false
+      required: [id, role, label, region, data_source, legal_basis, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/PortalRole"
+        label:
+          type: string
+          minLength: 1
+          description: Fiktive Geschäfts-, Shop- oder Studiobezeichnung.
+        region:
+          type: string
+          minLength: 1
+          description: Fiktive Testregion.
+        data_source:
+          type: string
+          minLength: 1
+          description: Herkunft der fiktiven Testdaten.
+        legal_basis:
+          type: string
+          const: platzhalter-bis-datenschutzpruefung
+        status:
+          type: string
+          const: fiktiv
+    PortalCreator:
+      allOf:
+        - $ref: "#/components/schemas/PortalDirectoryEntry"
+        - properties:
+            role:
+              const: creator
+    PortalSeller:
+      allOf:
+        - $ref: "#/components/schemas/PortalDirectoryEntry"
+        - properties:
+            role:
+              const: seller
+    PortalProduct:
+      type: object
+      additionalProperties: false
+      required: [id, seller_id, label]
+      properties:
+        id:
+          type: string
+          format: uuid
+        seller_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          minLength: 1
+          description: Fiktive Produktbezeichnung.
+    PortalCampaignCreate:
+      type: object
+      additionalProperties: false
+      required: [product_id, video_format, sample_available]
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        video_format:
+          type: string
+          enum: [portrait, landscape, square]
+        sample_available:
+          type: boolean
+    PortalInterestCreate:
+      type: object
+      additionalProperties: false
+      required: [campaign_id, creator_id]
+      properties:
+        campaign_id:
+          type: string
+          format: uuid
+        creator_id:
+          type: string
+          format: uuid
+    PortalSampleRequestCreate:
+      type: object
+      additionalProperties: false
+      required: [interest_id, quantity]
+      properties:
+        interest_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+    PortalDecisionCreate:
+      type: object
+      additionalProperties: false
+      required: [sample_request_id, outcome, reason]
+      properties:
+        sample_request_id:
+          type: string
+          format: uuid
+        outcome:
+          type: string
+          enum: [approved, rejected]
+        reason:
+          type: string
+          minLength: 1
+          description: Fiktive Begründung ohne personenbezogene Angaben.
+    PortalVideoLinkCreate:
+      type: object
+      additionalProperties: false
+      required: [decision_id, video_url]
+      properties:
+        decision_id:
+          type: string
+          format: uuid
+          description: ID der zustimmenden Entscheidung.
+        video_url:
+          type: string
+          format: uri
+          pattern: '^https://example[.]invalid/'
+          description: Fiktiver Platzhalterlink.
+    PortalFeedbackCreate:
+      type: object
+      additionalProperties: false
+      required: [video_link_id, note]
+      properties:
+        video_link_id:
+          type: string
+          format: uuid
+        note:
+          type: string
+          minLength: 1
+          description: Fiktives Feedback zum Video ohne personenbezogene Angaben.
+    PortalCreated:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID der angelegten fiktiven Ressource.
