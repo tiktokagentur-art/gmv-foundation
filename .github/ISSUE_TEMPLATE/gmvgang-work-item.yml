@@ -1,0 +1,112 @@
+name: GMVGANG-Arbeitsauftrag
+description: Standardisierte Erfassung eines Tickets, Bugs, Spikes oder Projektergebnisses
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Maßgeblich ist [GMVGANG-Standard für Tickets und Projekte V1](../../docs/PROJECT_TICKET_STANDARD.md).
+        Dieses Repository ist öffentlich: keine Secrets, Zugangsdaten, internen Betriebsdetails oder echten Kunden-, Händler-, Creator- oder Personendaten eintragen.
+        Die Vorlage erzeugt keine Zuweisung. Zuweisung und Statusübergänge bleiben bei der Assignment Authority.
+  - type: dropdown
+    id: arbeitstyp
+    attributes:
+      label: Arbeitstyp
+      options:
+        - Ziel / Initiative
+        - Epic / Projekt
+        - Story / Aufgabe
+        - Subtask
+        - Bug
+        - Spike
+        - Tech Debt / Chore
+    validations:
+      required: true
+  - type: textarea
+    id: kontext_nutzen
+    attributes:
+      label: Kontext und Nutzen
+      description: Welches Problem besteht, für wen und warum ist das Ergebnis wichtig?
+      placeholder: "Problem, betroffene Rolle und erwarteter Nutzen"
+    validations:
+      required: true
+  - type: textarea
+    id: ergebnis_umfang
+    attributes:
+      label: Erwartetes Ergebnis, Umfang und Nicht-Ziele
+      description: Ein klar begrenztes Ergebnis beschreiben und außerhalb des Umfangs benennen.
+      placeholder: |
+        Ergebnis:
+        Im Umfang:
+        Nicht im Umfang:
+    validations:
+      required: true
+  - type: textarea
+    id: akzeptanz
+    attributes:
+      label: Akzeptanzkriterien
+      description: Prüfbare Aussagen, die zeigen, wann das Ergebnis erfüllt ist.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: dropdown
+    id: prioritaet
+    attributes:
+      label: Vorgeschlagene Priorität
+      description: Die Priorität wird nach Begründung durch die zuständige Autorität bestätigt.
+      options:
+        - P0 - Incident oder akute Sicherheitslücke
+        - P1 - Hoch
+        - P2 - Mittel
+        - P3 - Niedrig
+    validations:
+      required: true
+  - type: dropdown
+    id: groesse
+    attributes:
+      label: Erwartete Dauer
+      description: Aufgaben über sieben Tage in kleinere Ergebnisse teilen.
+      options:
+        - Bis 1 Tag
+        - 2 bis 3 Tage
+        - 4 bis 7 Tage
+        - Mehr als 7 Tage - bitte vor Ready aufteilen
+    validations:
+      required: true
+  - type: textarea
+    id: abhaengigkeiten_risiken
+    attributes:
+      label: Abhängigkeiten und Risiken
+      description: Vorarbeiten, externe Dienste, Sicherheits- oder Datenschutzbezug. Bei keinen bekannten Punkten "Keine bekannt" eintragen.
+      placeholder: "Keine bekannt oder Liste mit Verantwortungsrolle und Klärungsschritt"
+    validations:
+      required: true
+  - type: textarea
+    id: abnahme_nachweis
+    attributes:
+      label: Abnahmerolle und geplanter Ergebnisbeleg
+      description: Benötigte Abnahmerolle und Form des Nachweises angeben. Ergebnisbeleg und tatsächliche Abnahme bei Abschluss im Issue ergänzen.
+      placeholder: "Abnahmerolle: …\nErgebnisbeleg: …"
+    validations:
+      required: true
+  - type: textarea
+    id: abschluss
+    attributes:
+      label: Abschlussnachweis (bei Abschluss ergänzen)
+      description: Ergebnis, Beleglink und Abnahme mit Rolle und Datum festhalten.
+      value: |
+        Ergebnis:
+        Beleg:
+        Abnahme durch Rolle:
+        Datum:
+    validations:
+      required: false
+  - type: textarea
+    id: verantwortungsrolle
+    attributes:
+      label: Verantwortliche Rolle / Rückfragenkontakt
+      description: Falls bekannt die Rolle nennen. Die verbindliche Zuweisung erfolgt separat durch die Assignment Authority.
+      placeholder: "Rolle, keine unnötigen personenbezogenen Daten"
+    validations:
+      required: false
