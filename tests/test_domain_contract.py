@@ -105,10 +105,7 @@ def test_openapi_v1_errors_statuses_and_paths_match() -> None:
         "/v1/audit-events",
         "/v1/whoami",
     }
-    assert portal_paths == {
-        "/v1/portal/creators",
-        "/v1/portal/sellers",
-        "/v1/portal/products",
+    portal_post_paths = {
         "/v1/portal/campaigns",
         "/v1/portal/interests",
         "/v1/portal/sample-requests",
@@ -116,6 +113,15 @@ def test_openapi_v1_errors_statuses_and_paths_match() -> None:
         "/v1/portal/video-links",
         "/v1/portal/feedback-items",
     }
+    assert portal_paths == portal_post_paths | {
+        "/v1/portal/creators",
+        "/v1/portal/sellers",
+        "/v1/portal/products",
+    }
+    idempotency_key = {"$ref": "#/components/parameters/IdempotencyKey"}
+    for path in sorted(portal_post_paths):
+        parameters = spec["paths"][path]["post"].get("parameters", [])
+        assert parameters.count(idempotency_key) == 1, path
     for path_item in spec["paths"].values():
         for method, operation in path_item.items():
             if method in {"get", "post", "patch"}:

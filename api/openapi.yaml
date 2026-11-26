@@ -484,6 +484,8 @@ paths:
       operationId: createPortalCampaign
       summary: Kampagne für ein fiktives Produkt anlegen
       x-required-scope: portal.write
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -512,6 +514,8 @@ paths:
       operationId: createPortalInterest
       summary: Interesse an einer Kampagne melden
       x-required-scope: portal.write
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -540,6 +544,8 @@ paths:
       operationId: createPortalSampleRequest
       summary: Ein Muster zur Kampagne anfragen
       x-required-scope: portal.write
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -568,6 +574,8 @@ paths:
       operationId: createPortalDecision
       summary: Über eine Musteranfrage entscheiden
       x-required-scope: portal.write
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -596,6 +604,8 @@ paths:
       operationId: createPortalVideoLink
       summary: Videolink nach Zusage einreichen
       x-required-scope: portal.write
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -624,6 +634,8 @@ paths:
       operationId: createPortalFeedback
       summary: Feedback zum eingereichten Videolink hinterlegen
       x-required-scope: portal.write
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
