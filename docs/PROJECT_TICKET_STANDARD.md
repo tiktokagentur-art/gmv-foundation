@@ -135,4 +135,4 @@ Wöchentlich wird ein schriftlicher Status gepflegt:
 
 Durchlaufzeit, Durchsatz, Blockierzeit, Anteil ungeplanter Arbeit, Wiedereröffnungen und Alter des Backlogs dienen der Prozessverbesserung. Sie werden nicht zur individuellen Leistungsbewertung verwendet.
 
-Backlog-Refinement, Duplikatprüfung, einheitliche Labels und Verknüpfungen sind regelmäßig durchzuführen. Für Codex-/Symphony-Aufträge gelten zusätzlich die engeren Regeln im [Codex Engineering Playbook](symphony/codex-engineering.md) und in der [Symphony-Pilotvorlage](../.github/ISSUE_TEMPLATE/symphony-pilot.yml).
+Backlog-Refinement, Duplikatprüfung, einheitliche Labels und Verknüpfungen sind regelmäßig durchzuführen. Für Codex-/Symphony-Aufträge gelten zusätzlich die engeren Regeln in [SYMPHONY-GITHUB-V1.md](SYMPHONY-GITHUB-V1.md) und der [Symphony-Pilotvorlage](../.github/ISSUE_TEMPLATE/symphony-pilot.yml).
