@@ -1,0 +1,27 @@
+{
+  "repository": "tiktokagentur-art/gmv-foundation",
+  "staging": {
+    "project": "GMV-V3",
+    "project_id_sha256": "81a465aa4866c7ffb03135e7f5909728543212072047f636dfcd648b3313abaa",
+    "environment": "staging",
+    "environment_id_sha256": "a2b0f8c8af192f2ef5b7a8dce42464da87ba76899d03ae8407f69f11f7e08510",
+    "service": "backend",
+    "service_id_sha256": "6c7da0484017a5b59ad7148e43d8e017c5f07920e7ec05345b5c8bb8f76ec7d2",
+    "source_repository": "tiktokagentur-art/gmv-foundation",
+    "source_branch": "main",
+    "auto_deploy": true,
+    "wait_for_ci": true
+  },
+  "production": {
+    "project": "GMV Forge",
+    "project_id_sha256": "1be705c92a2cee4fca90781e5858b3c421f84a09970323f2be4c2c800241f501",
+    "environment": "production",
+    "environment_id_sha256": "4309ddc5aae0dbe576f9d486902de78dce94100e6d0827cede4902fef6b45850",
+    "service": "gmv-foundation",
+    "service_id_sha256": "468811dbb519e7fae0a223386c1dbff4b75944b7ee1e28722e0e17acc3a131f0",
+    "source_repository": "tiktokagentur-art/gmv-foundation",
+    "source_branch": null,
+    "auto_deploy": false,
+    "release_mode": "approved_image"
+  }
+}
