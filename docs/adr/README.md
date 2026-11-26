@@ -26,6 +26,7 @@ Prüfung des Vorschlags erlaubt, nimmt den Vorschlag nicht an.
 | [0013](0013-repository-visibility-public.md) | Repository-Sichtbarkeit: public | Accepted |
 | [0014](0014-github-moderator-trust-boundary.md) | GitHub Moderator V1, Betriebsmodi und Credential-Isolation | Accepted |
 | [0015](0015-aline-l1-testmandate.md) | Dauerhaftes L1-Testmandat für Aline | Accepted |
+| [0016](0016-atomic-work-package-standard.md) | Atomic Work Package Standard V1 | Accepted |
 
 ## Offene Entscheidungen
 

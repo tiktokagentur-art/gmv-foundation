@@ -7,6 +7,7 @@ benötigt keinen zusätzlichen Dokumentationsgenerator oder Hostingdienst.
 ## Navigation
 
 - [Entwicklung und Tests](onboarding.md)
+- [Atomic Work Package Standard V1](../adr/0016-atomic-work-package-standard.md)
 - [Systemlandkarte](systems.md)
 - [Factory-Katalog](factories/README.md)
 - [Factory-, API- und Agenten-Vorlagen](templates/README.md)
