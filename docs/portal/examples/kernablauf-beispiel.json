@@ -1,0 +1,43 @@
+{
+  "id": "kernablauf-fiktiv-001",
+  "haendler_rolle": "Nordlicht Haushalt (fiktiv)",
+  "creator_rolle": "Rolle Creator Elbe",
+  "schritte": [
+    {
+      "id": "fiktiv-01",
+      "name": "kampagne",
+      "status": "erledigt",
+      "notiz": "Fiktive Kampagne für eine Stapelbox zur Anzeige freigegeben. Gewünscht ist ein kurzes Hochformatvideo. Ein Muster ist verfügbar."
+    },
+    {
+      "id": "fiktiv-02",
+      "name": "interesse",
+      "status": "erledigt",
+      "notiz": "Interesse ist der Stapelbox-Kampagne zugeordnet."
+    },
+    {
+      "id": "fiktiv-03",
+      "name": "musteranfrage",
+      "status": "erledigt",
+      "notiz": "Ein fiktives Muster der Stapelbox ist angefragt."
+    },
+    {
+      "id": "fiktiv-04",
+      "name": "entscheidung",
+      "status": "erledigt",
+      "notiz": "Die Händlerrolle genehmigt die Anfrage, weil ein fiktives Muster verfügbar ist."
+    },
+    {
+      "id": "fiktiv-05",
+      "name": "videolink",
+      "status": "erledigt",
+      "notiz": "Platzhalter für das Hochformatvideo: https://example.invalid/videos/stapelbox"
+    },
+    {
+      "id": "fiktiv-06",
+      "name": "feedback",
+      "status": "erledigt",
+      "notiz": "Im fiktiven Feedback bittet die Händlerrolle um eine längere Nahaufnahme der Stapelfunktion im Hochformat."
+    }
+  ]
+}
